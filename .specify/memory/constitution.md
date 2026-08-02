@@ -20,7 +20,7 @@ Follow-up TODOs:
 
 ## Contexto y Propósito del Proyecto
 
-DoctorIA es una aplicación asistencial orientada a personal médico que actúa como una capa de inteligencia artificial sobre el historial clínico del paciente. Su objetivo principal es reducir la carga administrativa del equipo de salud, agilizar la consulta de información clínica relevante y generar borradores estructurados de notas y resúmenes. 
+DoctorIA es una aplicación asistencial orientada a personal médico que actúa como una capa de inteligencia artificial sobre el historial clínico del paciente. Su objetivo principal es reducir la carga administrativa del equipo de salud, agilizar la consulta de información clínica relevante y generar borradores estructurados de notas y resúmenes.
 
 **REGLA FUNDAMENTAL DE DOMINIO**: Toda salida, borrador, estructuración o resumen generado por la inteligencia artificial DEBE ser revisado, editado y confirmado expresamente por un profesional médico calificado antes de consolidarse en la historia clínica.
 
