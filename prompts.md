@@ -45,3 +45,17 @@ Este archivo registra los prompts relevantes utilizados durante el ciclo de desa
 **Resultado:** Se generó `.specify/memory/constitution.md` versión 1.0.0 con diez principios no negociables para DoctorIA. La constitución define el desarrollo dirigido por especificaciones, la mentalidad de Director de AI, la reutilización de Open SaaS y Wasp, la supervisión médica obligatoria, la protección de datos, el alcance del MVP, las pruebas, Google Stitch, la trazabilidad y el gobierno del equipo.
 
 **Correcciones de auditoría:** Se precisó el tratamiento seguro de archivos `.env` y se registró que el equipo de 7 Doers es una excepción operativa documentada cuya aprobación formal por el mentor permanece pendiente.
+
+---
+
+### Prompt 4 — Especificación funcional del MVP
+
+**Herramienta:** Antigravity + Spec Kit
+
+**Objetivo:** Convertir la investigación validada de DoctorIA y la Constitución v1.0.0 en una especificación funcional del MVP, sin definir todavía arquitectura, código ni tareas.
+
+**Alcance solicitado:** Autenticación del personal médico, consulta de pacientes e historial, nota clínica unificada, estructuración asistida por IA, revisión humana obligatoria, borrador de epicrisis, visualización de datos faltantes y auditoría básica.
+
+**Restricciones:** No inventar requerimientos no respaldados, no incluir diagnóstico o prescripción autónoma, no integrar todavía sistemas externos y no generar código, plan técnico ni tasks.md.
+
+**Estado:** Pendiente de ejecución.
