@@ -40,4 +40,8 @@ Este archivo registra los prompts relevantes utilizados durante el ciclo de desa
 
 **Objetivo:** Establecer las reglas técnicas, de seguridad, calidad, gobierno y trabajo dirigido por AI para DoctorIA.
 
-**Estado:** Pendiente de ejecución.
+**Estado:** Ejecutado y aprobado con correcciones de auditoría.
+
+**Resultado:** Se generó `.specify/memory/constitution.md` versión 1.0.0 con diez principios no negociables para DoctorIA. La constitución define el desarrollo dirigido por especificaciones, la mentalidad de Director de AI, la reutilización de Open SaaS y Wasp, la supervisión médica obligatoria, la protección de datos, el alcance del MVP, las pruebas, Google Stitch, la trazabilidad y el gobierno del equipo.
+
+**Correcciones de auditoría:** Se precisó el tratamiento seguro de archivos `.env` y se registró que el equipo de 7 Doers es una excepción operativa documentada cuya aprobación formal por el mentor permanece pendiente.
