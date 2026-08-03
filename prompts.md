@@ -58,4 +58,8 @@ Este archivo registra los prompts relevantes utilizados durante el ciclo de desa
 
 **Restricciones:** No inventar requerimientos no respaldados, no incluir diagnóstico o prescripción autónoma, no integrar todavía sistemas externos y no generar código, plan técnico ni tasks.md.
 
-**Estado:** Pendiente de ejecución.
+**Estado:** Ejecutado y aprobado para iniciar aclaraciones.
+
+**Resultado:** Spec Kit generó `specs/001-doctoria-mvp/spec.md` con 7 historias de usuario, 25 requisitos funcionales, 12 requisitos no funcionales, estados del contenido clínico, criterios de éxito, exclusiones, hipótesis y trazabilidad constitucional.
+
+**Correcciones de auditoría:** Se eliminaron afirmaciones no demostradas, decisiones técnicas prematuras, posibles truncamientos silenciosos y rutas absolutas. La especificación permanece en estado Draft y está bloqueada para planificación hasta resolver tres grupos de aclaraciones mediante `/speckit-clarify`.
