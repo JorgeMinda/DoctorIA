@@ -63,3 +63,13 @@ Este archivo registra los prompts relevantes utilizados durante el ciclo de desa
 **Resultado:** Spec Kit generó `specs/001-doctoria-mvp/spec.md` con 7 historias de usuario, 25 requisitos funcionales, 12 requisitos no funcionales, estados del contenido clínico, criterios de éxito, exclusiones, hipótesis y trazabilidad constitucional.
 
 **Correcciones de auditoría:** Se eliminaron afirmaciones no demostradas, decisiones técnicas prematuras, posibles truncamientos silenciosos y rutas absolutas. La especificación permanece en estado Draft y está bloqueada para planificación hasta resolver tres grupos de aclaraciones mediante `/speckit-clarify`.
+
+---
+
+### Prompt 5 — Aclaraciones funcionales del MVP
+
+**Herramienta:** Antigravity + Spec Kit
+
+**Objetivo:** Resolver las decisiones pendientes sobre nota clínica, epicrisis, roles, rendimiento y calidad de la asistencia de IA antes de generar el plan técnico.
+
+**Estado:** Pendiente de ejecución.
