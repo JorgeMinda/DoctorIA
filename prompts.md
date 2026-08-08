@@ -82,8 +82,14 @@ Este archivo registra los prompts relevantes utilizados durante el ciclo de desa
 
 **Herramienta:** Antigravity + Spec Kit
 
-**Modelo recomendado:** Claude Opus 4.6 (Thinking)
+**Modelo utilizado:** Claude Opus 4.6 (Thinking)
 
 **Objetivo:** Transformar la especificación funcional y las aclaraciones aprobadas del MVP en un plan técnico implementable, reutilizando estrictamente Open SaaS/Wasp y sin iniciar todavía la implementación.
 
-**Estado:** Pendiente de ejecución.
+**Estado:** Ejecutado, auditado y técnicamente aprobado. Pendiente de la aprobación humana/formal correspondiente antes de iniciar `DESIGN.md`.
+
+**Resultado:** Se generaron y revisaron cinco artefactos de planificación: `plan.md`, `research.md`, `data-model.md`, `contracts/clinical-operations.md` y `quickstart.md`. El plan conserva Open SaaS/Wasp/Prisma/PostgreSQL como base, define 17 operaciones Wasp y un contrato interno desacoplado para la asistencia de IA, mantiene el proveedor de IA como decisión pendiente y preserva Google Stitch como gate previo a la implementación de UI.
+
+**Correcciones de auditoría — SARA:** Durante la revisión posterior se detectaron inconsistencias capaces de propagarse a la arquitectura: una interpretación falsa de H-03, la equivalencia insegura `!isAdmin = Médico`, ausencia de autorización explícita Médico↔Paciente y otros residuos técnicos/documentales. Se aplicó el método SARA para delimitar el alcance, rastrear propagación, corregir los cinco artefactos y reauditar el resultado. Se incorporaron `isMedico` con habilitación explícita y `MedicoPatientAccess` con control server-side, se restauraron las hipótesis H-01 a H-07 según `spec.md`, se corrigieron conteos y supuestos técnicos y se ajustó la estrategia de PostgreSQL para no interferir con la instancia existente en el puerto 5432. La verificación final no encontró residuos SARA conocidos, placeholders, `tasks.md` prematuro, trailing whitespace ni modificaciones fuera de `specs/001-doctoria-mvp/`.
+
+**Incidencia de ejecución:** La generación y corrección tuvieron interrupciones por límite de cuota del modelo. Antes de cada reanudación se inspeccionó el repositorio mediante Terminal para recuperar exactamente el punto alcanzado y evitar regenerar o sobrescribir trabajo válido.
