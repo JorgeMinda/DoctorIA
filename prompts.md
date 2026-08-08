@@ -95,3 +95,21 @@ Este archivo registra los prompts relevantes utilizados durante el ciclo de desa
 **Correcciones de auditoría — SARA:** Durante la revisión posterior se detectaron inconsistencias capaces de propagarse a la arquitectura: una interpretación falsa de H-03, la equivalencia insegura `!isAdmin = Médico`, ausencia de autorización explícita Médico↔Paciente y otros residuos técnicos/documentales. Se aplicó el método SARA para delimitar el alcance, rastrear propagación, corregir los cinco artefactos y reauditar el resultado. Se incorporaron `isMedico` con habilitación explícita y `MedicoPatientAccess` con control server-side, se restauraron las hipótesis H-01 a H-07 según `spec.md`, se corrigieron conteos y supuestos técnicos y se ajustó la estrategia de PostgreSQL para no interferir con la instancia existente en el puerto 5432. La verificación final no encontró residuos SARA conocidos, placeholders, `tasks.md` prematuro, trailing whitespace ni modificaciones fuera de `specs/001-doctoria-mvp/`.
 
 **Incidencia de ejecución:** La generación y corrección tuvieron interrupciones por límite de cuota del modelo. Antes de cada reanudación se inspeccionó el repositorio mediante Terminal para recuperar exactamente el punto alcanzado y evitar regenerar o sobrescribir trabajo válido.
+
+---
+
+### Prompt 7 — Sistema de diseño clínico de DoctorIA
+
+**Herramienta:** Antigravity
+
+**Modelo recomendado:** Claude Sonnet 4.6 (Thinking)
+
+**Objetivo:** Crear `DESIGN.md` como contrato de diseño UX/UI del MVP DoctorIA antes de utilizar Google Stitch, basándose exclusivamente en la especificación, el plan técnico aprobado y los componentes visuales reales disponibles en Open SaaS.
+
+**Fuentes de verdad:** Constitución v1.0.0, `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/clinical-operations.md`, `quickstart.md` y el stack/componentes UI existentes de Open SaaS.
+
+**Alcance:** Definir principios visuales, estructura de navegación clínica, jerarquía, componentes reutilizables, estados de interfaz, accesibilidad, responsive, comportamiento visual de la asistencia de IA y lineamientos para las pantallas candidatas de Google Stitch: Lista/Búsqueda de Pacientes, Editor de Nota Clínica e Historial del Paciente + Epicrisis.
+
+**Restricciones:** No generar código ni modificar `app/`; no instalar componentes o librerías; no crear `tasks.md`; no ejecutar implementación; no inventar funcionalidades clínicas; no permitir diagnóstico, prescripción o confirmación autónoma por IA; no utilizar datos reales de pacientes; no reemplazar decisiones aprobadas del plan.
+
+**Estado:** Preparado y pendiente de ejecución.
