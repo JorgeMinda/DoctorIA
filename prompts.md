@@ -86,7 +86,9 @@ Este archivo registra los prompts relevantes utilizados durante el ciclo de desa
 
 **Objetivo:** Transformar la especificación funcional y las aclaraciones aprobadas del MVP en un plan técnico implementable, reutilizando estrictamente Open SaaS/Wasp y sin iniciar todavía la implementación.
 
-**Estado:** Ejecutado, auditado y técnicamente aprobado. Pendiente de la aprobación humana/formal correspondiente antes de iniciar `DESIGN.md`.
+**Estado:** Ejecutado, auditado, técnicamente aprobado y formalmente aprobado para iniciar `DESIGN.md`.
+
+**Aprobación formal:** 2026-08-08. El gate humano del plan fue aprobado después de la auditoría técnica y del cierre satisfactorio de SARA.
 
 **Resultado:** Se generaron y revisaron cinco artefactos de planificación: `plan.md`, `research.md`, `data-model.md`, `contracts/clinical-operations.md` y `quickstart.md`. El plan conserva Open SaaS/Wasp/Prisma/PostgreSQL como base, define 17 operaciones Wasp y un contrato interno desacoplado para la asistencia de IA, mantiene el proveedor de IA como decisión pendiente y preserva Google Stitch como gate previo a la implementación de UI.
 
