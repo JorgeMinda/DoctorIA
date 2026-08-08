@@ -72,4 +72,6 @@ Este archivo registra los prompts relevantes utilizados durante el ciclo de desa
 
 **Objetivo:** Resolver las decisiones pendientes sobre nota clínica, epicrisis, roles, rendimiento y calidad de la asistencia de IA antes de generar el plan técnico.
 
-**Estado:** Pendiente de ejecución.
+**Estado:** Ejecutado y auditado. Aclaraciones funcionales completadas; especificación técnicamente lista para planificación, pendiente de la revisión y aprobación formal correspondiente.
+
+**Resultado:** Se resolvieron las 5 áreas de decisión de producto (nota clínica de 5 secciones, epicrisis de 10 elementos e inmutabilidad por adendas, roles Médico y Administrador con restricciones, metas de rendimiento en staging y criterios de evaluación de IA sobre 30 notas sintéticas). Se eliminaron todos los marcadores `[NEEDS CLARIFICATION]` y se incorporaron los requisitos RF-026 a RF-029. Se agregó RNF-013 de disponibilidad verificable en staging sin definir SLA porcentual de producción.

@@ -13,8 +13,8 @@
 
 ## Requirement Completeness
 
-- [x] No uncontrolled [NEEDS CLARIFICATION] markers remain (Exactly 3 critical markers defined and documented for `/speckit-clarify`)
-- [ ] Requirements are fully unambiguous (Note: Three groups of pending decisions exist and must be resolved with `/speckit-clarify`)
+- [x] No uncontrolled clarification markers remain (All clarification decisions C-01 to C-05 fully resolved)
+- [x] Requirements are fully unambiguous (All clarification decisions C-01 to C-05 incorporated into functional and non-functional requirements)
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
@@ -28,11 +28,11 @@
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
-- [x] Ready for `/speckit-clarify`
-- [ ] Ready for `/speckit-plan` — blocked until the three clarification groups are resolved
+- [x] `/speckit-clarify` completed
+- [x] Ready for `/speckit-plan`
 
 ## Notes
 
-- **Validation Status**: Specification meets the initial quality criteria required to begin clarification. It is not yet approved for planning.
-- **Clarification Readiness**: Exactly 3 `[NEEDS CLARIFICATION]` markers have been recorded for the upcoming execution of `/speckit-clarify` to address minimum structured note format, epicrisis minimum contents/mutability rules, and role definitions with AI performance goals.
+- **Validation Status**: Specification meets quality criteria with zero pending clarification markers. Functional clarifications (C-01 to C-05) are fully resolved. The specification is technically ready for planning (`/speckit-plan`), subject to the human review and approval process established by the project constitution.
+- **Clarification Resolution**: Decisions C-01 through C-05 have been integrated to define the 5 minimum note sections, 10 minimum epicrisis fields, inmutabilidad estricta mediante adendas, functional roles (Médico y Administrador), staging performance goals ($P_{95} \le 2\text{s}$ interaction, $P_{95} \le 15\text{s}$ IA, 30s timeout), AI text structuring evaluation (90% target on 30 synthetic note dataset), and verifiable staging availability (RNF-013) without a predefined production SLA.
 - **Operational Exception**: Documented team size of 7 Doers as an operational exception with validation continuing via pilot users.

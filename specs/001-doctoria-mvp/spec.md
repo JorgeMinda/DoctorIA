@@ -120,7 +120,7 @@ Todo contenido clínico gestionado o generado dentro del sistema debe transitar 
 
 **Criterios de Aceptación y Escenarios**:
 1. **Given** un borrador estructurado con secciones incompletas, **When** se presenta al médico, **Then** el sistema señala los campos pendientes utilizando **texto descriptivo e iconografía de advertencia** (sin depender exclusivamente del color).
-2. **Given** una nota con campos obligatorios pendientes, **When** el médico intenta confirmarla, **Then** el sistema muestra un diálogo de advertencia sobre la información faltante, permitiéndole completar los datos o justificar su ausencia antes de proceder [NEEDS CLARIFICATION: Formato mínimo de nota estructurada y campos obligatorios para confirmación final].
+2. **Given** una nota con campos obligatorios pendientes, **When** el médico intenta confirmarla, **Then** el sistema bloquea la confirmación con un mensaje claro de advertencia indicando cuáles de las 5 secciones obligatorias (Motivo de consulta, Nota clínica/evolución, Examen físico, Valoración clínica, Plan/indicaciones) se encuentran incompletas, exigiendo su completitud o la especificación explícita de "No aplica" con su correspondiente justificación breve antes de proceder.
 
 ---
 
@@ -168,7 +168,7 @@ Todos los requisitos funcionales son trazables a las historias de usuario y resp
 - **RF-004**: El sistema DEBE desplegar el historial clínico básico del paciente sintético en orden cronológico inverso, incluyendo consultas previas y antecedentes registrados. (HU-02)
 - **RF-005**: El sistema DEBE proveer un campo de texto unificado para el ingreso libre de notas clínicas por parte del profesional médico. (HU-03)
 - **RF-006**: El sistema DEBE permitir al profesional médico solicitar la estructuración asistida por IA a partir del texto ingresado en el campo unificado. (HU-03)
-- **RF-007**: El sistema DEBE clasificar automáticamente el texto unificado en las secciones clínicas definidas para el MVP (constando motivo de consulta, anamnesis, examen físico y plan únicamente como ejemplos provisionales) al ejecutar la estructuración por IA, quedando el conjunto definitivo vinculado a la aclaración sobre el formato mínimo de la nota. (HU-03)
+- **RF-007**: El sistema DEBE clasificar automáticamente el texto unificado en las 5 secciones clínicas obligatorias del MVP: 1) Motivo de consulta, 2) Nota clínica o evolución, 3) Examen físico, 4) Valoración clínica realizada por el profesional, y 5) Plan o indicaciones registradas por el profesional. La IA únicamente organiza el contenido sin tomar decisiones clínicas autónomas. (HU-03)
 - **RF-008**: El sistema DEBE conservar obligatoriamente y en todo momento el texto original no estructurado redactado por el médico, manteniéndolo accesible para consulta y comparación. (HU-03, HU-07)
 - **RF-009**: El sistema DEBE asignar automáticamente el estado "Borrador asistido por IA" a toda propuesta estructurada generada por el motor de inteligencia artificial. (HU-03)
 - **RF-010**: El sistema DEBE mostrar una etiqueta o insignia clara e inconfundible ("Contenido asistido por IA") en toda salida generada por modelos automatizados. (HU-03, HU-06)
@@ -179,14 +179,18 @@ Todos los requisitos funcionales son trazables a las historias de usuario y resp
 - **RF-015**: El sistema DEBE identificar de forma clara y visible los campos o datos clínicos obligatorios que se encuentren faltantes o incompletos en la nota. (HU-05)
 - **RF-016**: El sistema DEBE utilizar texto explicativo e iconografía distintiva (adicional al uso de colores) para señalar la información incompleta o pendiente. (HU-05)
 - **RF-017**: El sistema DEBE permitir solicitar la generación de un borrador de resumen clínico o epicrisis a partir de los datos disponibles en el historial del paciente sintético. (HU-06)
-- **RF-018**: El sistema DEBE presentar la epicrisis generada inicialmente en estado "Borrador asistido por IA", requiriendo revisión, edición libre y confirmación explícita por el médico. (HU-06) [NEEDS CLARIFICATION: Contenido mínimo de epicrisis y reglas de edición o conservación post-confirmación]
+- **RF-018**: El sistema DEBE presentar el borrador de resumen clínico o epicrisis generado por IA (que incluye los 10 elementos mínimos: 1. Identificación sintética del paciente, 2. Motivo de ingreso/atención, 3. Antecedentes relevantes, 4. Resumen de evolución, 5. Procedimientos/resultados, 6. Diagnósticos validados, 7. Condición al cierre/alta, 8. Indicaciones/seguimiento, 9. Profesional responsable, y 10. Fecha/hora) inicialmente en estado "Borrador asistido por IA", requiriendo revisión, edición libre y confirmación explícita por el médico. (HU-06)
 - **RF-019**: El sistema DEBE generar un registro básico de auditoría por cada consulta, creación, modificación o confirmación de notas clínicas o epicrisis. (HU-04, HU-06)
 - **RF-020**: El registro de auditoría DEBE incluir obligatoriamente: identificador del autor/revisor, fecha, hora exacta y estado asignado al contenido. (HU-04, HU-06)
 - **RF-021**: El sistema DEBE gestionar de manera segura y grácil la indisponibilidad o falla del servicio de IA, notificando al médico sin bloquear la interfaz ni perder la información redactada. (HU-07)
 - **RF-022**: El sistema DEBE permitir al profesional médico guardar su nota clínica como "Borrador manual" y completarla manualmente si la IA no está disponible. (HU-07)
 - **RF-023**: El sistema DEBE presentar estados visuales claros para todas las pantallas del flujo: estado de carga, estado de éxito, estado de error, estado vacío y ausencia de resultados. (HU-02, HU-03, HU-07)
 - **RF-024**: El sistema DEBE utilizar exclusivamente datos sintéticos de pacientes e historias clínicas durante su desarrollo, pruebas y demostraciones. (HU-01 a HU-07)
-- **RF-025**: El sistema DEBE separar explícitamente los permisos entre usuarios autenticados autorizados y usuarios no autorizados. (HU-01) [NEEDS CLARIFICATION: Definición de roles/permisos exactos y metas de rendimiento/precisión de IA]
+- **RF-025**: El sistema DEBE definir y aplicar estrictamente dos roles funcionales: 1) **Médico** (con permisos de acceso a pacientes autorizados, consulta de historial, creación/estructuración de notas, revisión/edición de borradores, confirmación, creación de adendas y consulta de su propia auditoría) y 2) **Administrador** (con permisos de gestión de cuentas, asignación de roles, administración de datos sintéticos de demostración y consulta de auditoría administrativa, sin acceso ni permisos por defecto para consultar, modificar, sustituir o confirmar contenido clínico). (HU-01)
+- **RF-026**: Para confirmar una nota clínica, el sistema DEBE verificar acumulativamente: 1) paciente sintético seleccionado, 2) texto original íntegro conservado, 3) profesional responsable identificado, 4) fecha y hora registradas, y 5) cada una de las 5 secciones obligatorias completada o marcada expresamente como "No aplica" con su correspondiente justificación breve. (HU-04, HU-05)
+- **RF-027**: Si se intenta confirmar una nota clínica con una sección obligatoria vacía y sin la justificación explícita de "No aplica", el sistema DEBE bloquear la confirmación y desplegar un mensaje descriptivo de las secciones pendientes. (HU-05)
+- **RF-028**: Toda nota clínica o epicrisis en estado "Confirmado por profesional médico" DEBE ser inmutable, prohibiendo su edición directa o sobrescritura. (HU-04, HU-06)
+- **RF-029**: Toda modificación o corrección posterior sobre un registro clínico o epicrisis confirmada DEBE realizarse exclusivamente mediante la creación de una nueva versión o adenda que conserve la versión anterior, registre el motivo de la corrección, identifique al profesional responsable, registre fecha y hora, y mantenga trazabilidad explícita entre versiones. (HU-04, HU-06)
 
 ---
 
@@ -201,9 +205,10 @@ Todos los requisitos funcionales son trazables a las historias de usuario y resp
 - **RNF-007 (Trazabilidad y Auditoría)**: Toda confirmación o consulta sobre la ficha de un paciente DEBE dejar una marca de auditoría inmutable indicando usuario, fecha, hora y acción realizada.
 - **RNF-008 (Tolerancia a Fallos y Resiliencia)**: Ante una falla en la API o motor de IA, el sistema DEBE degradarse grácilmente al modo de trabajo manual sin congelar la aplicación ni cerrar la sesión activa.
 - **RNF-009 (Supervisión Humana)**: La arquitectura funcional DEBE impedir de forma absoluta que un algoritmo o modelo de IA tome decisiones clínicas o confirme registros sin intervención y confirmación explícita del médico.
-- **RNF-010 (Disponibilidad y Confiabilidad)**: [NEEDS CLARIFICATION: Meta de disponibilidad porcentual del servicio por definir para `/speckit-clarify`].
-- **RNF-011 (Rendimiento de Procesamiento)**: [NEEDS CLARIFICATION: Tiempo objetivo de respuesta para la estructuración y generación de borrador por definir para `/speckit-clarify`].
-- **RNF-012 (Precisión de Clasificación por IA)**: [NEEDS CLARIFICATION: Criterios y umbrales de precisión de la estructuración por IA a definir en `/speckit-clarify`].
+- **RNF-010 (Rendimiento de Navegación e Interacción en Staging)**: El sistema DEBE responder a las interacciones normales de navegación, carga y búsqueda con un tiempo objetivo máximo de 2 segundos en el percentil 95 ($P_{95} \le 2\text{s}$) en ambiente de staging bajo la carga de prueba definida para el MVP.
+- **RNF-011 (Rendimiento y Tolerancia en Procesamiento de IA en Staging)**: El sistema DEBE procesar la estructuración asistida o generación de borrador de epicrisis con un tiempo objetivo de respuesta de hasta 15 segundos en el percentil 95 ($P_{95} \le 15\text{s}$) en staging. Cuando el procesamiento supere los 2 segundos, DEBE mostrar un estado visible de procesamiento. Tras 30 segundos sin respuesta, el proceso DEBE considerarse fallido, notificarse de forma no bloqueante y permitir continuar manualmente sin provocar pérdida o alteración del texto original.
+- **RNF-012 (Calidad de Estructuración de Texto por IA sobre Dataset Sintético)**: La calidad de la IA DEBE evaluarse exclusivamente como estructuración de texto (no como diagnóstico médico) sobre un conjunto etiquetado de al menos 30 notas clínicas sintéticas. El sistema DEBE conservar el 100% del texto original sin omisiones silenciosas y marcar como "Requiere revisión" todo contenido no clasificable. El objetivo inicial es alcanzar al menos 90% de asignación correcta a las 5 secciones definidas sobre dicho conjunto sintético, requiriendo en todos los casos revisión y confirmación médica obligatoria sin interpretarse como validación clínica definitiva.
+- **RNF-013 (Disponibilidad Verificable en Staging)**: El sistema DEBE registrar y permitir verificar la disponibilidad del MVP durante las sesiones de prueba en ambiente de staging, incluyendo el registro de interrupciones y tiempos de inactividad observados. La meta porcentual definitiva de disponibilidad para producción se establecerá únicamente después de obtener evidencia operativa durante el piloto.
 
 ---
 
@@ -263,18 +268,16 @@ Las siguientes aseveraciones se registran formalmente como **Hipótesis a valida
 
 ---
 
-## 12. Preguntas Pendientes para Clarificación (`/speckit-clarify`)
+## 12. Clarificaciones Integradas (`/speckit-clarify`)
 
-Las siguientes ambigüedades e incertidumbres se registran formalmente para ser resueltas en la siguiente ejecución de `/speckit-clarify`:
+### Sesión 2026-08-02
 
-1. **[NEEDS CLARIFICATION: Formato mínimo de nota estructurada y campos obligatorios para confirmación final]**
-   - *Detalle*: ¿Cuáles son los campos mínimos indispensables que deben estar completos para poder confirmar una nota clínica (ej. solo motivo de consulta y plan, o también examen físico)?
-
-2. **[NEEDS CLARIFICATION: Contenido mínimo de epicrisis y reglas de edición o conservación post-confirmación]**
-   - *Detalle*: ¿Qué secciones componen la epicrisis mínima del MVP y si una nota/epicrisis confirmada se puede editar generando una nueva versión o si queda estrictamente inmutable?
-
-3. **[NEEDS CLARIFICATION: Definición de roles/permisos exactos y metas de rendimiento/precisión de IA]**
-   - *Detalle*: ¿Cuáles son los roles exactos requeridos en el MVP (ej. Médico General, Médico Especialista, Administrador), cuáles son las metas cuantitativas de rendimiento (tiempo en segundos de respuesta de IA) y el umbral aceptable de precisión para el motor de estructuración asistida?
+- **C-01 (Formato mínimo de nota clínica y confirmación)**: La nota estructurada comprende 5 secciones obligatorias (1. Motivo de consulta, 2. Nota clínica/evolución, 3. Examen físico, 4. Valoración clínica, 5. Plan/indicaciones). La IA organiza el contenido sin tomar decisiones autónomas. Para confirmar se exige paciente sintético, texto original íntegro, autor, timestamp, y cada sección completada o justificada expresamente con "No aplica" (con justificación breve).
+- **C-02 (Epicrisis e Inmutabilidad por Adendas)**: El borrador de epicrisis comprende 10 elementos sintéticos mínimos. Los registros confirmados son inmutables; toda corrección o adición posterior se realiza mediante una nueva versión o adenda que conserva el historial previo y registra autor, fecha, hora y motivo de corrección.
+- **C-03 (Roles y Permisos)**: El MVP cuenta con dos roles funcionales: **Médico** (acceso a pacientes autorizados, notas, IA, borradores, confirmaciones, adendas y su auditoría) y **Administrador** (gestión de cuentas, roles, datos sintéticos y auditoría administrativa). El Administrador NO posee acceso ni permisos por defecto para consultar, modificar, sustituir o confirmar contenido clínico.
+- **C-04 (Rendimiento del MVP en Staging)**: Objetivos verificables para staging: navegación/búsqueda $P_{95} \le 2\text{s}$; indicador de procesamiento si IA $> 2\text{s}$; estructuración de IA $P_{95} \le 15\text{s}$; timeout a 30s no bloqueante permitiendo continuación manual sin perder texto original.
+- **C-05 (Calidad de Estructuración Asistida)**: Evaluación exclusiva como estructurador de texto sobre dataset sintético de al menos 30 notas. Se exige 100% de conservación de texto, marca de "Requiere revisión" para contenido no clasificable, y objetivo inicial del 90% de precisión en asignación a las 5 secciones, requiriendo siempre revisión y confirmación médica.
+- **Disponibilidad en staging (decisión de auditoría)**: La disponibilidad del sistema en staging será medible y registrable (RNF-013). El SLA porcentual de producción permanece como decisión posterior al piloto, basada en evidencia operativa real. Esta definición no bloquea la planificación técnica del MVP.
 
 ---
 
