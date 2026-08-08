@@ -112,4 +112,6 @@ Este archivo registra los prompts relevantes utilizados durante el ciclo de desa
 
 **Restricciones:** No generar código ni modificar `app/`; no instalar componentes o librerías; no crear `tasks.md`; no ejecutar implementación; no inventar funcionalidades clínicas; no permitir diagnóstico, prescripción o confirmación autónoma por IA; no utilizar datos reales de pacientes; no reemplazar decisiones aprobadas del plan.
 
-**Estado:** Preparado y pendiente de ejecución.
+**Estado:** Ejecutado, auditado mediante revisión técnica y SARA, corregido y formalmente aprobado para continuar con Google Stitch.
+
+**Aprobación formal:** 2026-08-08. `DESIGN.md` fue revisado contra `spec.md`, `plan.md`, contratos y componentes reales de Open SaaS. SARA detectó y corrigió inconsistencias en rutas, reutilización de layout/breadcrumb y comportamiento del Toast antes del gate humano.
