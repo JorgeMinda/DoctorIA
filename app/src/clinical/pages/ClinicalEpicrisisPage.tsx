@@ -19,7 +19,17 @@ import {
 } from "../../client/components/ui/card";
 import { statusLabel } from "../services/statusLabels";
 
-const EPICRISIS_FIELDS: [string, string][] = [
+type EpicrisisFieldKey =
+  | "patientIdentification"
+  | "reasonForAdmission"
+  | "relevantHistory"
+  | "evolutionSummary"
+  | "proceduresResults"
+  | "validatedDiagnoses"
+  | "conditionAtDischarge"
+  | "followUpInstructions";
+
+const EPICRISIS_FIELDS: [EpicrisisFieldKey, string][] = [
   ["patientIdentification", "Identificación del paciente"],
   ["reasonForAdmission", "Motivo de ingreso"],
   ["relevantHistory", "Antecedentes relevantes"],
@@ -160,7 +170,11 @@ export function ClinicalEpicrisisPage() {
                   <Textarea
                     rows={key === "patientIdentification" ? 1 : 3}
                     value={epicrisis[key] ?? ""}
+                    readOnly={key === "patientIdentification"}
                     onChange={(e) => {
+                      if (key === "patientIdentification") {
+                        return;
+                      }
                       void updateDraftFn({
                         epicrisisId: epicrisis.id,
                         [key]: e.target.value,

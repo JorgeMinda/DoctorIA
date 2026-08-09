@@ -4,8 +4,46 @@
 
 import { faker } from "@faker-js/faker";
 import type { PrismaClient } from "@prisma/client";
+import { hashPassword } from "@wasp.sh/lib-auth/node";
 
 const DEMO_ADMIN_EMAIL = "admin@doctoria.com";
+const DEMO_PASSWORD = "Doctoria2026!";
+
+async function ensureAuthLogin(
+  prismaClient: PrismaClient,
+  userId: string,
+  email: string,
+  password: string,
+) {
+  const hashedPassword = await hashPassword(password);
+  const existingAuth = await prismaClient.auth.findUnique({ where: { userId } });
+  const authId = existingAuth?.id ?? crypto.randomUUID();
+  if (!existingAuth) {
+    await prismaClient.auth.create({ data: { id: authId, userId } });
+  }
+  await prismaClient.authIdentity.upsert({
+    where: { providerName_providerUserId: { providerName: "email", providerUserId: email } },
+    update: {
+      providerData: JSON.stringify({
+        hashedPassword,
+        isEmailVerified: true,
+        emailVerificationSentAt: null,
+        passwordResetSentAt: null,
+      }),
+    },
+    create: {
+      providerName: "email",
+      providerUserId: email,
+      providerData: JSON.stringify({
+        hashedPassword,
+        isEmailVerified: true,
+        emailVerificationSentAt: null,
+        passwordResetSentAt: null,
+      }),
+      authId,
+    },
+  });
+}
 
 const DEMO_MEDICOS = [
   { email: "medico1@doctoria.com", fullName: "Dra. Laura Méndez", specialty: "Medicina Interna" },
@@ -84,6 +122,7 @@ export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
       specialty: null,
     },
   });
+  await ensureAuthLogin(prismaClient, admin.id, DEMO_ADMIN_EMAIL, DEMO_PASSWORD);
 
   // 2. Médicos habilitados
   const medicos: { id: string }[] = [];
@@ -101,6 +140,7 @@ export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
       },
     });
     medicos.push({ id: medico.id });
+    await ensureAuthLogin(prismaClient, medico.id, m.email, DEMO_PASSWORD);
   }
 
   // 3. Pacientes sintéticos + accesos (ambos médicos acceden a todos)

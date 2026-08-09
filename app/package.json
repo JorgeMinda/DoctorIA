@@ -47,5 +47,12 @@
     "typescript": "6.0.3",
     "vite": "^8.1.0",
     "vitest": "^4.1.9"
+  },
+  "allowScripts": {
+    "@prisma/client@5.19.1": true,
+    "@prisma/engines@5.19.1": true,
+    "esbuild@0.28.1": true,
+    "msw@2.15.0": true,
+    "prisma@5.19.1": true
   }
 }
