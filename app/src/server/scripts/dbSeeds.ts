@@ -1,59 +1,146 @@
+// Seed de datos sintéticos DoctorIA (MVP).
+// Constitution P5: CERO PII real. Solo pacientes ficticios (PAC-NNN) y perfiles de demostración.
+// Usado por `app.db.seeds` en main.wasp.ts -> `wasp db seed`.
+
 import { faker } from "@faker-js/faker";
 import type { PrismaClient } from "@prisma/client";
-import { type User } from "wasp/entities";
-import {
-  getSubscriptionPaymentPlanIds,
-  SubscriptionStatus,
-} from "../../payment/plans";
 
-type MockUserData = Omit<User, "id">;
+const DEMO_ADMIN_EMAIL = "admin@doctoria.com";
 
-/**
- * This function, which we've imported in `app.db.seeds` in the `main.wasp` file,
- * seeds the database with mock users via the `wasp db seed` command.
- * For more info see: https://wasp.sh/docs/data-model/backends#seeding-the-database
- */
-export async function seedMockUsers(prismaClient: PrismaClient) {
-  await Promise.all(
-    generateMockUsersData(50).map((data) => prismaClient.user.create({ data })),
+const DEMO_MEDICOS = [
+  { email: "medico1@doctoria.com", fullName: "Dra. Laura Méndez", specialty: "Medicina Interna" },
+  { email: "medico2@doctoria.com", fullName: "Dr. Carlos Vega", specialty: "Cardiología" },
+];
+
+// Datos ficticios (sintéticos, P5). Cualquier parecido con la realidad es coincidencia.
+const SYNTHETIC_PATIENTS = [
+  {
+    syntheticId: "PAC-001",
+    firstName: "Ana",
+    lastName: "Paredes",
+    birthDate: new Date("1990-04-12"),
+    sex: "F",
+    medicalHistory: "Hipertensión arterial controlada. Sin alergias medicamentosas conocidas.",
+    allergies: null,
+  },
+  {
+    syntheticId: "PAC-002",
+    firstName: "Jorge",
+    lastName: "Ramírez",
+    birthDate: new Date("1985-11-03"),
+    sex: "M",
+    medicalHistory: "Diabetes tipo 2 en tratamiento con metformina.",
+    allergies: "Penicilina",
+  },
+  {
+    syntheticId: "PAC-003",
+    firstName: "María",
+    lastName: "Torres",
+    birthDate: new Date("1978-07-25"),
+    sex: "F",
+    medicalHistory: "Asma bronquial. Hipotiroidismo.",
+    allergies: null,
+  },
+  {
+    syntheticId: "PAC-004",
+    firstName: "Pedro",
+    lastName: "Salazar",
+    birthDate: new Date("1965-02-18"),
+    sex: "M",
+    medicalHistory: "Dislipidemia. Cardiopatía isquémica en seguimiento.",
+    allergies: "Sulfamidas",
+  },
+  {
+    syntheticId: "PAC-005",
+    firstName: "Lucía",
+    lastName: "Castillo",
+    birthDate: new Date("2001-09-30"),
+    sex: "F",
+    medicalHistory: "Sin antecedentes de relevancia.",
+    allergies: null,
+  },
+  {
+    syntheticId: "PAC-006",
+    firstName: "Andrés",
+    lastName: "Núñez",
+    birthDate: new Date("1995-12-08"),
+    sex: "M",
+    medicalHistory: "Migraña crónica.",
+    allergies: null,
+  },
+];
+
+export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
+  // 1. Admin
+  const admin = await prismaClient.user.upsert({
+    where: { email: DEMO_ADMIN_EMAIL },
+    update: { isAdmin: true, isMedico: false },
+    create: {
+      email: DEMO_ADMIN_EMAIL,
+      username: "admin",
+      isAdmin: true,
+      isMedico: false,
+      fullName: "Administrador DoctorIA",
+      specialty: null,
+    },
+  });
+
+  // 2. Médicos habilitados
+  const medicos: { id: string }[] = [];
+  for (const m of DEMO_MEDICOS) {
+    const medico = await prismaClient.user.upsert({
+      where: { email: m.email },
+      update: { isMedico: true, isAdmin: false, fullName: m.fullName, specialty: m.specialty },
+      create: {
+        email: m.email,
+        username: faker.internet.userName({ firstName: m.fullName.split(" ").pop() ?? "medico" }),
+        isMedico: true,
+        isAdmin: false,
+        fullName: m.fullName,
+        specialty: m.specialty,
+      },
+    });
+    medicos.push({ id: medico.id });
+  }
+
+  // 3. Pacientes sintéticos + accesos (ambos médicos acceden a todos)
+  const patients: { id: string }[] = [];
+  for (const p of SYNTHETIC_PATIENTS) {
+    const patient = await prismaClient.syntheticPatient.upsert({
+      where: { syntheticId: p.syntheticId },
+      update: {
+        firstName: p.firstName,
+        lastName: p.lastName,
+        birthDate: p.birthDate,
+        sex: p.sex,
+        medicalHistory: p.medicalHistory,
+        allergies: p.allergies,
+      },
+      create: {
+        syntheticId: p.syntheticId,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        birthDate: p.birthDate,
+        sex: p.sex,
+        medicalHistory: p.medicalHistory,
+        allergies: p.allergies,
+      },
+    });
+    patients.push({ id: patient.id });
+  }
+
+  // 4. MedicoPatientAccess: ambos médicos -> todos los pacientes
+  for (const medico of medicos) {
+    for (const patient of patients) {
+      await prismaClient.medicoPatientAccess.upsert({
+        where: { medicoId_patientId: { medicoId: medico.id, patientId: patient.id } },
+        update: {},
+        create: { medicoId: medico.id, patientId: patient.id, grantedById: admin.id },
+      });
+    }
+  }
+
+  console.log(
+    `[seed] ${medicos.length} médicos, ${patients.length} pacientes sintéticos, ${medicos.length * patients.length} accesos`,
   );
-}
-
-function generateMockUsersData(numOfUsers: number): MockUserData[] {
-  return faker.helpers.multiple(generateMockUserData, { count: numOfUsers });
-}
-
-function generateMockUserData(): MockUserData {
-  const firstName = faker.person.firstName();
-  const lastName = faker.person.lastName();
-  const subscriptionStatus =
-    faker.helpers.arrayElement<SubscriptionStatus | null>([
-      ...Object.values(SubscriptionStatus),
-      null,
-    ]);
-  const now = new Date();
-  const createdAt = faker.date.past({ refDate: now });
-  const timePaid = faker.date.between({ from: createdAt, to: now });
-  const credits = subscriptionStatus
-    ? 0
-    : faker.number.int({ min: 0, max: 10 });
-  const hasUserPaidOnStripe = !!subscriptionStatus || credits > 3;
-  return {
-    email: faker.internet.email({ firstName, lastName }),
-    username: faker.internet.userName({ firstName, lastName }),
-    createdAt,
-    isAdmin: false,
-    credits,
-    subscriptionStatus,
-    lemonSqueezyCustomerPortalUrl: null,
-    paymentProcessorUserId: hasUserPaidOnStripe
-      ? `cus_test_${faker.string.uuid()}`
-      : null,
-    datePaid: hasUserPaidOnStripe
-      ? faker.date.between({ from: createdAt, to: timePaid })
-      : null,
-    subscriptionPlan: subscriptionStatus
-      ? faker.helpers.arrayElement(getSubscriptionPaymentPlanIds())
-      : null,
-  };
 }

@@ -19,14 +19,9 @@ export function Hero() {
               With some more exciting words about your product!
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
-              <Button size="lg" variant="outline" asChild>
-                <WaspRouterLink to={routes.PricingPageRoute.to}>
-                  Learn More
-                </WaspRouterLink>
-              </Button>
               <Button size="lg" variant="default" asChild>
                 <WaspRouterLink to={routes.SignupRoute.to}>
-                  Get Started <span aria-hidden="true">→</span>
+                  Comenzar <span aria-hidden="true">→</span>
                 </WaspRouterLink>
               </Button>
             </div>

@@ -87,7 +87,7 @@ export function NavBar({
                     },
                   )}
                 >
-                  Your SaaS
+                  DoctorIA
                 </span>
               </WaspRouterLink>
 
@@ -180,7 +180,7 @@ function NavBarMobileMenu({
           <SheetHeader>
             <SheetTitle className="flex items-center">
               <WaspRouterLink to={routes.LandingPageRoute.to}>
-                <span className="sr-only">Your SaaS</span>
+                <span className="sr-only">DoctorIA</span>
                 <NavLogo isScrolled={false} />
               </WaspRouterLink>
             </SheetTitle>
@@ -252,7 +252,7 @@ function NavLogo({ isScrolled }: { isScrolled: boolean }) {
         "size-7": isScrolled,
       })}
       src={logo}
-      alt="Your SaaS App"
+      alt="DoctorIA App"
     />
   );
 }

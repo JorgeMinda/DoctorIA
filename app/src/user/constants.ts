@@ -1,24 +1,24 @@
-import { LayoutDashboard, Settings, Shield } from "lucide-react";
+import { Users, Settings, Shield } from "lucide-react";
 import { routes } from "wasp/client/router";
 
 export const userMenuItems = [
   {
-    name: "AI Scheduler (Demo App)",
-    to: routes.DemoAppRoute.to,
-    icon: LayoutDashboard,
+    name: "Pacientes",
+    to: routes.ClinicalPatientsRoute.to,
+    icon: Users,
     isAdminOnly: false,
     isAuthRequired: true,
   },
   {
-    name: "Account Settings",
+    name: "Cuenta",
     to: routes.AccountRoute.to,
     icon: Settings,
     isAuthRequired: false,
     isAdminOnly: false,
   },
   {
-    name: "Admin Dashboard",
-    to: routes.AdminRoute.to,
+    name: "Administración",
+    to: routes.ClinicalAdminRoute.to,
     icon: Shield,
     isAuthRequired: false,
     isAdminOnly: true,

@@ -1,3 +1,7 @@
+// schema.prisma - DoctorIA (MVP 001-doctoria-mvp)
+// Fuente: specs/001-doctoria-mvp/data-model.md
+// Datos clínicos EXCLUSIVAMENTE sintéticos (Constitution P5). Cero PII real.
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -7,105 +11,188 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ────────────────────────────── IDENTIDAD (Wasp Auth) ──────────────────────────────
 model User {
-  id                        String          @id @default(uuid())
-  createdAt                 DateTime        @default(now())
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  email                     String?         @unique
-  username                  String?         @unique
-  isAdmin                   Boolean         @default(false)
+  email    String?  @unique
+  username String?  @unique
+  isAdmin  Boolean  @default(false)
 
-  paymentProcessorUserId    String?         @unique
-  lemonSqueezyCustomerPortalUrl String?     // You can delete this if you're not using Lemon Squeezy as your payments processor.
-  subscriptionStatus        String?         // 'active', 'cancel_at_period_end', 'past_due', 'deleted'
-  subscriptionPlan          String?         // 'hobby', 'pro'
-  datePaid                  DateTime?
-  credits                   Int             @default(3)
+  // DoctorIA: habilitación explícita de profesional médico (research R-02).
+  // `isAdmin=true` + `isMedico=true` es INVÁLIDO — bloqueado por guards.
+  isMedico Boolean  @default(false)
+  fullName String?
+  specialty String?
 
-  gptResponses              GptResponse[]
-  contactFormMessages       ContactFormMessage[]
-  tasks                     Task[]
-  files                     File[]
+  // Campos payment/SaaS de Open SaaS: NO forman parte del dominio clínico (data-model.md §1).
+  paymentProcessorUserId         String?   @unique
+  lemonSqueezyCustomerPortalUrl  String?
+  subscriptionStatus             String?
+  subscriptionPlan               String?
+  datePaid                       DateTime?
+  credits                        Int       @default(3)
+
+  // Relaciones DoctorIA (data-model.md §1)
+  authoredNotes        ClinicalNote[] @relation("NoteAuthor")
+  confirmedNotes       ClinicalNote[] @relation("NoteConfirmer")
+  authoredEpicrises    Epicrisis[]    @relation("EpicrisisAuthor")
+  confirmedEpicrises   Epicrisis[]    @relation("EpicrisisConfirmer")
+  auditLogs            AuditLog[]
+  authorizedPatients   MedicoPatientAccess[] @relation("MedicoAccess")
+  grantedAccesses      MedicoPatientAccess[] @relation("AccessGranter")
 }
 
-model GptResponse {
-  id                        String          @id @default(uuid())
-  createdAt                 DateTime        @default(now())
-  updatedAt                 DateTime        @updatedAt
+// ─────────────── PACIENTES SINTÉTICOS (solo datos ficticios, P5) ───────────────
+model SyntheticPatient {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user                      User            @relation(fields: [userId], references: [id])
-  userId                    String
+  syntheticId String  @unique // formato "PAC-NNN", ej. "PAC-001"
+  firstName   String
+  lastName    String
+  birthDate   DateTime
+  sex         String          // "M", "F", "O"
+  medicalHistory String?
+  allergies      String?
 
-  content                   String
+  clinicalNotes     ClinicalNote[]
+  epicrises         Epicrisis[]
+  authorizedMedicos MedicoPatientAccess[]
+  auditLogs         AuditLog[]
+
+  @@index([syntheticId])
+  @@index([lastName, firstName])
 }
 
-model Task {
-  id                        String          @id @default(uuid())
-  createdAt                 DateTime        @default(now())
+// ─────────────── AUTORIZACIÓN EXPLÍCITA MÉDICO ↔ PACIENTE (R-10) ───────────────
+model MedicoPatientAccess {
+  id        String   @id @default(uuid())
+  grantedAt DateTime @default(now())
 
-  user                      User            @relation(fields: [userId], references: [id])
-  userId                    String
+  medicoId    String
+  medico      User     @relation("MedicoAccess", fields: [medicoId], references: [id])
+  patientId   String
+  patient     SyntheticPatient @relation(fields: [patientId], references: [id])
+  grantedById String
+  grantedBy   User     @relation("AccessGranter", fields: [grantedById], references: [id])
 
-  description               String
-  time                      String          @default("1")
-  isDone                    Boolean         @default(false)
+  @@unique([medicoId, patientId])
+  @@index([patientId])
 }
 
-model File {
-  id                        String          @id @default(uuid())
-  createdAt                 DateTime        @default(now())
+// ─────────────── NOTA CLÍNICA (estados + adendas, RF-005..RF-029) ───────────────
+model ClinicalNote {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user                      User            @relation(fields: [userId], references: [id])
-  userId                    String
+  patientId String
+  patient   SyntheticPatient @relation(fields: [patientId], references: [id])
 
-  name                      String
-  type                      String
-  s3Key                     String
+  authorId String
+  author   User   @relation("NoteAuthor", fields: [authorId], references: [id])
+
+  confirmedById String?
+  confirmedBy   User?  @relation("NoteConfirmer", fields: [confirmedById], references: [id])
+  confirmedAt   DateTime?
+
+  originalText String // RNF-004: SIEMPRE preservado, nunca modificado
+
+  // 5 secciones obligatorias (RF-007)
+  motivoConsulta     String?
+  notaClinica        String?
+  examenFisico       String?
+  valoracionClinica  String?
+  planIndicaciones   String?
+  sectionsNotApplicable Json? // { seccion: "justificación" }
+
+  aiAssisted         Boolean @default(false)
+  aiRawResponse      String? // solo auditoría/debug, NO clínico
+  unclassifiedContent String? // "Requiere revisión"
+
+  status   String @default("DRAFT_MANUAL") // DRAFT_MANUAL | DRAFT_AI_ASSISTED | REVIEWED | CONFIRMED
+  noteType String @default("ORIGINAL")     // ORIGINAL | ADDENDUM
+
+  // Adendas (RF-029, R-04): self-relation de versiones
+  parentNoteId String?
+  parentNote   ClinicalNote? @relation("NoteVersions", fields: [parentNoteId], references: [id])
+  childNotes   ClinicalNote[] @relation("NoteVersions")
+  addendumReason String?
+
+  auditLogs AuditLog[]
+
+  @@index([patientId, createdAt])
+  @@index([authorId])
+  @@index([status])
+  @@index([parentNoteId])
 }
 
-model DailyStats {
-  id                               Int             @id @default(autoincrement())
-  date                             DateTime        @default(now()) @unique
+// ─────────────── EPICRISIS (10 elementos, RF-018, misma inmutabilidad) ───────────────
+model Epicrisis {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  totalViews                       Int             @default(0)
-  prevDayViewsChangePercent        String          @default("0")
-  userCount                        Int             @default(0)
-  paidUserCount                    Int             @default(0)
-  userDelta                        Int             @default(0)
-  paidUserDelta                    Int             @default(0)
-  totalRevenue                     Float           @default(0)
-  totalProfit                      Float           @default(0)
+  patientId String
+  patient   SyntheticPatient @relation(fields: [patientId], references: [id])
 
-  sources                          PageViewSource[]
+  authorId String
+  author   User   @relation("EpicrisisAuthor", fields: [authorId], references: [id])
+
+  confirmedById String?
+  confirmedBy   User?  @relation("EpicrisisConfirmer", fields: [confirmedById], references: [id])
+  confirmedAt   DateTime?
+
+  // Elementos mínimos (RF-018)
+  patientIdentification  String
+  reasonForAdmission     String?
+  relevantHistory        String?
+  evolutionSummary       String?
+  proceduresResults      String?
+  validatedDiagnoses     String?
+  conditionAtDischarge   String?
+  followUpInstructions   String?
+  responsibleProfessional String
+  dateTime               DateTime
+
+  aiAssisted Boolean @default(true)
+  status   String @default("DRAFT_AI_ASSISTED") // DRAFT_AI_ASSISTED | REVIEWED | CONFIRMED
+  noteType String @default("ORIGINAL")          // ORIGINAL | ADDENDUM
+
+  parentEpicrisisId String?
+  parentEpicrisis   Epicrisis? @relation("EpicrisisVersions", fields: [parentEpicrisisId], references: [id])
+  childEpicrises    Epicrisis[] @relation("EpicrisisVersions")
+  addendumReason    String?
+
+  auditLogs AuditLog[]
+
+  @@index([patientId, createdAt])
 }
 
-model PageViewSource {
-  @@id([date, name])
-  name                     String
-  date                     DateTime        @default(now())
+// ─────────────── AUDITORÍA (RF-019, RF-020, RNF-007 — cero contenido clínico) ───────────────
+model AuditLog {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
 
-  dailyStats               DailyStats?     @relation(fields: [dailyStatsId], references: [id])
-  dailyStatsId             Int?
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  visitors                 Int
-}
+  action       String // ver lista de Audit Actions en data-model.md §2
+  resourceType String // PATIENT | NOTE | EPICRISIS | USER | SYSTEM
+  resourceId   String?
+  metadata     Json?  // solo metadata no clínica (transiciones de estado, accessAction)
 
-model Logs {
-  id                       Int             @id @default(autoincrement())
-  createdAt                DateTime        @default(now())
+  patientId      String?
+  patient        SyntheticPatient? @relation(fields: [patientId], references: [id])
+  clinicalNoteId String?
+  clinicalNote   ClinicalNote? @relation(fields: [clinicalNoteId], references: [id])
+  epicrisisId    String?
+  epicrisis      Epicrisis? @relation(fields: [epicrisisId], references: [id])
 
-  message                  String
-  level                    String
-}
-
-model ContactFormMessage {
-  id                        String          @id @default(uuid())
-  createdAt                 DateTime        @default(now())
-
-  user                      User            @relation(fields: [userId], references: [id])
-  userId                    String
-
-  content                   String
-  isRead                    Boolean         @default(false)
-  repliedAt                 DateTime?
+  @@index([userId, createdAt])
+  @@index([resourceType, resourceId])
 }
