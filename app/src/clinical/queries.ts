@@ -10,12 +10,21 @@ import type {
   GetClinicalNote,
   GetEpicrisis,
   GetAuditLog,
+  GetVoiceAssistantResponse,
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
 import { ensureMedico } from "./services/guards";
 import { assertMedicoPatientAccess } from "./services/patientAccess";
 import { createAuditEntry } from "./services/audit";
+import {
+  buildVoiceSummary,
+  buildVoiceError,
+  parseVoiceQuery,
+  resolvePatientByName,
+  type VoiceAssistantResponse,
+  type VoicePatientMatch,
+} from "./services/voiceAssistant";
 
 // ---------------------------------------------------------------------------
 // getPatients
@@ -438,4 +447,54 @@ export const getAuditLog: GetAuditLog<
   ]);
 
   return { entries, totalPages: Math.ceil(total / pageSize) } as GetAuditLogOutput;
+};
+
+// ---------------------------------------------------------------------------
+// getVoiceAssistantResponse
+// ---------------------------------------------------------------------------
+
+const getVoiceAssistantResponseInputSchema = z.object({
+  query: z.string().min(1),
+});
+
+type GetVoiceAssistantResponseInput = z.infer<typeof getVoiceAssistantResponseInputSchema>;
+
+export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
+  GetVoiceAssistantResponseInput,
+  VoiceAssistantResponse
+> = async (rawArgs, context) => {
+  const user = ensureMedico(context.user);
+
+  const { query } = ensureArgsSchemaOrThrowHttpError(
+    getVoiceAssistantResponseInputSchema,
+    rawArgs,
+  );
+
+  const { name } = parseVoiceQuery(query);
+
+  // Solo pacientes autorizados para este médico.
+  const authorizedPatients = await context.entities.SyntheticPatient.findMany({
+    where: { authorizedMedicos: { some: { medicoId: user.id } } },
+  });
+
+  const match: VoicePatientMatch | null = resolvePatientByName(
+    authorizedPatients as VoicePatientMatch[],
+    name,
+  );
+
+  // Auditoría (sin contenido clínico en metadata, RNF-002).
+  await createAuditEntry({
+    userId: user.id,
+    action: "VOICE_ASSISTANT_QUERY",
+    resourceType: "PATIENT",
+    resourceId: match?.id ?? null,
+    patientId: match?.id ?? null,
+    metadata: { queryLength: String(query.length), matched: String(!!match) },
+  });
+
+  if (!match) {
+    return buildVoiceError(query, "NOT_FOUND");
+  }
+
+  return buildVoiceSummary(query, match);
 };

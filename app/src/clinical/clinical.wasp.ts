@@ -23,6 +23,7 @@ import {
   getPatientById,
   getPatientHistory,
   getPatients,
+  getVoiceAssistantResponse,
 } from "./queries" with { type: "ref" };
 
 import { ClinicalAdminPage } from "./pages/ClinicalAdminPage" with { type: "ref" };
@@ -31,6 +32,7 @@ import { ClinicalEpicrisisPage } from "./pages/ClinicalEpicrisisPage" with { typ
 import { ClinicalNotePage } from "./pages/ClinicalNotePage" with { type: "ref" };
 import { ClinicalPatientDetailPage } from "./pages/ClinicalPatientDetailPage" with { type: "ref" };
 import { ClinicalPatientsPage } from "./pages/ClinicalPatientsPage" with { type: "ref" };
+import { ClinicalVoicePage } from "./pages/ClinicalVoicePage" with { type: "ref" };
 
 export const clinicalSpec: Spec = [
   // Queries (contracts §1 y §4)
@@ -50,6 +52,9 @@ export const clinicalSpec: Spec = [
     entities: ["Epicrisis", "MedicoPatientAccess"],
   }),
   query(getAuditLog, { entities: ["AuditLog", "User"] }),
+  query(getVoiceAssistantResponse, {
+    entities: ["SyntheticPatient", "MedicoPatientAccess", "AuditLog"],
+  }),
 
   // Actions (contracts §2, §3, §5)
   action(createClinicalNote, {
@@ -93,4 +98,5 @@ export const clinicalSpec: Spec = [
   route("ClinicalEpicrisisRoute", "/clinical/epicrises/:epicrisisId", page(ClinicalEpicrisisPage, { authRequired: true })),
   route("ClinicalAuditRoute", "/clinical/audit", page(ClinicalAuditPage, { authRequired: true })),
   route("ClinicalAdminRoute", "/clinical/admin", page(ClinicalAdminPage, { authRequired: true })),
+  route("ClinicalVoiceRoute", "/clinical/voice", page(ClinicalVoicePage, { authRequired: true })),
 ];

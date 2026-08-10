@@ -115,14 +115,15 @@ function NavBarDesktopUserDropdown({ isScrolled }: { isScrolled: boolean }) {
         <WaspRouterLink
           to={routes.LoginRoute.to}
           className={cn(
-            "ml-3 font-semibold leading-6 transition-all duration-300",
+            "rounded-lg border border-cyan-400/25 bg-cyan-400/5 px-4 py-2 font-semibold leading-6 text-cyan-300 transition-all duration-300",
+            "hover:border-cyan-400/50 hover:bg-cyan-400/10 hover:shadow-[0_0_16px_rgba(54,199,244,0.2)]",
             {
               "text-sm": !isScrolled,
               "text-xs": isScrolled,
             },
           )}
         >
-          <div className="text-foreground hover:text-primary flex items-center transition-colors duration-300 ease-in-out">
+          <div className="flex items-center">
             Log in{" "}
             <LogIn
               size={isScrolled ? "1rem" : "1.1rem"}
@@ -189,7 +190,7 @@ function NavBarMobileMenu({
               <div className="py-6">
                 {isUserLoading ? null : !user ? (
                   <WaspRouterLink to={routes.LoginRoute.to}>
-                    <div className="text-foreground hover:text-primary flex items-center justify-end transition-colors duration-300 ease-in-out">
+                    <div className="flex items-center justify-end gap-2 text-cyan-300 transition-colors duration-300 ease-in-out">
                       Log in <LogIn size="1.1rem" className="ml-1" />
                     </div>
                   </WaspRouterLink>

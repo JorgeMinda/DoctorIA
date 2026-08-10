@@ -80,16 +80,23 @@ function FeaturesGridItem({
   const gridFeatureCard = (
     <Card
       className={cn(
-        "h-full min-h-[140px] cursor-pointer transition-all duration-300 hover:shadow-lg",
+        "group relative h-full min-h-[140px] cursor-pointer overflow-hidden rounded-2xl border-border/60 bg-card transition-all duration-300",
+        "hover:border-cyan-400/25 hover:bg-card-accent hover:shadow-[0_0_30px_rgba(54,199,244,0.12)]",
         gridFeatureSizeToClasses[size],
       )}
-      variant="bento"
     >
+      {/* Línea superior con gradiente sutil en hover */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-cyan-400/0 to-transparent transition-all duration-300 group-hover:via-cyan-400/50"
+      />
       <CardContent className="flex h-full flex-col items-center justify-center p-4">
         {fullWidthIcon && (icon || emoji) ? (
-          <div className="mb-3 flex w-full items-center justify-center">
+          <div className="mb-4 flex w-full items-center justify-center">
             {icon ? (
-              icon
+              <span className="flex size-12 items-center justify-center rounded-xl border border-cyan-400/15 bg-cyan-400/5 text-cyan-300 transition-all duration-300 group-hover:border-cyan-400/30 group-hover:bg-cyan-400/10 group-hover:shadow-[0_0_20px_rgba(54,199,244,0.25)]">
+                {icon}
+              </span>
             ) : emoji ? (
               <span className="text-4xl">{emoji}</span>
             ) : null}
@@ -119,11 +126,13 @@ function FeaturesGridItem({
           </div>
         )}
         {fullWidthIcon && (icon || emoji) && (
-          <CardTitle className="mb-2 text-center">{name}</CardTitle>
+          <CardTitle className="text-foreground mb-2 text-center">
+            {name}
+          </CardTitle>
         )}
         <CardDescription
           className={cn(
-            "text-xs leading-relaxed",
+            "text-muted-foreground text-xs leading-relaxed",
             fullWidthIcon || direction === "col" || align === "center"
               ? "text-center"
               : "text-left",

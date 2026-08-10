@@ -1,3 +1,4 @@
+import { Bot } from "lucide-react";
 import { cn } from "../../client/utils";
 
 interface FeatureProps {
@@ -31,10 +32,18 @@ export function HighlightedFeature({
         direction === "row" ? "md:flex-row" : "md:flex-row-reverse",
       )}
     >
-      <div className="flex-1 flex-col">
-        <h2 className="mb-2 text-4xl font-bold">{name}</h2>
+      <div className="flex-1 flex-col text-center md:text-left">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/5 px-3 py-1">
+          <Bot className="size-3.5 text-violet-300" />
+          <span className="text-violet-300 text-[11px] font-semibold tracking-[0.2em] uppercase">
+            Asistencia clínica
+          </span>
+        </div>
+        <h2 className="mb-4 text-4xl font-bold tracking-tight">{name}</h2>
         {typeof description === "string" ? (
-          <p className="text-muted-foreground">{description}</p>
+          <p className="text-muted-foreground text-lg leading-8">
+            {description}
+          </p>
         ) : (
           description
         )}
