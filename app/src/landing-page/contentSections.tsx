@@ -1,166 +1,140 @@
-import daBoiAvatar from "../client/static/da-boi.webp";
-import kivo from "../client/static/examples/kivo.webp";
-import messync from "../client/static/examples/messync.webp";
-import microinfluencerClub from "../client/static/examples/microinfluencers.webp";
-import promptpanda from "../client/static/examples/promptpanda.webp";
-import reviewradar from "../client/static/examples/reviewradar.webp";
-import scribeist from "../client/static/examples/scribeist.webp";
-import searchcraft from "../client/static/examples/searchcraft.webp";
-import { BlogUrl, DocsUrl } from "../shared/common";
+import avatarPlaceholder from "../client/static/avatar-placeholder.webp";
 import type { GridFeature } from "./components/FeaturesGrid";
 
 export const features: GridFeature[] = [
   {
-    name: "Cool Feature 1",
-    description: "Your feature",
-    emoji: "🤝",
-    href: DocsUrl,
-    size: "small",
-  },
-  {
-    name: "Cool Feature 2",
-    description: "Feature description",
-    emoji: "🔐",
-    href: DocsUrl,
-    size: "small",
-  },
-  {
-    name: "Cool Feature 3",
-    description: "Describe your cool feature here",
-    emoji: "🥞",
-    href: DocsUrl,
+    name: "Historia clínica estructurada",
+    description: "Notas clínicas organizadas por secciones: motivo, antecedentes, evolución y plan.",
+    emoji: "📋",
+    href: "#features",
     size: "medium",
   },
   {
-    name: "Cool Feature 4",
-    description: "Describe your cool feature here",
-    emoji: "💸",
-    href: DocsUrl,
-    size: "large",
-  },
-  {
-    name: "Cool Feature 5",
-    description: "Describe your cool feature here",
-    emoji: "💼",
-    href: DocsUrl,
-    size: "large",
-  },
-  {
-    name: "Cool Feature 6",
-    description: "It is cool",
-    emoji: "📈",
-    href: DocsUrl,
-    size: "small",
-  },
-  {
-    name: "Cool Feature 7",
-    description: "Cool feature",
-    emoji: "📧",
-    href: DocsUrl,
-    size: "small",
-  },
-  {
-    name: "Cool Feature 8",
-    description: "Describe your cool feature here",
+    name: "IA que estructura el texto",
+    description: "Convierte el texto libre del médico en una nota clínica estructurada y validada.",
     emoji: "🤖",
-    href: DocsUrl,
+    href: "#features",
+    size: "small",
+  },
+  {
+    name: "Epicrisis asistida",
+    description: "Genera borradores de epicrisis a partir de las notas y eventos del paciente.",
+    emoji: "📄",
+    href: "#features",
+    size: "large",
+  },
+  {
+    name: "Acceso controlado por rol",
+    description: "RBAC con roles de médico y administrador sobre cada paciente.",
+    emoji: "🔐",
+    href: "#features",
     size: "medium",
   },
   {
-    name: "Cool Feature 9",
-    description: "Describe your cool feature here",
-    emoji: "🚀",
-    href: DocsUrl,
+    name: "Pacientes sintéticos",
+    description: "Datos de demostración ficticios (PAC-NNN) que garantizan cero PII real.",
+    emoji: "🗂️",
+    href: "#features",
+    size: "large",
+  },
+  {
+    name: "Auditoría completa",
+    description: "Cada acción clínica queda registrada y trazable en el AuditLog.",
+    emoji: "🕵️",
+    href: "#features",
+    size: "small",
+  },
+  {
+    name: "Búsqueda de pacientes",
+    description: "Encuentra pacientes por nombre o ID sintético con paginación.",
+    emoji: "🔍",
+    href: "#features",
+    size: "small",
+  },
+  {
+    name: "Borradores y confirmación",
+    description: "Flujo de edición en borrador con confirmación final de la nota.",
+    emoji: "📝",
+    href: "#features",
+    size: "medium",
+  },
+  {
+    name: "Adendas trazables",
+    description: "Correcciones posteriores registradas sin alterar el contenido original.",
+    emoji: "➕",
+    href: "#features",
     size: "medium",
   },
 ];
 
 export const testimonials = [
   {
-    name: "Da Boi",
-    role: "Wasp Mascot",
-    avatarSrc: daBoiAvatar,
-    socialUrl: "https://twitter.com/wasplang",
-    quote: "I don't even know how to code. I'm just a plushie.",
-  },
-  {
-    name: "Mr. Foobar",
-    role: "Founder @ Cool Startup",
-    avatarSrc: daBoiAvatar,
-    socialUrl: "",
-    quote: "This product makes me cooler than I already am.",
-  },
-  {
-    name: "Jamie",
-    role: "Happy Customer",
-    avatarSrc: daBoiAvatar,
+    name: "Dra. Laura Méndez",
+    role: "Medicina Interna",
+    avatarSrc: avatarPlaceholder,
     socialUrl: "#",
-    quote: "My cats love it!",
+    quote:
+      "La IA me ahorra tiempo: dicto la evolución y DoctorIA la estructura en la nota clínica al instante.",
+  },
+  {
+    name: "Dr. Carlos Vega",
+    role: "Cardiología",
+    avatarSrc: avatarPlaceholder,
+    socialUrl: "#",
+    quote:
+      "Las epicrisis asistidas salen listas para revisión. Solo valido los campos y confirmo.",
+  },
+  {
+    name: "Dra. Sofía Herrera",
+    role: "Pediatría",
+    avatarSrc: avatarPlaceholder,
+    socialUrl: "#",
+    quote:
+      "La auditoría me da tranquilidad: sé exactamente quién tocó cada historia y cuándo.",
   },
 ];
 
 export const faqs = [
   {
     id: 1,
-    question: "Whats the meaning of life?",
-    answer: "42.",
-    href: "https://en.wikipedia.org/wiki/42_(number)",
+    question: "¿Qué es DoctorIA?",
+    answer:
+      "DoctorIA es una plataforma clínica que estructura el trabajo del médico: historias clínicas, notas por secciones, epicrisis asistidas por IA y auditoría de cada acción.",
+  },
+  {
+    id: 2,
+    question: "¿DoctorIA maneja datos reales de pacientes?",
+    answer:
+      "No en el entorno de demostración. El MVP opera exclusivamente con pacientes sintéticos (PAC-NNN) para garantizar cero PII real.",
+  },
+  {
+    id: 3,
+    question: "¿La IA reemplaza el criterio médico?",
+    answer:
+      "No. La IA solo propone una estructura a partir del texto del profesional; el médico revisa, edita y confirma cada documento antes de que quede validado.",
+  },
+  {
+    id: 4,
+    question: "¿Quién puede acceder a una historia clínica?",
+    answer:
+      "Solo médicos autorizados mediante la gestión de accesos médico-paciente. Todo acceso y modificación queda registrado en el AuditLog.",
+  },
+  {
+    id: 5,
+    question: "¿Puedo corregir una nota ya confirmada?",
+    answer:
+      "Sí. Las correcciones posteriores se registran como adendas, preservando el contenido original y manteniendo la trazabilidad clínica.",
   },
 ];
 
 export const footerNavigation = {
   app: [
-    { name: "Documentation", href: DocsUrl },
-    { name: "Blog", href: BlogUrl },
+    { name: "Iniciar sesión", href: "/login" },
+    { name: "Registrarse", href: "/signup" },
+    { name: "Pacientes", href: "/clinical/patients" },
   ],
   company: [
-    { name: "About", href: "https://wasp.sh" },
-    { name: "Privacy", href: "#" },
-    { name: "Terms of Service", href: "#" },
+    { name: "DoctorIA", href: "/" },
+    { name: "Documentación", href: "https://wasp.sh/docs" },
   ],
 };
-
-export const examples = [
-  {
-    name: "Example #1",
-    description: "Describe your example here.",
-    imageSrc: kivo,
-    href: "#",
-  },
-  {
-    name: "Example #2",
-    description: "Describe your example here.",
-    imageSrc: messync,
-    href: "#",
-  },
-  {
-    name: "Example #3",
-    description: "Describe your example here.",
-    imageSrc: microinfluencerClub,
-    href: "#",
-  },
-  {
-    name: "Example #4",
-    description: "Describe your example here.",
-    imageSrc: promptpanda,
-    href: "#",
-  },
-  {
-    name: "Example #5",
-    description: "Describe your example here.",
-    imageSrc: reviewradar,
-    href: "#",
-  },
-  {
-    name: "Example #6",
-    description: "Describe your example here.",
-    imageSrc: scribeist,
-    href: "#",
-  },
-  {
-    name: "Example #7",
-    description: "Describe your example here.",
-    imageSrc: searchcraft,
-    href: "#",
-  },
-];

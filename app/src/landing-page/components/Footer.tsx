@@ -23,7 +23,7 @@ export function Footer({
         <div className="mt-10 flex items-start justify-end gap-20">
           <div>
             <h3 className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">
-              App
+              Aplicación
             </h3>
             <ul role="list" className="mt-6 space-y-4">
               {footerNavigation.app.map((item) => (
@@ -40,7 +40,7 @@ export function Footer({
           </div>
           <div>
             <h3 className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">
-              Company
+              Proyecto
             </h3>
             <ul role="list" className="mt-6 space-y-4">
               {footerNavigation.company.map((item) => (

@@ -29,7 +29,7 @@ export function Testimonials({
 
   return (
     <div className="mx-auto mt-32 max-w-7xl sm:mt-56 sm:px-6 lg:px-8">
-      <SectionTitle title="What Our Users Say" />
+      <SectionTitle title="Lo que dicen los profesionales" />
 
       <div className="relative z-10 w-full columns-1 gap-2 px-4 md:columns-2 md:gap-6 md:px-0 lg:columns-3">
         {testimonials.slice(0, itemsToShow).map((testimonial, idx) => (

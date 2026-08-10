@@ -30,8 +30,8 @@ export function FeaturesGrid({ features, className = "" }: FeaturesGridProps) {
       id="features"
     >
       <SectionTitle
-        title="Features"
-        description="These are some of the features of the product."
+        title="Características"
+        description="Lo que DoctorIA hace por tu práctica clínica."
       />
       <div
         className={cn(
@@ -136,11 +136,11 @@ function FeaturesGridItem({
   );
 
   if (href) {
+    const isExternal = href.startsWith("http");
     return (
       <a
         href={href}
-        target="_blank"
-        rel="noopener noreferrer"
+        {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
         className={gridFeatureSizeToClasses[size]}
       >
         {gridFeatureCard}
