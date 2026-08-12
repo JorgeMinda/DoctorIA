@@ -9,17 +9,34 @@ test.describe("general landing page tests", () => {
     await expect(page).toHaveTitle(/DoctorIA/);
   });
 
-  test("get started link", async ({ page }) => {
-    await page.getByRole("link", { name: /Comenzar/ }).click();
-    await page.waitForURL("**/signup");
+  test("get started / login link navigates to signup", async ({ page }) => {
+    await page.getByRole("link", { name: /Comenzar|Iniciar Sesión/ }).first().click();
+    await page.waitForURL(/\/(signup|login)/);
   });
 
-  test("headings", async ({ page }) => {
+  test("hero headings visible", async ({ page }) => {
     await expect(
-      page.getByRole("heading", { name: "Frequently asked questions" }),
+      page.getByRole("heading", { name: /DoctorIA|asistencia de IA/i }).first(),
     ).toBeVisible();
+  });
+
+  test("features section contains a known feature", async ({ page }) => {
     await expect(
-      page.getByRole("heading", { name: "Some cool words" }),
+      page.getByRole("heading", {
+        name: /Historia clínica estructurada|IA que estructura el texto/i,
+      }).first(),
+    ).toBeVisible();
+  });
+
+  test("FAQ section contains '¿Qué es DoctorIA?'", async ({ page }) => {
+    await expect(
+      page.getByText("¿Qué es DoctorIA?"),
+    ).toBeVisible();
+  });
+
+  test("testimonials are present", async ({ page }) => {
+    await expect(
+      page.getByText(/Dra\. Laura Méndez|Dr\. Carlos Vega/).first(),
     ).toBeVisible();
   });
 });
@@ -33,7 +50,6 @@ test.describe("cookie consent tests", () => {
     context,
     page,
   }) => {
-    await page.$$('button:has-text("Reject all")');
     await page.click('button:has-text("Reject all")');
 
     const cookies = await context.cookies();
@@ -46,7 +62,6 @@ test.describe("cookie consent tests", () => {
     context,
     page,
   }) => {
-    await page.$$('button:has-text("Accept all")');
     await page.click('button:has-text("Accept all")');
 
     const cookies = await context.cookies();

@@ -21,7 +21,7 @@ export function ensureAdmin(user: AuthUser | null | undefined): AuthUser {
   if (!user) {
     throw new HttpError(401, "Debe iniciar sesión");
   }
-  if (!user.isAdmin) {
+  if (!user.isAdmin || user.isMedico) {
     throw new HttpError(403, "Solo administradores pueden ejecutar esta operación");
   }
   return user;

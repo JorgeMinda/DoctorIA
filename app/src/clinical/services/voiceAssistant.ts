@@ -67,7 +67,7 @@ export function parseVoiceQuery(query: string): VoiceQueryParseResult {
   // Patrones: "resumen de María", "el resumen de María González", "paciente María González",
   // "resumen del paciente María", "ficha de María", "historia de María".
   const nameMatch = normalized.match(
-    /(?:resumen|ficha|historia|síntesis|evolución)\s+(?:clínica|clinica)?\s*(?:de|del|del paciente|el paciente|sobre)\s+([A-ZÁÉÍÓÚÜÑa-záéíóúüñ]+(?:\s+[A-ZÁÉÍÓÚÜÑa-záéíóúüñ]+)*)/i,
+    /(?:resumen|ficha|historia|síntesis|evolución)\s+(?:clínica|clinica)?\s*(?:del paciente|el paciente|de|del|sobre)\s+([A-ZÁÉÍÓÚÜÑa-záéíóúüñ]+(?:\s+[A-ZÁÉÍÓÚÜÑa-záéíóúüñ]+)*)/i,
   );
   // Patrón sin verbo: "María González" al inicio o "paciente María González".
   const altMatch = normalized.match(

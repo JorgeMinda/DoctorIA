@@ -2,6 +2,50 @@
 
 Este archivo registra los prompts relevantes utilizados durante el ciclo de desarrollo, el resultado obtenido y las decisiones tomadas por el equipo.
 
+## Cronograma del proyecto (8 semanas)
+
+**Semana 1 — Investigación en Tiempo Real (Campo y Mercado)** · 13–19 julio 2026
+Enfoque: Capturar información real mediante entrevistas y análisis de la competencia.
+Entregables: Notebook en NotebookLM con mínimo 8 entrevistas (audio y transcripción), resumen de los 3-5 problemas principales y cuadro competitivo de al menos 3 rivales.
+Dinámica: Entrevistas individuales; análisis consolidado de forma grupal.
+
+**Semana 2 — Especificación** · 20–26 julio 2026
+Enfoque: Traducir la investigación en documentos técnicos y diseño de interfaces.
+Entregables: Repositorio inicializado, documentos `spec.md` y `plan.md` aprobados, y las 2-3 pantallas principales del MVP diseñadas en Google Stitch.
+Dinámica: Revisión individual de borradores y construcción grupal del plan final.
+
+**Semana 3 — Desarrollo del Core en Antigravity** · 27 julio–2 agosto 2026
+Enfoque: Construcción técnica de las funcionalidades principales usando agentes de AI.
+Entregables: MVP funcional en ambiente de staging y registro de tareas ejecutadas en `tasks.md`.
+Dinámica: Cada Doer documenta sus tareas individualmente; el equipo realiza un code review cruzado.
+
+**Semana 4 — QA y Despliegue a Producción** · 3–9 agosto 2026
+Enfoque: Pruebas automáticas y lanzamiento oficial del producto.
+Entregables: Producto accesible por HTTPS con certificado SSL, reporte de QA generado por el Browser Subagent y checklist de producción al 100%.
+Dinámica: Pruebas de flujo individuales y firma de checklist en equipo.
+
+**Semana 5 — Estrategia Comercial** · 10–16 agosto 2026
+Enfoque: Definición de clientes piloto y preparación de materiales de venta.
+Entregables: Plan de adquisición de clientes y agenda de al menos 5 contactos reales para la siguiente semana.
+Dinámica: Búsqueda de contactos individual y preparación de demo grupal.
+
+**Semana 6 — Ejecución Comercial (Modelo Regalo + Comunidad)** · 17–23 agosto 2026
+Enfoque: Onboarding de los primeros usuarios reales entregando la versión 1 gratis.
+Entregables: Usuarios reales activos, inicio de la base de datos de comunidad y cumplimiento de la meta individual obligatoria (2 clientes por Doer).
+Dinámica: Responsabilidad individual por cada usuario conseguido.
+
+**Semana 7 — Iteración Basada en Datos Reales** · 24–30 agosto 2026
+Enfoque: Mejorar el producto basándose en el feedback de los usuarios activos.
+Entregables: Mejoras técnicas desplegadas y actualización de métricas reales (no de vanidad) en el dashboard.
+Dinámica: Seguimiento individual a usuarios y priorización de mejoras en equipo.
+
+**Semana 8 — Demo Day (Cierre de Beta)** · 31 agosto–6 septiembre 2026
+Enfoque: Presentación final de resultados, métricas de adopción y aprendizajes.
+Entregables: Video del Demo Day, resumen ejecutivo de métricas y cierre de versión final en el repositorio.
+Dinámica: Presentación breve del aporte individual y narrativa grupal del éxito del producto.
+
+---
+
 ## Semana 1 — Investigación con NotebookLM
 
 ### Prompt 1 — Análisis integral de entrevistas
