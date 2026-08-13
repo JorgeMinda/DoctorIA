@@ -61,6 +61,21 @@
 
 ---
 
+## Fase 4: Presentación de la landing (polish visual)
+
+**Propósito**: Compacidad + jerarquía visual intencional de la página de aterrizaje y reorganización de la sección "Características" sin pérdida de contenido. Solo archivos de `app/src/landing-page/*`.
+
+- [X] T015 Refactorizar layout de la landing: hero ~80vh, grid 1.05fr/0.95fr, Voice Orb reducido
+- [X] T016 Ajustar espaciado de secciones a escala intencional (HighlightedFeature, FeaturesGrid, Testimonials, FAQ, Footer)
+- [X] T017 Crear `FinalCTA.tsx` (badge + "Empieza a estructurar tu práctica clínica" + CTA a auth) y reordenar LandingPage: Hero → Epicrisis(AIReady) → Features → Testimonials → FAQ → FinalCTA → Footer
+- [X] T018 Reconstruir `FeaturesGrid.tsx` sin `row-span`: composición explícita de 6 columnas en lg (2/2/3/2), tarjetas uniformes `min-h-[180px]`, responsive 1/2/6; datos de `contentSections.tsx` intactos
+- [X] T019 Verificar: `tsc` limpio (SDK rebuilt), geometría responsive medida (sin overflow, filas alineadas), e2e 10/10, vitest 43/43
+- [X] T020 Commitear y pushear (`c49bcde`) junto con T015–T018 (10 archivos: 9 modificados + FinalCTA nuevo)
+
+**Checkpoint**: Landing reorganizada y verificada; suites e2e 10/10 y unitaria 43/43 verdes post-cambio.
+
+---
+
 ## Dependencias y orden de ejecución
 
 - **T001 → T002–T005**: Config primero, tests después (paralelizables entre sí).
@@ -74,4 +89,5 @@
 
 - Los tests unitarios se ejecutan desde Windows con `node node_modules\vitest\dist\cli.js run` (workdir `app/`) porque los bindings rolldown instalados son Linux y WSL estaba caído durante el desarrollo de la suite.
 - Los e2e se ejecutan con `npx playwright test --config=playwright.local.config.ts` (workdir `e2e-tests/`) contra la app levantada en `localhost:3000/3001`.
+- El repo activo para desarrollo es la copia nativa WSL en `/home/minda/DoctorIA` (rama `001-doctoria-mvp`); la copia de `C:\Users\minda\Desktop\doctoria\doctoria` es respaldo. Los e2e corren desde Windows contra `localhost:3000` vía WSL2 forwarding.
 - Pendiente de Semana 4: deploy a staging (proveedor/cuenta por definir con el sponsor), HTTPS+SSL, smoke test y reporte de QA.
