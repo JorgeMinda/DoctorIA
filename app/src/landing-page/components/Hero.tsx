@@ -11,12 +11,12 @@ export function Hero() {
   const { state, activate } = useAmbientDemo();
 
   return (
-    <div className="relative w-full pt-16 md:pt-24">
+    <div className="relative w-full pt-16 md:pt-20">
       <AmbientGradients />
-      <div className="relative mx-auto grid max-w-7xl items-center gap-16 px-6 lg:grid-cols-2 lg:gap-12 lg:px-8">
+      <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 pb-12 lg:min-h-[80vh] lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:px-8 lg:pb-16">
         {/* Contenido */}
         <div className="order-1 text-center lg:text-left">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/5 px-4 py-1.5">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/5 px-4 py-1.5">
             <AmbientBadgeIcon state={state} />
             <span className="text-cyan-300 text-xs font-semibold tracking-[0.22em]">
               DOCTORIA
@@ -34,12 +34,12 @@ export function Hero() {
             </span>
           </h1>
 
-          <p className="text-muted-foreground mx-auto mt-6 max-w-xl text-lg leading-8 lg:mx-0">
+          <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-lg leading-7 lg:mx-0">
             DoctorIA estructura las notas clínicas y epicrisis de tus
             pacientes: menos tipeo, más tiempo de atención.
           </p>
 
-          <div className="mt-10 flex items-center justify-center gap-x-6 lg:justify-start">
+          <div className="mt-8 flex items-center justify-center gap-x-6 lg:justify-start">
             <Button
               size="lg"
               variant="default"
@@ -58,11 +58,11 @@ export function Hero() {
           <VoiceOrbHero state={state} onActivate={activate} />
           <p
             aria-live="polite"
-            className="text-muted-foreground mt-8 max-w-xs text-center text-sm leading-6"
+            className="text-muted-foreground mt-5 max-w-xs text-center text-sm leading-6"
           >
             {AMBIENT_MESSAGE[state]}
           </p>
-          <p className="text-muted-foreground/70 mt-2 text-xs">
+          <p className="text-muted-foreground/70 mt-1.5 text-xs">
             Toca el orbe para probar la interfaz de voz.
           </p>
         </div>

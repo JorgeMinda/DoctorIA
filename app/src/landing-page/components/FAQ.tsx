@@ -14,7 +14,7 @@ interface FAQ {
 
 export function FAQ({ faqs }: { faqs: FAQ[] }) {
   return (
-    <div className="mx-auto mt-32 max-w-4xl px-6 pb-8 sm:pb-24 sm:pt-12 lg:max-w-7xl lg:px-8 lg:py-32">
+    <div className="mx-auto mt-16 max-w-4xl px-6 pb-16 md:mt-24 lg:px-8">
       <h2 className="text-foreground mb-4 text-center text-4xl font-bold tracking-tight">
         Preguntas frecuentes
       </h2>

@@ -12,15 +12,15 @@ export function Footer({
   };
 }) {
   return (
-    <div className="mx-auto mt-6 max-w-7xl px-6 lg:px-8">
+    <div className="mx-auto mt-10 max-w-7xl px-6 lg:px-8">
       <footer
         aria-labelledby="footer-heading"
-        className="relative border-t border-border/60 py-24 sm:mt-32"
+        className="relative border-t border-border/60 py-14"
       >
         <h2 id="footer-heading" className="sr-only">
           Footer
         </h2>
-        <div className="mt-10 flex items-start justify-end gap-20">
+        <div className="mt-8 flex items-start justify-end gap-20">
           <div>
             <h3 className="text-foreground text-sm font-semibold leading-6">
               Aplicación

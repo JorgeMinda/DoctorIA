@@ -65,14 +65,14 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
       <div
         aria-hidden="true"
         className={cn(
-          "absolute -inset-20 rounded-full blur-3xl transition-opacity duration-700 motion-reduce:transition-none",
+          "absolute -inset-16 rounded-full blur-3xl transition-opacity duration-700 motion-reduce:transition-none",
           state === "IDLE" ? "opacity-60" : "opacity-100",
         )}
         style={{ background: STATE_GLOW[state] }}
       />
       <div
         aria-hidden="true"
-        className="ambient-orb-halo absolute -inset-12 rounded-full"
+        className="ambient-orb-halo absolute -inset-8 rounded-full"
         style={{ background: STATE_GLOW[state] }}
       />
 
@@ -88,7 +88,7 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
               : "Estado del asistente de voz"
         }
         className={cn(
-          "group relative flex size-60 items-center justify-center rounded-full outline-none sm:size-68 md:size-76",
+          "group relative flex size-52 items-center justify-center rounded-full outline-none sm:size-60 md:size-68",
           "focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           !isBusy && !disabled && "cursor-pointer",
         )}
@@ -178,7 +178,7 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
       </button>
 
       {/* Etiqueta de estado */}
-      <div className="mt-9 flex flex-col items-center gap-2">
+      <div className="mt-6 flex flex-col items-center gap-2">
         <div className="flex items-center gap-2">
           <span
             aria-hidden="true"

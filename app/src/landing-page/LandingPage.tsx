@@ -1,5 +1,6 @@
 import { FAQ } from "./components/FAQ";
 import { FeaturesGrid } from "./components/FeaturesGrid";
+import { FinalCTA } from "./components/FinalCTA";
 import { Footer } from "./components/Footer";
 import { Hero } from "./components/Hero";
 import { SchemaMarkup } from "./components/SchemaMarkup";
@@ -17,6 +18,7 @@ export function LandingPage() {
         <FeaturesGrid features={features} />
         <Testimonials testimonials={testimonials} />
         <FAQ faqs={faqs} />
+        <FinalCTA />
       </main>
       <Footer footerNavigation={footerNavigation} />
     </div>
