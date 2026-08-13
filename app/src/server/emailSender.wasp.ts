@@ -6,7 +6,9 @@ export const emailSender: EmailSender = {
   provider: "Resend",
   defaultFrom: {
     name: "DoctorIA",
-    // Debe coincidir con el dominio/email verificado en Resend para que los correos se envíen.
-    email: "jls.minda@yavirac.edu.ec",
+    // PROVISIONAL para staging: onboarding@resend.dev no requiere dominio verificado.
+    // Resend solo permite enviar desde dominios verificados o desde onboarding@resend.dev.
+    // Cuando verifiques un dominio en Resend, cambia a noreply@tu-dominio.com.
+    email: "onboarding@resend.dev",
   },
 };
