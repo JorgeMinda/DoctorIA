@@ -72,7 +72,11 @@
 - [X] T019 Verificar: `tsc` limpio (SDK rebuilt), geometría responsive medida (sin overflow, filas alineadas), e2e 10/10, vitest 43/43
 - [X] T020 Commitear y pushear (`c49bcde`) junto con T015–T018 (10 archivos: 9 modificados + FinalCTA nuevo)
 
+<<<<<<< Updated upstream
 **Checkpoint**: Landing reorganizada y verificada; suites e2e 10/10 y unitaria 43/43 verdes post-cambio.
+=======
+**Checkpoint**: Landing reorganizada y verificado; suite e2e 10/10 y unitaria 43/43 verdes post-cambio.
+>>>>>>> Stashed changes
 
 ---
 

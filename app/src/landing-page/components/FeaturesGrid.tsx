@@ -23,30 +23,10 @@ interface FeaturesGridProps {
   className?: string;
 }
 
-/**
- * Composición desktop explícita y predecible sobre un grid de 6 columnas
- * (sin row-span, sin huecos de auto-placement):
- *   fila 1: 2 tarjetas (3+3)
- *   fila 2: 2 tarjetas (3+3)
- *   fila 3: 3 tarjetas (2+2+2)
- *   fila 4: 2 tarjetas (3+3)
- */
-const DESKTOP_SPANS = [
-  "lg:col-span-3",
-  "lg:col-span-3",
-  "lg:col-span-3",
-  "lg:col-span-3",
-  "lg:col-span-2",
-  "lg:col-span-2",
-  "lg:col-span-2",
-  "lg:col-span-3",
-  "lg:col-span-3",
-];
-
 export function FeaturesGrid({ features, className = "" }: FeaturesGridProps) {
   return (
     <div
-      className="mx-auto my-16 flex max-w-7xl flex-col gap-6 md:my-24"
+      className="mx-auto my-16 flex max-w-7xl flex-col gap-4 md:my-24 lg:my-40"
       id="features"
     >
       <SectionTitle
@@ -54,16 +34,15 @@ export function FeaturesGrid({ features, className = "" }: FeaturesGridProps) {
         description="Lo que DoctorIA hace por tu práctica clínica."
       />
       <div
-        className={cn(
-          "grid grid-cols-1 gap-4 px-6 md:grid-cols-2 md:px-8 lg:grid-cols-6",
-          className,
-        )}
-      >
-        {features.map((feature, idx) => (
+  className={cn(
+    "mx-4 grid grid-cols-1 gap-4 md:mx-6 md:grid-cols-2 lg:mx-8 lg:grid-cols-4",
+    className,
+  )}
+>
+        {features.map((feature) => (
           <FeaturesGridItem
             key={feature.name + feature.description}
             {...feature}
-            desktopSpan={DESKTOP_SPANS[idx] ?? "lg:col-span-3"}
           />
         ))}
       </div>
@@ -77,25 +56,87 @@ function FeaturesGridItem({
   icon,
   emoji,
   href,
-  desktopSpan,
-}: GridFeature & { desktopSpan: string }) {
-  const featureCard = (
-    <Card className="group relative h-full min-h-[180px] overflow-hidden rounded-2xl border-border/60 bg-card transition-all duration-300 hover:border-cyan-400/25 hover:bg-card-accent hover:shadow-[0_0_30px_rgba(54,199,244,0.12)]">
+  direction = "col",
+  align = "center",
+  size = "medium",
+  fullWidthIcon = true,
+}: GridFeature) {
+  const gridFeatureSizeToClasses: Record<GridFeature["size"], string> = {
+  small: "col-span-1",
+  medium: "col-span-1 lg:col-span-2",
+  large: "col-span-1 lg:col-span-2",
+};
+  const directionToClass: Record<
+    NonNullable<GridFeature["direction"]>,
+    string
+  > = {
+    col: "flex-col",
+    row: "flex-row",
+    "row-reverse": "flex-row-reverse",
+    "col-reverse": "flex-col-reverse",
+  };
+
+  const gridFeatureCard = (
+    <Card
+      className={cn(
+        "group relative h-full min-h-[140px] cursor-pointer overflow-hidden rounded-2xl border-border/60 bg-card transition-all duration-300",
+        "hover:border-cyan-400/25 hover:bg-card-accent hover:shadow-[0_0_30px_rgba(54,199,244,0.12)]",
+        gridFeatureSizeToClasses[size],
+      )}
+    >
       {/* Línea superior con gradiente sutil en hover */}
       <div
         aria-hidden="true"
         className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-cyan-400/0 to-transparent transition-all duration-300 group-hover:via-cyan-400/50"
       />
-      <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        {icon ? (
-          <span className="flex size-12 items-center justify-center rounded-xl border border-cyan-400/15 bg-cyan-400/5 text-cyan-300 transition-all duration-300 group-hover:border-cyan-400/30 group-hover:bg-cyan-400/10 group-hover:shadow-[0_0_20px_rgba(54,199,244,0.25)]">
-            {icon}
-          </span>
-        ) : emoji ? (
-          <span className="text-4xl">{emoji}</span>
-        ) : null}
-        <CardTitle className="text-foreground">{name}</CardTitle>
-        <CardDescription className="text-muted-foreground text-xs leading-relaxed">
+      <CardContent className="flex h-full flex-col items-center justify-center p-4">
+        {fullWidthIcon && (icon || emoji) ? (
+          <div className="mb-4 flex w-full items-center justify-center">
+            {icon ? (
+              <span className="flex size-12 items-center justify-center rounded-xl border border-cyan-400/15 bg-cyan-400/5 text-cyan-300 transition-all duration-300 group-hover:border-cyan-400/30 group-hover:bg-cyan-400/10 group-hover:shadow-[0_0_20px_rgba(54,199,244,0.25)]">
+                {icon}
+              </span>
+            ) : emoji ? (
+              <span className="text-4xl">{emoji}</span>
+            ) : null}
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "flex items-center gap-3",
+              directionToClass[direction],
+              align === "center"
+                ? "items-center justify-center"
+                : "justify-start",
+            )}
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg">
+              {icon ? (
+                icon
+              ) : emoji ? (
+                <span className="text-2xl">{emoji}</span>
+              ) : null}
+            </div>
+            <CardTitle
+              className={cn(align === "center" ? "text-center" : "text-left")}
+            >
+              {name}
+            </CardTitle>
+          </div>
+        )}
+        {fullWidthIcon && (icon || emoji) && (
+          <CardTitle className="text-foreground mb-2 text-center">
+            {name}
+          </CardTitle>
+        )}
+        <CardDescription
+          className={cn(
+            "text-muted-foreground text-xs leading-relaxed",
+            fullWidthIcon || direction === "col" || align === "center"
+              ? "text-center"
+              : "text-left",
+          )}
+        >
           {description}
         </CardDescription>
       </CardContent>
@@ -108,12 +149,12 @@ function FeaturesGridItem({
       <a
         href={href}
         {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-        className={desktopSpan}
+        className={gridFeatureSizeToClasses[size]}
       >
-        {featureCard}
+        {gridFeatureCard}
       </a>
     );
   }
 
-  return <div className={desktopSpan}>{featureCard}</div>;
+  return gridFeatureCard;
 }
