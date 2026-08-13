@@ -1,2 +1,2 @@
-export const DocsUrl = "https://docs.opensaas.sh";
-export const BlogUrl = "https://docs.opensaas.sh/blog";
+export const DocsUrl = "https://wasp.sh/docs";
+export const BlogUrl = "https://github.com/JorgeMinda/DoctorIA";

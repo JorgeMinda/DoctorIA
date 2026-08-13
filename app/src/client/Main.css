@@ -213,68 +213,68 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --background: 216 40% 98%;
+    --foreground: 217 44% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --card-accent: 0 0% 100%;
-    --card-accent-foreground: 0 0% 3.9%;
-    --card-subtle: 31 57% 96%;
-    --card-subtle-foreground: 0 0% 9%;
+    --card-foreground: 217 44% 12%;
+    --card-accent: 216 40% 98%;
+    --card-accent-foreground: 217 44% 12%;
+    --card-subtle: 216 45% 96%;
+    --card-subtle-foreground: 217 44% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 210 100% 13%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 32 100% 37%;
-    --secondary-foreground: 0 0% 9%;
-    --secondary-muted: 32 75% 78%;
-    --secondary-muted-foreground: 0 0% 3.9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 33 74% 62%;
-    --accent-foreground: 0 0% 98%;
+    --popover-foreground: 217 44% 12%;
+    --primary: 216 60% 18%;
+    --primary-foreground: 216 33% 97%;
+    --secondary: 223 70% 55%;
+    --secondary-foreground: 216 33% 97%;
+    --secondary-muted: 247 80% 68%;
+    --secondary-muted-foreground: 216 33% 97%;
+    --muted: 216 45% 95%;
+    --muted-foreground: 217 15% 40%;
+    --accent: 194 90% 58%;
+    --accent-foreground: 216 60% 5%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --success: 141 71% 48%;
+    --success: 162 66% 42%;
     --success-foreground: 0 0% 98%;
     --warning: 36 100% 50%;
     --warning-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --border: 216 30% 88%;
+    --input: 216 30% 88%;
+    --ring: 194 90% 58%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 210 50% 5%;
-    --foreground: 0 0% 98%;
-    --card: 210 50% 5%;
-    --card-foreground: 0 0% 98%;
-    --card-accent: 31 57% 93%;
-    --card-accent-foreground: 0 0% 3.9%;
-    --card-subtle: 233 24% 15%;
-    --card-subtle-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 31 57% 93%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 209 91% 61%;
-    --secondary-foreground: 0 0% 98%;
-    --secondary-muted: 210 67% 94%;
-    --secondary-muted-foreground: 0 0% 3.9%;
-    --muted: 210 100% 13%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 31 57% 93%;
-    --accent-foreground: 210 100% 13%;
+    --background: 216 60% 5%;
+    --foreground: 216 33% 97%;
+    --card: 217 51% 9%;
+    --card-foreground: 216 33% 97%;
+    --card-accent: 216 44% 12%;
+    --card-accent-foreground: 216 33% 97%;
+    --card-subtle: 216 44% 12%;
+    --card-subtle-foreground: 216 33% 97%;
+    --popover: 217 51% 9%;
+    --popover-foreground: 216 33% 97%;
+    --primary: 194 90% 58%;
+    --primary-foreground: 216 60% 5%;
+    --secondary: 223 100% 68%;
+    --secondary-foreground: 216 60% 5%;
+    --secondary-muted: 247 100% 74%;
+    --secondary-muted-foreground: 216 60% 5%;
+    --muted: 216 44% 12%;
+    --muted-foreground: 216 16% 61%;
+    --accent: 216 44% 16%;
+    --accent-foreground: 216 33% 97%;
     --destructive: 0 62.8% 63%;
     --destructive-foreground: 0 0% 98%;
-    --success: 141 71% 48%;
-    --success-foreground: 0 0% 98%;
+    --success: 162 66% 52%;
+    --success-foreground: 216 60% 5%;
     --warning: 36 100% 50%;
     --warning-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 216 30% 16%;
+    --input: 216 30% 16%;
+    --ring: 194 90% 58%;
   }
 }
 
@@ -329,4 +329,131 @@
 }
 .apexcharts-xaxistooltip-bottom:before {
   @apply dark:border-b-muted!;
+}
+
+/* ─────────────── Voice assistant (DoctorIA) ─────────────── */
+
+@keyframes voice-orb-ring {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes voice-orb-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes voice-wave-bar {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes voice-orb-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes voice-orb-ring-fast {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-orb-ring,
+  .voice-orb-ring-fast,
+  .voice-orb-glow,
+  .voice-orb-breathe,
+  .voice-wave-bar {
+    animation: none !important;
+  }
+}
+
+/* ─────────────── Ambient voice interface (landing) ─────────────── */
+
+@keyframes ambient-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes ambient-pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(54, 199, 244, 0.5);
+  }
+  50% {
+    opacity: 0.85;
+    box-shadow: 0 0 0 6px rgba(54, 199, 244, 0);
+  }
+}
+
+@keyframes ambient-orb-halo {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.75;
+  }
+}
+
+@keyframes ambient-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.ambient-float {
+  animation: ambient-float 7s ease-in-out infinite;
+}
+
+.ambient-pulse-dot {
+  animation: ambient-pulse-dot 2.4s ease-in-out infinite;
+}
+
+.ambient-orb-halo {
+  animation: ambient-orb-halo 6s ease-in-out infinite;
+}
+
+.ambient-shimmer {
+  background-size: 200% auto;
+  animation: ambient-shimmer 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-float,
+  .ambient-pulse-dot,
+  .ambient-orb-halo,
+  .ambient-shimmer {
+    animation: none !important;
+  }
 }

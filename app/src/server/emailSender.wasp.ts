@@ -1,13 +1,12 @@
 import { type EmailSender } from "@wasp.sh/spec";
 
 export const emailSender: EmailSender = {
-  // NOTE: "Dummy" provider is just for local development purposes.
-  //   Make sure to check the server logs for the email confirmation url (it will not be sent to an address)!
-  //   Once you are ready for production, switch to e.g. "SendGrid" or "Mailgun" providers. Check out https://docs.opensaas.sh/guides/email-sending/ .
-  provider: "Dummy",
+  // Provider real para producción (Resend, plan gratuito de 3.000 emails/mes).
+  // En desarrollo, la verificación de email se puede saltar con SKIP_EMAIL_VERIFICATION_IN_DEV=true.
+  provider: "Resend",
   defaultFrom: {
-    name: "Open SaaS App",
-    // When using a real provider, e.g. SendGrid, you must use the same email address that you configured your account to send out emails with!
-    email: "me@example.com",
+    name: "DoctorIA",
+    // Debe coincidir con el dominio/email verificado en Resend para que los correos se envíen.
+    email: "jls.minda@yavirac.edu.ec",
   },
 };

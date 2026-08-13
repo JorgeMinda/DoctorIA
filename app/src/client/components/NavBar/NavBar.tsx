@@ -13,11 +13,9 @@ import {
 import { throttleWithTrailingInvocation } from "../../../shared/utils";
 import { UserDropdown } from "../../../user/UserDropdown";
 import { UserMenuItems } from "../../../user/UserMenuItems";
-import { useIsLandingPage } from "../../hooks/useIsLandingPage";
 import logo from "../../static/logo.svg";
 import { cn } from "../../utils";
 import { DarkModeSwitcher } from "../DarkModeSwitcher";
-import { Announcement } from "./Announcement";
 
 export interface NavigationItem {
   name: string;
@@ -30,7 +28,6 @@ export function NavBar({
   navigationItems: NavigationItem[];
 }) {
   const [isScrolled, setIsScrolled] = useState(false);
-  const isLandingPage = useIsLandingPage();
 
   useEffect(() => {
     const throttledHandler = throttleWithTrailingInvocation(() => {
@@ -47,7 +44,6 @@ export function NavBar({
 
   return (
     <>
-      {isLandingPage && <Announcement />}
       <header
         className={cn(
           "sticky top-0 z-50 transition-all duration-300",
@@ -87,7 +83,7 @@ export function NavBar({
                     },
                   )}
                 >
-                  Your SaaS
+                  DoctorIA
                 </span>
               </WaspRouterLink>
 
@@ -119,14 +115,15 @@ function NavBarDesktopUserDropdown({ isScrolled }: { isScrolled: boolean }) {
         <WaspRouterLink
           to={routes.LoginRoute.to}
           className={cn(
-            "ml-3 font-semibold leading-6 transition-all duration-300",
+            "rounded-lg border border-cyan-400/25 bg-cyan-400/5 px-4 py-2 font-semibold leading-6 text-cyan-300 transition-all duration-300",
+            "hover:border-cyan-400/50 hover:bg-cyan-400/10 hover:shadow-[0_0_16px_rgba(54,199,244,0.2)]",
             {
               "text-sm": !isScrolled,
               "text-xs": isScrolled,
             },
           )}
         >
-          <div className="text-foreground hover:text-primary flex items-center transition-colors duration-300 ease-in-out">
+          <div className="flex items-center">
             Log in{" "}
             <LogIn
               size={isScrolled ? "1rem" : "1.1rem"}
@@ -180,7 +177,7 @@ function NavBarMobileMenu({
           <SheetHeader>
             <SheetTitle className="flex items-center">
               <WaspRouterLink to={routes.LandingPageRoute.to}>
-                <span className="sr-only">Your SaaS</span>
+                <span className="sr-only">DoctorIA</span>
                 <NavLogo isScrolled={false} />
               </WaspRouterLink>
             </SheetTitle>
@@ -193,7 +190,7 @@ function NavBarMobileMenu({
               <div className="py-6">
                 {isUserLoading ? null : !user ? (
                   <WaspRouterLink to={routes.LoginRoute.to}>
-                    <div className="text-foreground hover:text-primary flex items-center justify-end transition-colors duration-300 ease-in-out">
+                    <div className="flex items-center justify-end gap-2 text-cyan-300 transition-colors duration-300 ease-in-out">
                       Log in <LogIn size="1.1rem" className="ml-1" />
                     </div>
                   </WaspRouterLink>
@@ -252,7 +249,7 @@ function NavLogo({ isScrolled }: { isScrolled: boolean }) {
         "size-7": isScrolled,
       })}
       src={logo}
-      alt="Your SaaS App"
+      alt="DoctorIA App"
     />
   );
 }

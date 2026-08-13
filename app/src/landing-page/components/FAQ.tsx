@@ -14,19 +14,22 @@ interface FAQ {
 
 export function FAQ({ faqs }: { faqs: FAQ[] }) {
   return (
-    <div className="mx-auto mt-32 max-w-4xl px-6 pb-8 sm:pb-24 sm:pt-12 lg:max-w-7xl lg:px-8 lg:py-32">
-      <h2 className="text-foreground mb-12 text-center text-2xl font-bold leading-10 tracking-tight">
-        Frequently asked questions
+    <div className="mx-auto mt-16 max-w-4xl px-6 pb-16 md:mt-24 lg:px-8">
+      <h2 className="text-foreground mb-4 text-center text-4xl font-bold tracking-tight">
+        Preguntas frecuentes
       </h2>
+      <p className="text-muted-foreground mb-12 text-center text-lg leading-8">
+        Resolvemos las dudas más comunes sobre DoctorIA.
+      </p>
 
       <Accordion type="single" collapsible className="w-full space-y-4">
         {faqs.map((faq) => (
           <AccordionItem
             key={faq.id}
             value={`faq-${faq.id}`}
-            className="border-border hover:bg-muted/20 rounded-lg border px-6 py-2 transition-all duration-200"
+            className="border-border/60 hover:border-cyan-400/20 hover:bg-cyan-400/5 rounded-xl border px-6 py-2 transition-all duration-200"
           >
-            <AccordionTrigger className="text-foreground hover:text-primary text-left text-base font-semibold leading-7 transition-colors duration-200">
+            <AccordionTrigger className="text-foreground hover:text-cyan-300 text-left text-base font-semibold leading-7 transition-colors duration-200">
               {faq.question}
             </AccordionTrigger>
             <AccordionContent className="text-muted-foreground">
@@ -37,9 +40,9 @@ export function FAQ({ faqs }: { faqs: FAQ[] }) {
                 {faq.href && (
                   <a
                     href={faq.href}
-                    className="text-primary hover:text-primary/80 shrink-0 whitespace-nowrap text-base font-medium leading-7 transition-colors duration-200"
+                    className="text-cyan-300 hover:text-cyan-200 shrink-0 whitespace-nowrap text-base font-medium leading-7 transition-colors duration-200"
                   >
-                    Learn more →
+                    Saber más →
                   </a>
                 )}
               </div>

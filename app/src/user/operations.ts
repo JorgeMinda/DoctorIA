@@ -1,12 +1,10 @@
-import { type Prisma } from "@prisma/client";
 import { type User } from "wasp/entities";
-import { HttpError, prisma } from "wasp/server";
+import { HttpError } from "wasp/server";
 import {
   type GetPaginatedUsers,
   type UpdateIsUserAdminById,
 } from "wasp/server/operations";
 import * as z from "zod";
-import { SubscriptionStatus } from "../payment/plans";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
 
 const updateUserAdminByIdInputSchema = z.object({
@@ -48,12 +46,7 @@ export const updateIsUserAdminById: UpdateIsUserAdminById<
 type GetPaginatedUsersOutput = {
   users: Pick<
     User,
-    | "id"
-    | "email"
-    | "username"
-    | "subscriptionStatus"
-    | "paymentProcessorUserId"
-    | "isAdmin"
+    "id" | "email" | "username" | "fullName" | "specialty" | "isAdmin" | "isMedico"
   >[];
   totalPages: number;
 };
@@ -63,9 +56,7 @@ const getPaginatorArgsSchema = z.object({
   filter: z.object({
     emailContains: z.string().nonempty().optional(),
     isAdmin: z.boolean().optional(),
-    subscriptionStatusIn: z
-      .array(z.nativeEnum(SubscriptionStatus).nullable())
-      .optional(),
+    isMedico: z.boolean().optional(),
   }),
 });
 
@@ -91,23 +82,12 @@ export const getPaginatedUsers: GetPaginatedUsers<
 
   const {
     skipPages,
-    filter: {
-      subscriptionStatusIn: subscriptionStatus,
-      emailContains,
-      isAdmin,
-    },
+    filter: { emailContains, isAdmin, isMedico },
   } = ensureArgsSchemaOrThrowHttpError(getPaginatorArgsSchema, rawArgs);
-
-  const includeUnsubscribedUsers = !!subscriptionStatus?.some(
-    (status) => status === null,
-  );
-  const desiredSubscriptionStatuses = subscriptionStatus?.filter(
-    (status) => status !== null,
-  );
 
   const pageSize = 10;
 
-  const userPageQuery: Prisma.UserFindManyArgs = {
+  const userPageQuery = {
     skip: skipPages * pageSize,
     take: pageSize,
     where: {
@@ -115,21 +95,10 @@ export const getPaginatedUsers: GetPaginatedUsers<
         {
           email: {
             contains: emailContains,
-            mode: "insensitive",
+            mode: "insensitive" as const,
           },
           isAdmin,
-        },
-        {
-          OR: [
-            {
-              subscriptionStatus: {
-                in: desiredSubscriptionStatuses,
-              },
-            },
-            {
-              subscriptionStatus: includeUnsubscribedUsers ? null : undefined,
-            },
-          ],
+          isMedico,
         },
       ],
     },
@@ -137,16 +106,17 @@ export const getPaginatedUsers: GetPaginatedUsers<
       id: true,
       email: true,
       username: true,
+      fullName: true,
+      specialty: true,
       isAdmin: true,
-      subscriptionStatus: true,
-      paymentProcessorUserId: true,
+      isMedico: true,
     },
     orderBy: {
-      username: "asc",
+      username: "asc" as const,
     },
   };
 
-  const [pageOfUsers, totalUsers] = await prisma.$transaction([
+  const [pageOfUsers, totalUsers] = await Promise.all([
     context.entities.User.findMany(userPageQuery),
     context.entities.User.count({ where: userPageQuery.where }),
   ]);

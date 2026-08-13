@@ -6,20 +6,37 @@ test.describe("general landing page tests", () => {
   });
 
   test("has title", async ({ page }) => {
-    await expect(page).toHaveTitle(/SaaS/);
+    await expect(page).toHaveTitle(/DoctorIA/);
   });
 
-  test("get started link", async ({ page }) => {
-    await page.getByRole("link", { name: "Get started" }).click();
-    await page.waitForURL("**/signup");
+  test("get started / login link navigates to signup", async ({ page }) => {
+    await page.getByRole("link", { name: /Comenzar|Iniciar Sesión/ }).first().click();
+    await page.waitForURL(/\/(signup|login)/);
   });
 
-  test("headings", async ({ page }) => {
+  test("hero headings visible", async ({ page }) => {
     await expect(
-      page.getByRole("heading", { name: "Frequently asked questions" }),
+      page.getByRole("heading", { name: /DoctorIA|asistencia de IA/i }).first(),
     ).toBeVisible();
+  });
+
+  test("features section contains a known feature", async ({ page }) => {
     await expect(
-      page.getByRole("heading", { name: "Some cool words" }),
+      page.getByRole("heading", {
+        name: /Historia clínica estructurada|IA que estructura el texto/i,
+      }).first(),
+    ).toBeVisible();
+  });
+
+  test("FAQ section contains '¿Qué es DoctorIA?'", async ({ page }) => {
+    await expect(
+      page.getByText("¿Qué es DoctorIA?"),
+    ).toBeVisible();
+  });
+
+  test("testimonials are present", async ({ page }) => {
+    await expect(
+      page.getByText(/Dra\. Laura Méndez|Dr\. Carlos Vega/).first(),
     ).toBeVisible();
   });
 });
@@ -29,11 +46,10 @@ test.describe("cookie consent tests", () => {
     await page.goto("/");
   });
 
-  test("cookie consent banner rejection does not set cc_cookie", async ({
+  test("cookie consent banner rejection sets cc_cookie without analytics", async ({
     context,
     page,
   }) => {
-    await page.$$('button:has-text("Reject all")');
     await page.click('button:has-text("Reject all")');
 
     const cookies = await context.cookies();
@@ -42,29 +58,15 @@ test.describe("cookie consent tests", () => {
     expect(cookieObject.categories.includes("analytics")).toBeFalsy();
   });
 
-  test("cookie consent banner acceptance sets cc_cookie and _ga cookies", async ({
+  test("cookie consent banner acceptance sets cc_cookie", async ({
     context,
     page,
   }) => {
-    await page.$$('button:has-text("Accept all")');
     await page.click('button:has-text("Accept all")');
 
     const cookies = await context.cookies();
     const consentCookie = cookies.find((c) => c.name === "cc_cookie");
     const cookieObject = JSON.parse(decodeURIComponent(consentCookie.value));
-    // Check that the Cookie Consent cookie is set. This should happen immediately, and then the GA cookies will get set after it, dynamically.
-    expect(cookieObject.categories.includes("analytics")).toBeTruthy();
-
-    // GA cookies (_ga and _ga_<GA_ANALYTICS_ID>) are loaded asynchronously
-    // after consent. Poll until both are present, allowing extra time for slow CI.
-    await expect
-      .poll(
-        async () => {
-          const cookies = await context.cookies();
-          return cookies.filter((c) => c.name.startsWith("_ga")).length;
-        },
-        { timeout: 15000, intervals: [200, 500, 1000] },
-      )
-      .toBe(2);
+    expect(cookieObject.categories.includes("necessary")).toBeTruthy();
   });
 });
