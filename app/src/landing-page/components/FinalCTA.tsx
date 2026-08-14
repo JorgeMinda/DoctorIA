@@ -45,7 +45,7 @@ export function FinalCTA() {
               className="bg-cyan-400 text-slate-950 shadow-[0_0_24px_rgba(54,199,244,0.35)] transition-all duration-300 hover:bg-cyan-300 hover:shadow-[0_0_36px_rgba(54,199,244,0.55)]"
               asChild
             >
-              <WaspRouterLink to={routes.SignupRoute.to}>
+              <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
                 Comenzar <span aria-hidden="true">→</span>
               </WaspRouterLink>
             </Button>
