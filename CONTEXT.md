@@ -3,6 +3,8 @@
 **Última actualización**: 2026-08-13 · **Rama de trabajo**: `001-doctoria-mvp` → se promueve a `main` (deploy de Render)
 **Autor de este contexto**: agente principal del equipo DoctorIA
 
+> **Reglas de comportamiento para agentes** (dominio, arquitectura, off-limits, comandos): ver [AGENTS.md](AGENTS.md) en la raíz. Este `CONTEXT.md` documenta el **estado mutable** del proyecto (cambia cada sesión); `AGENTS.md` documenta lo **casi-estático**.
+
 Este documento resume el estado completo del proyecto para que una IA colaboradora entre en contexto rápido sin perder los lineamientos (Constitución P1–P10, especificación, plan técnico, y el avance real del sprint).
 
 ---
