@@ -72,11 +72,25 @@
 - [X] T019 Verificar: `tsc` limpio (SDK rebuilt), geometría responsive medida (sin overflow, filas alineadas), e2e 10/10, vitest 43/43
 - [X] T020 Commitear y pushear (`c49bcde`) junto con T015–T018 (10 archivos: 9 modificados + FinalCTA nuevo)
 
-<<<<<<< Updated upstream
 **Checkpoint**: Landing reorganizada y verificada; suites e2e 10/10 y unitaria 43/43 verdes post-cambio.
-=======
-**Checkpoint**: Landing reorganizada y verificado; suite e2e 10/10 y unitaria 43/43 verdes post-cambio.
->>>>>>> Stashed changes
+
+---
+
+## Fase 5: Despliegue a staging y QA (Semana 4)
+
+**Propósito**: Dejar el MVP operativo en staging con evidencia de QA y checklist de producción.
+
+- [X] T021 Crear `render.yaml` con blueprint de Render (`doctoria-server` Node/Wasp, `doctoria-client` Vite estático + `200.html`, `doctoria-db` Postgres 18)
+- [X] T022 Aprovisionar servicios en Render y desplegar desde `main` (client + server + DB)
+- [X] T023 Registrar migraciones y seeds en el `startCommand` del server (`prisma migrate deploy` + `WASP_DB_SEED_NAME=seedSyntheticClinicalData`)
+- [X] T024 Sembrar cuentas autorizadas en la DB de staging (`admin@doctoria.com`, `medico1/2@doctoria.com` / `Doctoria2026!`) y 6 pacientes sintéticos (2 médicos, 6 pacientes, 12 accesos)
+- [X] T025 Verificar login seed contra staging (`/auth/email/login` → 200; `/auth/me` → 200)
+- [X] T026 Corregir CTA `Comenzar` de la landing para apuntar a `ClinicalVoiceRoute` (`/clinical/voice`) en lugar de `SignupRoute` (commit `94b6fe0`)
+- [X] T027 Ejecutar QA E2E completo contra staging: **5/5 flujos superados** (intake desde home, entry points, login flow, sesión persistente, credenciales inválidas)
+- [X] T028 Generar `checklists/production.md` con checklist de producción (HTTPS, seeds, auth, QA 5/5)
+- [X] T029 Generar `qa/week4-qa-report.md` con reporte de QA (hallazgo D-01 + fix + verificación)
+
+**Checkpoint**: Semana 4 cerrada — MVP en staging con HTTPS, seeds, QA 5/5 y checklist de producción.
 
 ---
 
@@ -94,4 +108,4 @@
 - Los tests unitarios se ejecutan desde Windows con `node node_modules\vitest\dist\cli.js run` (workdir `app/`) porque los bindings rolldown instalados son Linux y WSL estaba caído durante el desarrollo de la suite.
 - Los e2e se ejecutan con `npx playwright test --config=playwright.local.config.ts` (workdir `e2e-tests/`) contra la app levantada en `localhost:3000/3001`.
 - El repo activo para desarrollo es la copia nativa WSL en `/home/minda/DoctorIA` (rama `001-doctoria-mvp`); la copia de `C:\Users\minda\Desktop\doctoria\doctoria` es respaldo. Los e2e corren desde Windows contra `localhost:3000` vía WSL2 forwarding.
-- Pendiente de Semana 4: deploy a staging (proveedor/cuenta por definir con el sponsor), HTTPS+SSL, smoke test y reporte de QA.
+- Pendiente de Semana 4: ~~deploy a staging, HTTPS+SSL, smoke test y reporte de QA~~ ✅ Completado en T021–T029 (staging live en Render, seeds sembrados, QA 5/5, checklist de producción).
