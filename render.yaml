@@ -17,6 +17,7 @@ services:
       npx prisma generate --schema=../db/schema.prisma &&
       npm run bundle
     startCommand: cd .wasp/out/server && npm run db-migrate-prod && WASP_DB_SEED_NAME=seedSyntheticClinicalData node --enable-source-maps -r dotenv/config bundle/dbSeed.js && NODE_ENV=production npm run start
+   startCommand: cd .wasp/out/server && npm run db-migrate-prod && WASP_DB_SEED_NAME=seedSyntheticClinicalData node --enable-source-maps -r dotenv/config bundle/dbSeed.js && NODE_ENV=production npm run start
     envVars:
       - key: DATABASE_URL
         fromDatabase:
