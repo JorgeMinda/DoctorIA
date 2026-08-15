@@ -160,9 +160,7 @@ specs/001-doctoria-mvp/
 
 ## 7. Decisiones pendientes y deudas técnicas
 
-| Item | Estado |
-|:--|:--|
-| Proveedor de IA (PD-01) | **PENDIENTE** — el contrato `structureClinicalText` está definido con mock determinista; falta elegir proveedor (OpenAI/Gemini/Claude) |
+| Proveedor de IA (PD-01) | ✅ **RESUELTO** — Integrado Gemini 1.5 Flash usando API REST nativa con Structured Outputs. |
 | Email verificado en Resend | PENDIENTE — `onboarding@resend.dev` no permite verificar cuentas arbitrarias; para pilotos se necesita dominio verificado |
 | Entrevistas de Semana 1 | Deuda — 5/8; continúa validación con pilotos |
 | Google Stitch (PD-03) | PENDIENTE — diseño de 2-3 pantallas no realizado (se implementó UI directa) |

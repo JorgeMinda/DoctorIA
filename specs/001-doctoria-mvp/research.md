@@ -188,11 +188,11 @@ A many-to-many join table is the simplest Prisma-compatible solution:
 
 ---
 
-## Summary of Pending Decisions
+## Summary of Decisions and Pending Items
 
-| ID | Decision | Owner | Blocking? |
+| ID | Decision | Owner | Status / Resolution |
 |:---|:---|:---|:---|
-| PD-01 | AI provider selection (OpenAI / Gemini / Claude / other) | Equipo + Líder técnico | Blocks AI implementation tasks |
+| PD-01 | AI provider selection (OpenAI / Gemini / Claude / other) | Equipo + Líder técnico | ✅ Resuelta: Gemini 1.5 Flash REST |
 | PD-02 | Database port configuration for development | Developer doing environment setup | Blocks local development start |
 | PD-03 | Google Stitch screen designs | Equipo de diseño | Blocks UI implementation tasks |
 

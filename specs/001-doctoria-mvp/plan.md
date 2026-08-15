@@ -255,16 +255,16 @@ Referencia completa: [contracts/clinical-operations.md § AI Service Contract](c
   Médico confirma         →  Estado: CONFIRMED (con validación RF-026)
 ```
 
-### Decisión de proveedor: PENDIENTE
+### Decisión de proveedor: Gemini 1.5 Flash (Resuelta)
 
 | Aspecto | Estado |
 |:---|:---|
 | Contrato definido | ✅ Input/Output/Error tipados |
-| Proveedor seleccionado | ❌ Pendiente (PD-01) |
-| Dependencia `openai` existente | Solo para `demo-ai-app`, no para DoctorIA |
-| Mock para desarrollo | ✅ Implementación determinista planificada |
+| Proveedor seleccionado | ✅ Resuelta (PD-01) - Gemini 1.5 Flash |
+| API Integración | ✅ API REST nativa (fetch nativo, sin dependencias extra) |
+| Mock para desarrollo | ❌ Reemplazado por integración de producción |
 
-El contrato interno (`structureClinicalText`) es una función TypeScript con firma tipada. No se diseña una abstracción multiproveedor compleja. Cuando se apruebe el proveedor, se implementa esa función con el SDK correspondiente. Si se elige OpenAI, la dependencia existente se comparte; si se elige otro proveedor, se agrega su SDK.
+El contrato interno (`structureClinicalText`) se implementó llamando directamente a la API REST de Gemini 1.5 Flash mediante fetch nativo de Node.js, validando la respuesta con Structured Outputs (JSON Schema) para asegurar la compatibilidad con el modelo de datos.
 
 ### Timeout y degradación
 
@@ -439,9 +439,9 @@ Estas 3 pantallas están planteadas para representar los flujos clínicos princi
 
 ### Decisiones técnicas pendientes
 
-| ID | Decisión | Impacto | Bloqueante para |
+| ID | Decisión | Impacto | Estado / Resolución |
 |:---|:---|:---|:---|
-| PD-01 | Selección de proveedor de IA | Define SDK, costos, límites de API | Tareas de implementación de IA |
+| PD-01 | Selección de proveedor de IA | Define SDK, costos, límites de API | ✅ Resuelta: Gemini 1.5 Flash REST |
 | PD-02 | Puerto/configuración de PostgreSQL para desarrollo | Entorno de desarrollo local | Configuración y primera conexión de la base de desarrollo |
 | PD-03 | Diseño visual en Google Stitch | Define componentes UI específicos | Implementación de UI |
 
@@ -449,7 +449,7 @@ Estas 3 pantallas están planteadas para representar los flujos clínicos princi
 
 | # | Riesgo | Probabilidad | Impacto | Mitigación |
 |:---|:---|:---|:---|:---|
-| R-01 | Proveedor de IA seleccionado no cumple P95 ≤ 15s | Media | Alto | Contrato desacoplado permite cambio de proveedor; mock para desarrollo |
+| R-01 | Proveedor de IA seleccionado no cumple P95 ≤ 15s | Media | Alto | Contrato desacoplado permite cambio de proveedor; Gemini 1.5 Flash es de baja latencia |
 | R-02 | 30 notas sintéticas insuficientes para evaluar calidad | Baja | Medio | Dataset extensible; métrica inicial, no definitiva |
 | R-03 | Puerto 5432 ocupado impide utilizar la base de desarrollo administrada por `wasp start db` | Baja | Medio | Usar una instancia PostgreSQL de desarrollo separada en un puerto libre y conectarla mediante `DATABASE_URL`; no detener la instancia existente |
 | R-04 | Complejidad de inmutabilidad subestimada | Baja | Medio | Diseño simple (self-ref) con tests dedicados |
@@ -467,7 +467,7 @@ Estas 3 pantallas están planteadas para representar los flujos clínicos princi
 |:---|:---|:---|
 | Wasp 0.25.0 | Estable, instalado | Bajo |
 | Prisma 5.19.1 | Estable, instalado | Bajo |
-| Proveedor de IA | No seleccionado | Alto — PD-01 |
+| Proveedor de IA | ✅ Seleccionado: Gemini 1.5 Flash REST | Bajo |
 | PostgreSQL local | Puerto conflictivo | Medio — PD-02 |
 | Google Stitch | Disponible | Bajo |
 

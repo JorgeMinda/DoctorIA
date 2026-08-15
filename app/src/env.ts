@@ -9,5 +9,8 @@ import { authEnvSchema } from "./auth/env";
 export const serverEnvValidationSchema = defineEnvValidationSchema(
   z.object({
     ...authEnvSchema.shape,
+    GEMINI_API_KEY: z.string({
+      required_error: "GEMINI_API_KEY es requerida para el asistente de IA",
+    }),
   }),
 );
