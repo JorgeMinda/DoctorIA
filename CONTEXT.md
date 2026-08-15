@@ -1,6 +1,6 @@
 # CONTEXT: DoctorIA MVP — Estado actual del proyecto (para IA colaboradora)
 
-**Última actualización**: 2026-08-13 · **Rama de trabajo**: `001-doctoria-mvp` → se promueve a `main` (deploy de Render)
+**Última actualización**: 2026-08-15 · **Rama de trabajo**: `001-doctoria-mvp` → se promueve a `main` (deploy de Render)
 **Autor de este contexto**: agente principal del equipo DoctorIA
 
 > **Reglas de comportamiento para agentes** (dominio, arquitectura, off-limits, comandos): ver [AGENTS.md](AGENTS.md) en la raíz. Este `CONTEXT.md` documenta el **estado mutable** del proyecto (cambia cada sesión); `AGENTS.md` documenta lo **casi-estático**.
@@ -21,7 +21,7 @@ MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El 
 | 2. Especificación | 20–26 jul | ✅ spec.md + plan.md + research.md (fechados 08-ago, desfase documentado) |
 | 3. Desarrollo del Core | 27 jul–2 ago | ✅ CERRADA — MVP funcional en staging + tasks.md T001–T020 |
 | 4. QA y Producción | 3–9 ago | ✅ CERRADA — HTTPS, QA 5/5, production-checklist |
-| 5. Estrategia comercial | 10–16 ago | ⏳ **VIGENTE** — plan adquisición + agenda 5 contactos (no iniciado) |
+| 5. Estrategia comercial | 10–16 ago | ⏳ **VIGENTE** — plan de adquisición + agenda de 5 contactos creados (ver `specs/001-doctoria-mvp/week5-commercial-plan.md`) |
 | 6. Ejecución comercial | 17–23 ago | ⏳ Futuro |
 | 7. Iteración con datos | 24–30 ago | ⏳ Futuro |
 | 8. Demo Day | 31 ago–6 sep | ⏳ Futuro |
@@ -160,7 +160,7 @@ specs/001-doctoria-mvp/
 
 ## 7. Decisiones pendientes y deudas técnicas
 
-| Proveedor de IA (PD-01) | ✅ **RESUELTO** — Integrado Gemini 1.5 Flash usando API REST nativa con Structured Outputs. |
+| Proveedor de IA (PD-01) | ✅ **RESUELTO** — Integrado vía **OpenRouter** (`https://openrouter.ai/api/v1/chat/completions`, modelo `openai/gpt-oss-20b:free` en dev/demo). Gemini quedó bloqueado (403) en la cuenta; se migró a OpenRouter. Para producción usar clave paga/BYOK y modelo superior. |
 | Email verificado en Resend | PENDIENTE — `onboarding@resend.dev` no permite verificar cuentas arbitrarias; para pilotos se necesita dominio verificado |
 | Entrevistas de Semana 1 | Deuda — 5/8; continúa validación con pilotos |
 | Google Stitch (PD-03) | PENDIENTE — diseño de 2-3 pantallas no realizado (se implementó UI directa) |
@@ -171,9 +171,11 @@ specs/001-doctoria-mvp/
 
 ## 8. Próximos pasos (Semana 5 — vigente)
 
-1. **Estrategia comercial**: plan de adquisición de clientes + agenda de mínimo 5 contactos reales.
+1. **Estrategia comercial**: plan de adquisición de clientes + agenda de 5 contactos reales documentados en `specs/001-doctoria-mvp/week5-commercial-plan.md`.
 2. Preparar demo de la aplicación (landing + flujo clínico con cuentas seed).
 3. Iterar el MVP con feedback de pilotos (Semana 7).
+
+> **Nota de despliegue (15-ago)**: la integración de IA migró de Gemini (bloqueado 403) a **OpenRouter**. El deploy de Render requiere la variable `OPENROUTER_API_KEY` configurada en el dashboard (el free tier `gpt-oss-20b:free` funciona para demo; para producción usar clave paga/BYOK).
 
 ## 9. Lineamientos que NO deben perderse (Constitución)
 

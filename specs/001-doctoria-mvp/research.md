@@ -192,7 +192,7 @@ A many-to-many join table is the simplest Prisma-compatible solution:
 
 | ID | Decision | Owner | Status / Resolution |
 |:---|:---|:---|:---|
-| PD-01 | AI provider selection (OpenAI / Gemini / Claude / other) | Equipo + Líder técnico | ✅ Resuelta: Gemini 1.5 Flash REST |
+| PD-01 | AI provider selection (OpenAI / Gemini / Claude / other) | Equipo + Líder técnico | ✅ Resuelta: OpenRouter (OpenAI-compatible). Modelo `openai/gpt-oss-20b:free` en dev/demo; para producción usar clave paga/BYOK y modelo superior (ver `app/src/clinical/services/aiService.ts`) |
 | PD-02 | Database port configuration for development | Developer doing environment setup | Blocks local development start |
 | PD-03 | Google Stitch screen designs | Equipo de diseño | Blocks UI implementation tasks |
 

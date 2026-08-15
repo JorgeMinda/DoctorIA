@@ -9,6 +9,6 @@ import { authEnvSchema } from "./auth/env";
 export const serverEnvValidationSchema = defineEnvValidationSchema(
   z.object({
     ...authEnvSchema.shape,
-    GEMINI_API_KEY: z.string(),
+    OPENROUTER_API_KEY: z.string(),
   }),
 );

@@ -1,6 +1,7 @@
-// Servicio de IA — contrato tipado desacoplado del proveedor (research R-03, clinical-operations.md §6).
-// Implementado llamando directamente a la API REST de Gemini con Structured Outputs (PD-01 resuelto).
-// La IA es EXCLUSIVAMENTE asistiva: organiza texto, nunca decide (Constitución P4).
+// AI service — provider-agnostic typed contract (research R-03, clinical-operations.md §6).
+// Implemented via OpenRouter (OpenAI-compatible) using a free model with structured JSON output (PD-01).
+// NOTE: OpenRouter removed its free DeepSeek tier; we use openai/gpt-oss-20b:free (free, capable, OpenAI-compatible).
+// The AI is EXCLUSIVELY assistive: it organizes text, never decides (Constitution P4).
 
 import { env } from "wasp/server";
 
@@ -38,83 +39,41 @@ export interface AIEpicrisisOutput {
 }
 
 const AI_TIMEOUT_MS = 30_000; // RNF-011
+const OPENROUTER_MODEL = "openai/gpt-oss-20b:free";
 
-// Esquema estructurado de salida de nota clínica para Gemini
-const CLINICAL_NOTE_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    sections: {
-      type: "OBJECT",
-      properties: {
-        motivoConsulta: { type: "STRING", description: "Motivo de la consulta médica." },
-        notaClinica: { type: "STRING", description: "Subjetivo, anamnesis, historia de la enfermedad actual, antecedentes." },
-        examenFisico: { type: "STRING", description: "Signos vitales y hallazgos del examen físico." },
-        valoracionClinica: { type: "STRING", description: "Diagnósticos sospechados o confirmados, juicio clínico." },
-        planIndicaciones: { type: "STRING", description: "Tratamiento, dosis, laboratorios solicitados, recomendaciones." }
-      },
-      required: ["motivoConsulta", "notaClinica", "examenFisico", "valoracionClinica", "planIndicaciones"]
-    },
-    unclassifiedContent: { type: "STRING", description: "Cualquier texto que no calce en las secciones anteriores o requiera revisión." },
-    originalTextPreserved: { type: "BOOLEAN", description: "Debe ser true siempre si la información del texto original fue preservada." },
-    confidence: { type: "NUMBER", description: "Nivel de confianza de 0.0 a 1.0 en la estructuración." }
-  },
-  required: ["sections", "originalTextPreserved", "confidence"]
-};
+// Maps empty/null/"null" strings to a real TypeScript null (RNF-004: original preserved as-is).
+function cleanResponseString(val: any): string | null {
+  if (val === null || val === undefined) return null;
+  const s = String(val).trim();
+  if (s === "" || s.toLowerCase() === "null" || s.toLowerCase() === "n/a") return null;
+  return s;
+}
 
-// Esquema estructurado de salida de epicrisis para Gemini
-const EPICRISIS_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    elements: {
-      type: "OBJECT",
-      properties: {
-        reasonForAdmission: { type: "STRING", description: "Motivo de ingreso o de atención." },
-        relevantHistory: { type: "STRING", description: "Antecedentes de relevancia para este caso." },
-        evolutionSummary: { type: "STRING", description: "Resumen del curso clínico y la evolución en el tiempo." },
-        proceduresResults: { type: "STRING", description: "Procedimientos realizados y resultados relevantes de exámenes." },
-        validatedDiagnoses: { type: "STRING", description: "Diagnósticos de egreso validados clínicamente." },
-        conditionAtDischarge: { type: "STRING", description: "Condición clínica del paciente al momento del alta." },
-        followUpInstructions: { type: "STRING", description: "Instrucciones detalladas de seguimiento, citas y recetas." }
-      },
-      required: [
-        "reasonForAdmission",
-        "relevantHistory",
-        "evolutionSummary",
-        "proceduresResults",
-        "validatedDiagnoses",
-        "conditionAtDischarge",
-        "followUpInstructions"
-      ]
-    },
-    unclassifiedContent: { type: "STRING", description: "Información residual no clasificada." }
-  },
-  required: ["elements"]
-};
+// Llama a OpenRouter (compatible con OpenAI) y devuelve el JSON estructurado del modelo.
+// Reintenta ante 429/5xx con backoff respetando Retry-After (resiliencia en producción).
+const AI_MAX_RETRIES = 2;
 
-// Helper genérico para llamar a Gemini con un prompt y un esquema estructurado (Structured Outputs)
-async function callGeminiREST(prompt: string, schema: any): Promise<any> {
-  const apiKey = env.GEMINI_API_KEY;
+async function callOpenRouterOnce(prompt: string): Promise<any> {
+  const apiKey = env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY no está configurada.");
+    throw new Error("OPENROUTER_API_KEY no está configurada.");
   }
 
-  // Se utiliza Gemini 1.5 Flash por su costo ultra-bajo, alta velocidad y soporte nativo de Structured Outputs
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = "https://openrouter.ai/api/v1/chat/completions";
 
   const body = {
-    contents: [
+    model: OPENROUTER_MODEL,
+    messages: [
       {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
+        role: "system",
+        content:
+          "Eres un asistente clínico de alta precisión que estructura registros médicos en JSON. " +
+          "Nunca inventes información clínica. Responde SOLO con un objeto JSON válido, sin texto adicional.",
       },
+      { role: "user", content: prompt },
     ],
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: schema,
-    },
+    response_format: { type: "json_object" },
+    temperature: 0,
   };
 
   const controller = new AbortController();
@@ -125,6 +84,7 @@ async function callGeminiREST(prompt: string, schema: any): Promise<any> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -134,65 +94,113 @@ async function callGeminiREST(prompt: string, schema: any): Promise<any> {
 
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
-      throw new Error(`La API de Gemini retornó un código de error ${response.status}: ${errText}`);
+      const retryable = response.status === 429 || response.status >= 500;
+      const retryAfterHeader = response.headers.get("Retry-After");
+      const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : undefined;
+      const err: any = new Error(
+        `La API de OpenRouter retornó un código de error ${response.status}: ${errText}`,
+      );
+      err.retryable = retryable;
+      err.retryAfterMs = Number.isFinite(retryAfterMs) ? retryAfterMs : undefined;
+      throw err;
     }
 
     const data = await response.json();
-    const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!candidateText) {
-      throw new Error("Estructura de respuesta inválida o vacía de Gemini.");
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error("OpenRouter devolvió una respuesta vacía o inválida.");
     }
 
-    return JSON.parse(candidateText);
+    try {
+      return JSON.parse(content);
+    } catch {
+      throw new Error("OpenRouter no devolvió un JSON válido.");
+    }
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === "AbortError") {
       throw new Error(`Timeout al llamar al asistente de IA (${AI_TIMEOUT_MS / 1000}s superados).`);
     }
-    throw new Error(error.message || "Error de red o de API al consultar el asistente de IA.");
+    throw error;
   }
 }
 
-// Limpia las respuestas de Gemini mapeando cadenas vacías, nulas o "null" a null real de TypeScript
-function cleanResponseString(val: any): string | null {
-  if (val === null || val === undefined) return null;
-  const s = String(val).trim();
-  if (s === "" || s.toLowerCase() === "null" || s.toLowerCase() === "n/a") return null;
-  return s;
+async function callOpenRouter(prompt: string): Promise<any> {
+  let lastError: any;
+  for (let attempt = 0; attempt <= AI_MAX_RETRIES; attempt++) {
+    try {
+      return await callOpenRouterOnce(prompt);
+    } catch (error: any) {
+      lastError = error;
+      if (error?.retryable && attempt < AI_MAX_RETRIES) {
+        const base = error.retryAfterMs ?? 1000 * (attempt + 1);
+        const wait = Math.min(base, 15_000);
+        await new Promise((resolve) => setTimeout(resolve, wait));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
 }
 
-// Estructura el texto clínico libre
+// Structures free clinical text into the 5 clinical sections.
 export async function structureClinicalText(
   input: AIStructuringInput,
 ): Promise<AIStructuringOutput> {
-  const prompt = `Actúa como un asistente clínico inteligente de alta precisión para estructurar registros médicos.
-Tu única tarea es estructurar el siguiente texto libre (en español) dictado o escrito por un médico en las 5 secciones clínicas correspondientes.
-
+  const prompt = `Estructura el siguiente texto libre (en español) dictado o escrito por un médico en las 5 secciones clínicas.
+Devuelve EXACTAMENTE este objeto JSON (sin texto adicional):
+{
+  "sections": {
+    "motivoConsulta": "",
+    "notaClinica": "",
+    "examenFisico": "",
+    "valoracionClinica": "",
+    "planIndicaciones": ""
+  },
+  "unclassifiedContent": null,
+  "originalTextPreserved": true,
+  "confidence": 0.9
+}
 Reglas estrictas:
 1. No inventes información clínica, diagnósticos ni prescripciones. Todo debe provenir del texto original.
-2. Si para una sección no existe información correspondiente en el texto original, pon obligatoriamente una cadena vacía "".
-3. Asegúrate de conservar intacta toda la información clínica del texto original (RNF-004).
+2. Si para una sección no existe información en el texto original, pon obligatoriamente "" (cadena vacía).
+3. Conserva intacta toda la información clínica del texto original (RNF-004).
+4. "originalTextPreserved" debe ser true.
+5. "confidence" es un número de 0.0 a 1.0.
 
 Texto libre clínico a estructurar:
 "${input.text}"`;
 
-  const raw = await callGeminiREST(prompt, CLINICAL_NOTE_SCHEMA);
+  const raw = await callOpenRouter(prompt);
+  const rawSections = raw.sections ?? {};
+
+  const sections = {
+    motivoConsulta: cleanResponseString(rawSections.motivoConsulta),
+    notaClinica: cleanResponseString(rawSections.notaClinica),
+    examenFisico: cleanResponseString(rawSections.examenFisico),
+    valoracionClinica: cleanResponseString(rawSections.valoracionClinica),
+    planIndicaciones: cleanResponseString(rawSections.planIndicaciones),
+  };
+  const unclassifiedContent = cleanResponseString(raw.unclassifiedContent);
+
+  // RNF-004: la IA puede descartar texto sin señal clínica; si no clasificó NADA,
+  // preservamos el texto original íntegro en notaClinica (nunca se pierde contenido).
+  const nothingClassified =
+    Object.values(sections).every((v) => v === null) && unclassifiedContent === null;
+  if (nothingClassified) {
+    sections.notaClinica = input.text;
+  }
 
   return {
-    sections: {
-      motivoConsulta: cleanResponseString(raw.sections?.motivoConsulta),
-      notaClinica: cleanResponseString(raw.sections?.notaClinica),
-      examenFisico: cleanResponseString(raw.sections?.examenFisico),
-      valoracionClinica: cleanResponseString(raw.sections?.valoracionClinica),
-      planIndicaciones: cleanResponseString(raw.sections?.planIndicaciones),
-    },
-    unclassifiedContent: cleanResponseString(raw.unclassifiedContent),
-    originalTextPreserved: raw.originalTextPreserved ?? true,
+    sections,
+    unclassifiedContent,
+    originalTextPreserved: true,
     confidence: typeof raw.confidence === "number" ? raw.confidence : 0.8,
   };
 }
 
-// Genera una epicrisis a partir de los textos originales del historial clínico
+// Generates an epicrisis from the original texts of the clinical history.
 export async function generateEpicrisisFromHistory(
   originalTexts: string[],
 ): Promise<AIEpicrisisOutput> {
@@ -200,17 +208,28 @@ export async function generateEpicrisisFromHistory(
     .map((t, idx) => `[Nota Clínica ${idx + 1}]:\n${t}`)
     .join("\n\n");
 
-  const prompt = `Actúa como un asistente clínico experto encargado de redactar el borrador de una Epicrisis médica.
-Sintetiza la información clínica contenida en las siguientes notas médicas para rellenar de forma coherente, cronológica y profesional las secciones de la epicrisis.
-
+  const prompt = `Redacta el borrador de una Epicrisis médica sintetizando las notas provistas.
+Devuelve EXACTAMENTE este objeto JSON (sin texto adicional):
+{
+  "elements": {
+    "reasonForAdmission": "",
+    "relevantHistory": "",
+    "evolutionSummary": "",
+    "proceduresResults": "",
+    "validatedDiagnoses": "",
+    "conditionAtDischarge": "",
+    "followUpInstructions": ""
+  },
+  "unclassifiedContent": null
+}
 Reglas estrictas:
-1. No inventes datos. Si en el historial clínico provisto no hay información suficiente para una sección específica, pon obligatoriamente una cadena vacía "".
+1. No inventes datos. Si no hay información suficiente para una sección, pon "" (cadena vacía).
 2. Toda la información debe ser fiel al historial provisto.
 
 Historial de notas del paciente:
 ${notesSummary}`;
 
-  const raw = await callGeminiREST(prompt, EPICRISIS_SCHEMA);
+  const raw = await callOpenRouter(prompt);
 
   return {
     elements: {
