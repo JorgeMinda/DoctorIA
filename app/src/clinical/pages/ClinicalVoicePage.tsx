@@ -101,7 +101,7 @@ export function ClinicalVoicePage() {
     );
   }
 
-  const effectiveQuery = (queryInput || DEMO_QUERY).trim();
+  const effectiveQuery = demoMode ? DEMO_QUERY.trim() : queryInput.trim();
 
   const beginListening = (text: string) => {
     clearTimers();
@@ -162,16 +162,22 @@ export function ClinicalVoicePage() {
   };
 
   const handleOrbActivate = () => {
-    if (phase === "IDLE" || phase === "RESPONDING") {
-      beginListening(effectiveQuery);
+    if (phase !== "IDLE" && phase !== "RESPONDING") return;
+    if (!effectiveQuery) {
+      setError("Escribe una consulta o pulsa un paciente asignado.");
+      return;
     }
+    beginListening(effectiveQuery);
   };
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (phase === "IDLE") {
-      beginListening(effectiveQuery);
+    if (phase !== "IDLE") return;
+    if (!effectiveQuery) {
+      setError("Escribe una consulta o pulsa un paciente asignado.");
+      return;
     }
+    beginListening(effectiveQuery);
   };
 
   const handleReset = () => {
@@ -260,7 +266,13 @@ export function ClinicalVoicePage() {
               </p>
             ) : (
               <p className="text-center text-sm text-muted-foreground/70">
-                Ej.: “{DEMO_QUERY}”
+                {demoMode
+                  ? `Ej.: “${DEMO_QUERY}”`
+                  : `Ej.: “DoctorIA, dame el resumen de ${
+                      assignedPatients[0]
+                        ? `${assignedPatients[0].firstName} ${assignedPatients[0].lastName}`
+                        : "María Torres"
+                    }”`}
               </p>
             )}
           </div>
