@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useQuery } from "wasp/client/operations";
-import { getVoiceAssistantResponse } from "wasp/client/operations";
+import { getPatients, getVoiceAssistantResponse } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
 import { Mic, Sparkles, TrendingDown, TrendingUp, Minus, ShieldAlert } from "lucide-react";
 import { Button } from "../../client/components/ui/button";
@@ -12,7 +12,7 @@ import { VoiceOrb, type VoiceAssistantState } from "../components/VoiceOrb";
 import type { VoiceAssistantResponse } from "../services/voiceAssistant";
 
 // Consulta de ejemplo (modo demo / placeholder). Los datos de la respuesta son SINTÉTICOS.
-const DEMO_QUERY = "DoctorIA, dame el resumen de María Torres antes de mi cita.";
+const DEMO_QUERY = "DoctorIA, dame el resumen de María González antes de mi cita.";
 
 // Respuesta demo embebida (misma forma que la query, pero sin red) para probar los estados.
 const DEMO_RESPONSE: VoiceAssistantResponse = {
@@ -59,7 +59,7 @@ export function ClinicalVoicePage() {
   const { data: user } = useAuth();
   const [phase, setPhase] = useState<VoiceAssistantState>("IDLE");
   const [queryInput, setQueryInput] = useState("");
-  const [demoMode, setDemoMode] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState<VoiceAssistantResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +73,14 @@ export function ClinicalVoicePage() {
     { query: transcript },
     { enabled: false, refetchOnWindowFocus: false },
   );
+
+  const { data: patientsData } = useQuery(getPatients, { pageSize: 50 });
+  const assignedPatients: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    syntheticId: string;
+  }[] = patientsData?.patients ?? [];
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach((t) => window.clearTimeout(t));
@@ -175,6 +183,12 @@ export function ClinicalVoicePage() {
     setShowSparkline(false);
   };
 
+  const askForPatient = (p: { firstName: string; lastName: string }) => {
+    const q = `DoctorIA, dame el resumen de ${p.firstName} ${p.lastName}`;
+    setQueryInput(q);
+    beginListening(q);
+  };
+
   const TrendIcon =
     response?.vitals.find((v) => v.trend === "down")
       ? TrendingDown
@@ -193,19 +207,19 @@ export function ClinicalVoicePage() {
               Consulta clínica asistida por IA sobre tus pacientes asignados.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border px-3 py-1.5">
-            <Sparkles className="size-4 text-primary" />
-            <label htmlFor="demo-mode" className="text-sm font-medium">
-              Modo demo
-            </label>
-            <Switch
-              id="demo-mode"
-              checked={demoMode}
-              onCheckedChange={(v) => {
-                setDemoMode(v);
-                handleReset();
-              }}
-            />
+            <div className="flex items-center gap-2 rounded-full border px-3 py-1.5">
+              <Sparkles className="size-4 text-primary" />
+              <label htmlFor="demo-mode" className="text-sm font-medium">
+                {demoMode ? "Modo demo" : "Modo real"}
+              </label>
+              <Switch
+                id="demo-mode"
+                checked={demoMode}
+                onCheckedChange={(v) => {
+                  setDemoMode(v);
+                  handleReset();
+                }}
+              />
           </div>
         </div>
 
@@ -273,6 +287,27 @@ export function ClinicalVoicePage() {
             </Button>
           </form>
 
+          {phase === "IDLE" && assignedPatients.length > 0 && (
+            <div className="mt-4 w-full max-w-xl px-6">
+              <p className="mb-2 text-xs text-muted-foreground">
+                Pacientes asignados — pulsa para consultar:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {assignedPatients.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => askForPatient(p)}
+                    className="rounded-full border border-border/60 px-3 py-1 text-xs transition-colors hover:bg-muted/40"
+                  >
+                    {p.firstName} {p.lastName}{" "}
+                    <span className="text-muted-foreground">({p.syntheticId})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="mt-4 w-full max-w-xl px-6">
               <Card className="border-destructive/50">
@@ -294,11 +329,22 @@ export function ClinicalVoicePage() {
             >
               <ShieldAlert className="mt-0.5 size-5 shrink-0 text-warning" />
               <div className="text-sm">
-                <p className="font-semibold">Respuesta generada por IA · Datos de demostración</p>
-                <p className="mt-0.5 text-muted-foreground">
-                  Este resumen es sintético y no constituye un diagnóstico. Revíselo contra la
-                  historia clínica antes de tomar decisiones.
-                </p>
+                {demoMode ? (
+                  <>
+                    <p className="font-semibold">Respuesta DEMO · ficticia fija de ejemplo</p>
+                    <p className="mt-0.5 text-muted-foreground">
+                      Este bloque es una demostración embebida y no corresponde a datos reales.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">Modo real · paciente asignado</p>
+                    <p className="mt-0.5 text-muted-foreground">
+                      Los signos mostrados son ilustrativos (datos sintéticos). Revíselos contra la
+                      historia clínica antes de tomar decisiones.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
