@@ -67,7 +67,7 @@ export function parseVoiceQuery(query: string): VoiceQueryParseResult {
   // Patrones: "resumen de María", "el resumen de María González", "paciente María González",
   // "resumen del paciente María", "ficha de María", "historia de María".
   const nameMatch = normalized.match(
-    /(?:resumen|ficha|historia|síntesis|evolución)\s+(?:clínica|clinica)?\s*(?:del paciente|el paciente|de|del|sobre)\s+([A-ZÁÉÍÓÚÜÑa-záéíóúüñ]+(?:\s+[A-ZÁÉÍÓÚÜÑa-záéíóúüñ]+)*)/i,
+    /(?:resumen|ficha|historia|síntesis|sintesis|evolución|evolucion|información|informacion|datos|detalles|situación|situacion|consulta|estado)\s+(?:clínica|clinica)?\s*(?:del paciente|el paciente|de|del|sobre)\s+([A-ZÁÉÍÓÚÜÑa-záéíóúüñ0-9\-]+(?:\s+[A-ZÁÉÍÓÚÜÑa-záéíóúüñ0-9\-]+)*)/i,
   );
   // Patrón sin verbo: "María González" al inicio o "paciente María González".
   const altMatch = normalized.match(
@@ -78,32 +78,41 @@ export function parseVoiceQuery(query: string): VoiceQueryParseResult {
   return { name: name ? name.trim() : null, tokens };
 }
 
+const stripAccents = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
 export function resolvePatientByName(
   patients: VoicePatientMatch[],
   name: string | null,
 ): VoicePatientMatch | null {
   if (!name) return null;
-  const normalized = name.toLowerCase().normalize("NFC");
+  const normalized = stripAccents(name).toLowerCase().normalize("NFC");
   const parts = normalized.split(/\s+/).filter(Boolean);
 
   // Busca coincidencia por syntheticId exacto.
   if (/^pac-\d+$/.test(normalized)) {
-    const byId = patients.find((p) => p.syntheticId.toLowerCase() === normalized);
+    const byId = patients.find(
+      (p) => stripAccents(p.syntheticId).toLowerCase() === normalized,
+    );
     if (byId) return byId;
   }
 
   // Preferencia por coincidencia de apellido + nombre (mayor confianza).
   const byFull = patients.find((p) => {
-    const full = `${p.firstName} ${p.lastName}`.toLowerCase();
+    const full = stripAccents(`${p.firstName} ${p.lastName}`).toLowerCase();
     return parts.every((part) => full.includes(part));
   });
   if (byFull) return byFull;
 
-  // Fallback: coincidencia parcial de cualquiera de los tokens.
-  return patients.find((p) => {
-    const haystack = `${p.firstName} ${p.lastName}`.toLowerCase();
-    return parts.some((part) => part.length >= 3 && haystack.includes(part));
-  }) ?? null;
+  // Fallback: coincidencia parcial de cualquiera de los tokens (nombre o PAC).
+  return (
+    patients.find((p) => {
+      const haystack = stripAccents(
+        `${p.firstName} ${p.lastName} ${p.syntheticId}`,
+      ).toLowerCase();
+      return parts.some((part) => part.length >= 3 && haystack.includes(part));
+    }) ?? null
+  );
 }
 
 // Hash determinista para valores sintéticos estables por paciente (sin PII).
