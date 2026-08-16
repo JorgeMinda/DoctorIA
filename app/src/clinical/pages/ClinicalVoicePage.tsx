@@ -258,15 +258,11 @@ export function ClinicalVoicePage() {
       }
       // Se recalcula el texto completo en cada evento (no se acumula),
       // para que el provisional (interim) no se duplique.
+      speechFinalRef.current = final.trim();
       const full = `${final}${interim}`.trim();
       if (full) {
         speechCurrentRef.current = full;
         setTranscript(full);
-      }
-      // Enviar apenas haya un resultado final, sin esperar el corte de silencio.
-      if (final.trim() && !sessionFinalDeliveredRef.current) {
-        sessionFinalDeliveredRef.current = true;
-        submitSpeech();
       }
     };
 
@@ -291,14 +287,16 @@ export function ClinicalVoicePage() {
     rec.onend = () => {
       setSpeechOn(false);
       recognitionRef.current = null;
-      // Si el resultado final ya se envió desde onresult, no duplicar.
+      // Se envía al terminar la escucha, con la oración completa.
       if (sessionFinalDeliveredRef.current) return;
-      const text = speechCurrentRef.current.trim();
+      const text =
+        speechFinalRef.current.trim() || speechCurrentRef.current.trim();
       if (!text) {
         setError("No se captó tu voz. Escribe la consulta o pulsa un paciente asignado.");
         setPhase("IDLE");
         return;
       }
+      speechCurrentRef.current = text;
       sessionFinalDeliveredRef.current = true;
       submitSpeech();
     };
