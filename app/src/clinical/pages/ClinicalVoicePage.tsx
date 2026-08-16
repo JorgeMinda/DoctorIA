@@ -70,6 +70,8 @@ export function ClinicalVoicePage() {
   const wordIndexRef = useRef(0);
   const recognitionRef = useRef<any>(null);
   const speechFinalRef = useRef("");
+  const speechCurrentRef = useRef("");
+  const sessionFinalDeliveredRef = useRef(false);
 
   const { isFetching } = useQuery(
     getVoiceAssistantResponse,
@@ -156,7 +158,7 @@ export function ClinicalVoicePage() {
         window.setTimeout(() => {
           setResponse({ ...DEMO_RESPONSE, query: text });
           setPhase("RESPONDING");
-        }, 1600),
+        }, 700),
       );
       return;
     }
@@ -188,6 +190,31 @@ export function ClinicalVoicePage() {
     }
   };
 
+  // Detiene la escucha y consulta de inmediato con el texto capturado.
+  const submitSpeech = () => {
+    setSpeechOn(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+      recognitionRef.current = null;
+    }
+    const text = speechCurrentRef.current.trim();
+    if (!text) {
+      setError("No se captó tu voz. Habla de nuevo o escribe la consulta.");
+      setPhase("IDLE");
+      return;
+    }
+    setQueryInput(text);
+    void beginProcessing(text);
+  };
+
   // Reconocimiento de voz real (Web Speech API). Devuelve true si ya disparó
   // una acción (voz en marcha o demo simulada), false si no soporta voz y hay
   // que caer a la consulta escrita.
@@ -209,24 +236,35 @@ export function ClinicalVoicePage() {
     setShowSparkline(false);
     setPhase("LISTENING");
     speechFinalRef.current = "";
+    speechCurrentRef.current = "";
+    sessionFinalDeliveredRef.current = false;
     setSpeechOn(true);
 
     const rec = new SR();
     recognitionRef.current = rec;
     rec.lang = "es-ES";
-    rec.continuous = true;
+    rec.continuous = false;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
     rec.onresult = (e: any) => {
-      let final = "";
+      let text = "";
+      let hasFinal = false;
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) final += r[0].transcript;
+        text += r[0].transcript;
+        if (r.isFinal) hasFinal = true;
       }
-      if (final) {
-        speechFinalRef.current = `${speechFinalRef.current} ${final}`.trim();
-        setTranscript(speechFinalRef.current);
+      if (text) {
+        speechCurrentRef.current = speechCurrentRef.current
+          ? `${speechCurrentRef.current} ${text}`.trim()
+          : text.trim();
+        setTranscript(speechCurrentRef.current);
+      }
+      // Enviar apenas haya un resultado final, sin esperar el corte de silencio.
+      if (hasFinal && !sessionFinalDeliveredRef.current) {
+        sessionFinalDeliveredRef.current = true;
+        submitSpeech();
       }
     };
 
@@ -251,14 +289,16 @@ export function ClinicalVoicePage() {
     rec.onend = () => {
       setSpeechOn(false);
       recognitionRef.current = null;
-      const text = speechFinalRef.current.trim();
+      // Si el resultado final ya se envió desde onresult, no duplicar.
+      if (sessionFinalDeliveredRef.current) return;
+      const text = speechCurrentRef.current.trim();
       if (!text) {
         setError("No se captó tu voz. Escribe la consulta o pulsa un paciente asignado.");
         setPhase("IDLE");
         return;
       }
-      setQueryInput(text);
-      void beginProcessing(text);
+      sessionFinalDeliveredRef.current = true;
+      submitSpeech();
     };
 
     rec.start();
@@ -365,7 +405,17 @@ export function ClinicalVoicePage() {
             {speechOn && (
               <>
                 <span className="animate-pulse text-emerald-400">· habla ahora…</span>
-                <Button variant="ghost" size="sm" onClick={stopSpeech}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={submitSpeech}
+                  disabled={!transcript}
+                  className="gap-1"
+                >
+                  <Mic className="size-3.5" />
+                  Consultar ya
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleReset}>
                   Cancelar
                 </Button>
               </>
