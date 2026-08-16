@@ -64,9 +64,12 @@ export function ClinicalVoicePage() {
   const [response, setResponse] = useState<VoiceAssistantResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSparkline, setShowSparkline] = useState(false);
+  const [speechOn, setSpeechOn] = useState(false);
 
   const timersRef = useRef<number[]>([]);
   const wordIndexRef = useRef(0);
+  const recognitionRef = useRef<any>(null);
+  const speechFinalRef = useRef("");
 
   const { isFetching } = useQuery(
     getVoiceAssistantResponse,
@@ -88,6 +91,18 @@ export function ClinicalVoicePage() {
   }, []);
 
   useEffect(() => clearTimers, [clearTimers]);
+  useEffect(
+    () => () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+    },
+    [],
+  );
 
   if (!user?.isMedico || user.isAdmin) {
     return (
@@ -161,8 +176,98 @@ export function ClinicalVoicePage() {
     }
   };
 
+  const stopSpeech = () => {
+    setSpeechOn(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+      recognitionRef.current = null;
+    }
+  };
+
+  // Reconocimiento de voz real (Web Speech API). Devuelve true si ya disparó
+  // una acción (voz en marcha o demo simulada), false si no soporta voz y hay
+  // que caer a la consulta escrita.
+  const startSpeech = (): boolean => {
+    if (demoMode) {
+      if (!effectiveQuery) return false;
+      beginListening(DEMO_QUERY);
+      return true;
+    }
+
+    const SR =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return false;
+
+    clearTimers();
+    setError(null);
+    setResponse(null);
+    setTranscript("");
+    setShowSparkline(false);
+    setPhase("LISTENING");
+    speechFinalRef.current = "";
+    setSpeechOn(true);
+
+    const rec = new SR();
+    recognitionRef.current = rec;
+    rec.lang = "es-ES";
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+
+    rec.onresult = (e: any) => {
+      let final = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) final += r[0].transcript;
+      }
+      if (final) {
+        speechFinalRef.current = `${speechFinalRef.current} ${final}`.trim();
+        setTranscript(speechFinalRef.current);
+      }
+    };
+
+    rec.onerror = (e: any) => {
+      setSpeechOn(false);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+        recognitionRef.current = null;
+      }
+      const errorMsg =
+        e?.error === "not-allowed" || e?.error === "service-not-allowed"
+          ? "Micrófono no permitido. Activa el permiso de voz o escribe la consulta."
+          : "No se pudo captar tu voz. Intenta de nuevo o escribe la consulta.";
+      setError(errorMsg);
+      setPhase("IDLE");
+    };
+
+    rec.onend = () => {
+      setSpeechOn(false);
+      recognitionRef.current = null;
+      const text = speechFinalRef.current.trim();
+      if (!text) {
+        setError("No se captó tu voz. Escribe la consulta o pulsa un paciente asignado.");
+        setPhase("IDLE");
+        return;
+      }
+      setQueryInput(text);
+      void beginProcessing(text);
+    };
+
+    rec.start();
+    return true;
+  };
+
   const handleOrbActivate = () => {
     if (phase !== "IDLE" && phase !== "RESPONDING") return;
+    if (startSpeech()) return;
     if (!effectiveQuery) {
       setError("Escribe una consulta o pulsa un paciente asignado.");
       return;
@@ -181,6 +286,7 @@ export function ClinicalVoicePage() {
   };
 
   const handleReset = () => {
+    stopSpeech();
     clearTimers();
     setPhase("IDLE");
     setTranscript("");
@@ -256,6 +362,14 @@ export function ClinicalVoicePage() {
               {STATUS_HINT[phase]}
             </span>
             {isFetching && <span className="animate-pulse">· consultando…</span>}
+            {speechOn && (
+              <>
+                <span className="animate-pulse text-emerald-400">· habla ahora…</span>
+                <Button variant="ghost" size="sm" onClick={stopSpeech}>
+                  Cancelar
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Transcripción */}
@@ -290,10 +404,11 @@ export function ClinicalVoicePage() {
               disabled={phase === "LISTENING" || phase === "PROCESSING"}
             />
             <Button
-              type="submit"
+              type="button"
               size="icon"
-              aria-label="Enviar consulta"
+              aria-label="Hablar"
               disabled={phase !== "IDLE"}
+              onClick={handleOrbActivate}
             >
               <Mic className="size-4" />
             </Button>
