@@ -21,6 +21,7 @@ import {
 import { SectionEditor, type SectionDraft } from "../components/SectionEditor";
 import { statusLabel } from "../services/statusLabels";
 import type { SectionKey } from "../services/noteValidation";
+import { toast } from "../../client/hooks/use-toast";
 
 export function ClinicalNotePage() {
   const { noteId } = useParams();
@@ -91,6 +92,7 @@ export function ClinicalNotePage() {
         sectionsNotApplicable: draft.sectionsNotApplicable,
       });
       await refetch();
+      toast({ title: "Nota clínica guardada correctamente" });
     } catch (err: any) {
       setError(err?.message ?? "No se pudo guardar");
     } finally {
@@ -104,6 +106,7 @@ export function ClinicalNotePage() {
     try {
       await requestAIFn({ noteId: note.id });
       await refetch();
+      toast({ title: "Nota estructurada con IA" });
     } catch (err: any) {
       setError(err?.message ?? "No se pudo estructurar");
     } finally {
@@ -117,6 +120,7 @@ export function ClinicalNotePage() {
     try {
       await confirmFn({ noteId: note.id });
       await refetch();
+      toast({ title: "Nota clínica confirmada" });
     } catch (err: any) {
       setError(err?.message ?? "No se pudo confirmar");
     } finally {
@@ -133,6 +137,7 @@ export function ClinicalNotePage() {
         originalText: addendumText,
         addendumReason,
       });
+      toast({ title: "Adenda creada correctamente" });
       navigate(routes.ClinicalNoteRoute.build({ params: { noteId: addendum.id } }));
     } catch (err: any) {
       setError(err?.message ?? "No se pudo crear la adenda");

@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "../../client/components/ui/card";
 import { statusLabel } from "../services/statusLabels";
+import { toast } from "../../client/hooks/use-toast";
 
 export function ClinicalPatientDetailPage() {
   const { patientId } = useParams();
@@ -61,6 +62,7 @@ export function ClinicalPatientDetailPage() {
     setCreating(true);
     try {
       const note = await createNoteFn({ patientId: patientId!, originalText: newNoteText });
+      toast({ title: "Nota clínica creada correctamente" });
       navigate(routes.ClinicalNoteRoute.build({ params: { noteId: note.id } }));
     } finally {
       setCreating(false);
@@ -70,9 +72,14 @@ export function ClinicalPatientDetailPage() {
   const handleGenerateEpicrisis = async () => {
     try {
       const epicrisis = await generateEpicrisisFn({ patientId: patientId! });
+      toast({ title: "Epicrisis generada correctamente" });
       navigate(routes.ClinicalEpicrisisRoute.build({ params: { epicrisisId: epicrisis.id } }));
     } catch (err: any) {
-      alert(err?.message ?? "No se pudo generar la epicrisis");
+      toast({
+        title: "No se pudo generar la epicrisis",
+        description: err?.message,
+        variant: "destructive",
+      });
     }
   };
 

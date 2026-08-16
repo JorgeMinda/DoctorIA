@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "../../client/components/ui/card";
 import { statusLabel } from "../services/statusLabels";
+import { toast } from "../../client/hooks/use-toast";
 
 type EpicrisisFieldKey =
   | "patientIdentification"
@@ -84,6 +85,7 @@ export function ClinicalEpicrisisPage() {
         followUpInstructions: epicrisis.followUpInstructions ?? undefined,
       });
       await refetch();
+      toast({ title: "Epicrisis guardada correctamente" });
     } catch (err: any) {
       setError(err?.message ?? "No se pudo guardar");
     } finally {
@@ -97,6 +99,7 @@ export function ClinicalEpicrisisPage() {
     try {
       await confirmFn({ epicrisisId: epicrisis.id });
       await refetch();
+      toast({ title: "Epicrisis confirmada" });
     } catch (err: any) {
       setError(err?.message ?? "No se pudo confirmar");
     } finally {
@@ -114,6 +117,7 @@ export function ClinicalEpicrisisPage() {
         patientIdentification: epicrisis.patientIdentification,
         ...addendumDraft,
       });
+      toast({ title: "Adenda de epicrisis creada" });
       navigate(routes.ClinicalEpicrisisRoute.build({ params: { epicrisisId: addendum.id } }));
     } catch (err: any) {
       setError(err?.message ?? "No se pudo crear la adenda");
