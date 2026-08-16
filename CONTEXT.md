@@ -160,10 +160,10 @@ specs/001-doctoria-mvp/
 
 ## 7. Decisiones pendientes y deudas técnicas
 
-| Proveedor de IA (PD-01) | ✅ **RESUELTO** — Integrado vía **OpenRouter** (`https://openrouter.ai/api/v1/chat/completions`, modelo `openai/gpt-oss-20b:free` en dev/demo). Gemini quedó bloqueado (403) en la cuenta; se migró a OpenRouter. Para producción usar clave paga/BYOK y modelo superior. |
+| Proveedor de IA (PD-01) | ✅ **RESUELTO** — Integrado vía **OpenRouter** (`https://openrouter.ai/api/v1/chat/completions`, modelo `openai/gpt-oss-20b:free` en dev/demo). Gemini quedó bloqueado (403) en la cuenta; se migró a OpenRouter. `OPENROUTER_API_KEY` ya configurada en Render y server corriendo sin errores (15-ago). Para producción usar clave paga/BYOK y modelo superior. |
 | Email verificado en Resend | PENDIENTE — `onboarding@resend.dev` no permite verificar cuentas arbitrarias; para pilotos se necesita dominio verificado |
 | Entrevistas de Semana 1 | Deuda — 5/8; continúa validación con pilotos |
-| Google Stitch (PD-03) | PENDIENTE — diseño de 2-3 pantallas no realizado (se implementó UI directa) |
+| Google Stitch (PD-03) | ✅ **HECHO** — pantallas del flujo clínico diseñadas e implementadas (UI directa validada, 15-ago) |
 | Deploy manual del client | Documentado como caveat del free tier |
 | DB free expira 30 días | Requiere plan pagado para pilotos largos |
 
