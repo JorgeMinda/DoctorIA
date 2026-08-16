@@ -248,21 +248,23 @@ export function ClinicalVoicePage() {
     rec.maxAlternatives = 1;
 
     rec.onresult = (e: any) => {
-      let text = "";
-      let hasFinal = false;
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      let final = "";
+      let interim = "";
+      for (let i = 0; i < e.results.length; i++) {
         const r = e.results[i];
-        text += r[0].transcript;
-        if (r.isFinal) hasFinal = true;
+        const t = r[0].transcript;
+        if (r.isFinal) final += `${t} `;
+        else interim += `${t} `;
       }
-      if (text) {
-        speechCurrentRef.current = speechCurrentRef.current
-          ? `${speechCurrentRef.current} ${text}`.trim()
-          : text.trim();
-        setTranscript(speechCurrentRef.current);
+      // Se recalcula el texto completo en cada evento (no se acumula),
+      // para que el provisional (interim) no se duplique.
+      const full = `${final}${interim}`.trim();
+      if (full) {
+        speechCurrentRef.current = full;
+        setTranscript(full);
       }
       // Enviar apenas haya un resultado final, sin esperar el corte de silencio.
-      if (hasFinal && !sessionFinalDeliveredRef.current) {
+      if (final.trim() && !sessionFinalDeliveredRef.current) {
         sessionFinalDeliveredRef.current = true;
         submitSpeech();
       }
