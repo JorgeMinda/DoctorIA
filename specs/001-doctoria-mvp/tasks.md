@@ -94,6 +94,17 @@
 
 ---
 
+## Fase 6: E2E flujo clínico completo por API (Semana 4 — cierre)
+
+**Propósito**: Verificar el flujo clínico completo contra producción (API `doctoria-server.onrender.com`, auth Bearer + superjson) y documentar los hallazgos.
+
+- [X] T030 Ejecutar E2E del flujo clínico completo contra producción: login → `create-clinical-note` → `request-aistructuring` → `update-clinical-note-draft` → `confirm-clinical-note` → `get-audit-log`, sobre PAC-004 (Pedro Salazar), nota `3a527988-f4d6-40e4-a0b0-4021f5a91d12`
+- [X] T031 Documentar en `qa/week4-qa-report.md` la sección *Flujo clínico completo* con los hallazgos: **CRITICAL** (race de `requestAIStructuring` que sobrescribe ediciones del médico), **MAJOR** (latencia IA ~120–130 s por 3 reintentos × 30 s) y **MINOR** (IA no determinista)
+
+**Checkpoint**: Flujo clínico E2E verificado 6/6 pasos contra producción; hallazgos reportados con severidad.
+
+---
+
 ## Dependencias y orden de ejecución
 
 - **T001 → T002–T005**: Config primero, tests después (paralelizables entre sí).
@@ -108,4 +119,4 @@
 - Los tests unitarios se ejecutan desde Windows con `node node_modules\vitest\dist\cli.js run` (workdir `app/`) porque los bindings rolldown instalados son Linux y WSL estaba caído durante el desarrollo de la suite.
 - Los e2e se ejecutan con `npx playwright test --config=playwright.local.config.ts` (workdir `e2e-tests/`) contra la app levantada en `localhost:3000/3001`.
 - El repo activo para desarrollo es la copia nativa WSL en `/home/minda/DoctorIA` (rama `001-doctoria-mvp`); la copia de `C:\Users\minda\Desktop\doctoria\doctoria` es respaldo. Los e2e corren desde Windows contra `localhost:3000` vía WSL2 forwarding.
-- Pendiente de Semana 4: ~~deploy a staging, HTTPS+SSL, smoke test y reporte de QA~~ ✅ Completado en T021–T029 (staging live en Render, seeds sembrados, QA 5/5, checklist de producción).
+- Pendiente de Semana 4: ~~deploy a staging, HTTPS+SSL, smoke test y reporte de QA~~ ✅ Completado en T021–T031 (staging live en Render, seeds sembrados, QA 5/5, checklist de producción, E2E flujo clínico completo documentado).

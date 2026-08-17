@@ -53,6 +53,38 @@ Se detectó **1 regresión** en el recorrido inicial (Home → intake), que fue 
 
 ---
 
+## Flujo clínico completo (E2E por API contra producción)
+
+**Date**: 2026-08-16
+**Environment**: producción (`doctoria-server.onrender.com`), operaciones `/operations/<kebab>` con auth `Bearer` + serialización superjson `{"json": ...}`
+**Método**: E2E por API (curl). Sin navegador: no se verificó renderizado de toasts ni captura de micrófono.
+
+### Pasos verificados
+
+| Paso | Estado | Detalle |
+|:--|:--|:--|
+| Login API (`auth/email/login`) | ✅ PASS | 200 → `sessionId` (sin cookie) |
+| `create-clinical-note` | ✅ PASS | Nota `DRAFT_MANUAL` sobre **PAC-004** (Pedro Salazar); `originalText` preservado (RNF-004) |
+| `request-aistructuring` (reintento) | ✅ PASS | 200 en **25 s** → `DRAFT_AI_ASSISTED`, 5 secciones estructuradas; `valoracionClinica` quedó `null` (no estaba en el texto, correcto) |
+| Edición de secciones (`update-clinical-note-draft`) | ✅ PASS | Estado → `REVIEWED` al completar todas las obligatorias |
+| `confirm-clinical-note` (incompleto) | ✅ PASS (validación) | **422** "Secciones obligatorias incompletas: Valoración clínica" (RF-026/027) |
+| `confirm-clinical-note` (completo) | ✅ PASS | 200 → `CONFIRMED` con `confirmedById`/`confirmedAt` |
+| `get-audit-log` | ✅ PASS | Trazabilidad completa: `CREATE_NOTE` → `REQUEST_AI_STRUCTURING` → `REVIEW_NOTE` → `CONFIRM_NOTE` (+ `VOICE_ASSISTANT_QUERY`/`VIEW_PATIENT` de la sesión anterior) |
+
+### Hallazgos
+
+- **CRITICAL — Race que sobrescribe ediciones del médico** (`app/src/clinical/actions.ts:197-210`): la primera llamada a `request-aistructuring` colgó >120 s del lado del cliente, pero siguió ejecutándose server-side; su escritura tardía llegó ~5 s después de una edición manual del draft y **reemplazó `valoracionClinica`/`examenFisico` editados** por texto generado por IA, y la confirmación posterior quedó sobre esa versión no revisada. `requestAIStructuring` valida el estado solo al inicio (L185) y escribe sin re-validar: un médico que edita mientras la IA está en vuelo puede firmar contenido distinto al que revisó.
+- **MAJOR — Latencia IA ~120–130 s**: 3 intentos × timeout 30 s + backoff (`aiService.ts:41,54,122,130-138`); observado 25 s vs >120 s en cold/rate-limit del modelo free. El "fallback de 30 s" es por intento, no fin-a-fin; el usuario ve un spinner indefinido.
+- **MINOR — IA no determinista**: dos corridas devolvieron divisiones distintas (TA/FC/EVA se movieron a `examenFisico`, `motivoConsulta` cambió). Aceptable como asistiva, pero amplifica el race anterior.
+
+### Comportamiento correcto verificado
+
+- **RNF-008**: ante fallo de IA, la nota permanece `DRAFT_MANUAL` con el texto intacto (el primer intento colgado no dañó datos).
+- **RNF-004**: `originalText` nunca se modifica vía draft/IA/confirmación.
+- Validación de confirmación descriptiva (422) y auditoría completa de la trazabilidad.
+
+---
+
 ## Entorno y método
 
 - **App**: `https://doctoria-client.onrender.com` · API: `https://doctoria-server.onrender.com`

@@ -116,6 +116,7 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **5/5 flujos E2E superados** contra staging: (1) Home→Comenzar→intake, (2) entry points visibles, (3) login desde home, (4) sesión persistente, (5) credenciales inválidas controladas.
 - **Defecto D-01 corregido** (commit `94b6fe0`): el CTA `Comenzar` (Hero + FinalCTA) apuntaba a `SignupRoute`; ahora apunta a `ClinicalVoiceRoute` (`/clinical/voice`), que redirige a `/login` por auth guard — en vez de signup.
 - Documentos: `specs/001-doctoria-mvp/qa/week4-qa-report.md` y `specs/001-doctoria-mvp/checklists/production.md`.
+- **E2E flujo clínico completo (16-ago)**: verificado por API contra producción (login → create-note → IA → edición draft → confirm → audit, 6/6 pasos). Hallazgo **CRITICAL**: `requestAIStructuring` (actions.ts L197-210) escribe sin revalidar el estado de la nota, de modo que una llamada IA que quedó en vuelo puede sobrescribir ediciones manuales del médico; reportado en `week4-qa-report.md` (sección *Flujo clínico completo*).
 - Suites locales: Vitest 43/43 verde, Playwright E2E 10/10 verde.
 
 ---
@@ -152,8 +153,8 @@ specs/001-doctoria-mvp/
 ├── checklists/
 │   ├── requirements.md    # QA de la spec
 │   └── production.md      # Checklist producción (Semana 4, 100%)
-├── qa/week4-qa-report.md  # Reporte QA (D-01 + verificación 5/5)
-└── tasks.md               # Registro de tareas T001–T029 (Semana 3–4)
+├── qa/week4-qa-report.md  # Reporte QA (D-01 + verificación 5/5 + flujo clínico completo 16-ago)
+└── tasks.md               # Registro de tareas T001–T031 (Semana 3–4)
 ```
 
 ---
@@ -165,6 +166,7 @@ specs/001-doctoria-mvp/
 | Entrevistas de Semana 1 | Deuda — 5/8; continúa validación con pilotos |
 | Google Stitch (PD-03) | ✅ **HECHO** — pantallas del flujo clínico diseñadas e implementadas (UI directa validada, 15-ago) |
 | Deploy manual del client | Documentado como caveat del free tier |
+| Race en `requestAIStructuring` | PENDIENTE — **CRITICAL**: escritura sin revalidar (actions.ts L197-210); una llamada IA en vuelo puede sobrescribir ediciones del médico. Fix propuesto: revalidar estado/`updatedAt` justo antes de escribir (409 si cambió) |
 | DB free expira 30 días | Requiere plan pagado para pilotos largos |
 
 ---
@@ -174,6 +176,7 @@ specs/001-doctoria-mvp/
 1. **Estrategia comercial**: plan de adquisición de clientes + agenda de 5 contactos reales documentados en `specs/001-doctoria-mvp/week5-commercial-plan.md`.
 2. Preparar demo de la aplicación (landing + flujo clínico con cuentas seed).
 3. Iterar el MVP con feedback de pilotos (Semana 7).
+4. **Fix pendiente (CRITICAL, de deuda técnica)**: revalidar estado/`updatedAt` en `requestAIStructuring` antes de escribir para evitar que una llamada IA tardía sobrescriba ediciones del médico.
 
 > **Nota de despliegue (15-ago)**: la integración de IA migró de Gemini (bloqueado 403) a **OpenRouter**. El deploy de Render requiere la variable `OPENROUTER_API_KEY` configurada en el dashboard (el free tier `gpt-oss-20b:free` funciona para demo; para producción usar clave paga/BYOK).
 
