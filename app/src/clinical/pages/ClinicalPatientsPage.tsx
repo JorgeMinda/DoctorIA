@@ -149,7 +149,11 @@ export function ClinicalPatientsPage() {
             Lista de pacientes asignados
           </p>
           <Badge variant="outline" className="mono-label">
-            {data ? `${data.patients.length} · PAC-${String(page).padStart(3, "0")}` : "—"}
+            {data
+              ? search
+                ? `${data.patients.length} resultado(s)`
+                : `${data.patients.length} asignados`
+              : "—"}
           </Badge>
         </div>
 
@@ -161,7 +165,9 @@ export function ClinicalPatientsPage() {
           )}
           {data && data.patients.length === 0 && (
             <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-              No hay pacientes asignados a su cuenta.
+              {search
+                ? "Sin resultados para la búsqueda."
+                : "No hay pacientes asignados a su cuenta."}
             </div>
           )}
           {data &&

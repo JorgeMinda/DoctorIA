@@ -1,6 +1,6 @@
 # CONTEXT: DoctorIA MVP — Estado actual del proyecto (para IA colaboradora)
 
-**Última actualización**: 2026-08-16 · **Rama de trabajo**: `001-doctoria-mvp` → se promueve a `main` (deploy de Render)
+**Última actualización**: 2026-08-18 · **Rama de trabajo**: `001-doctoria-mvp` → se promueve a `main` (deploy de Render)
 **Autor de este contexto**: agente principal del equipo DoctorIA
 
 > **Reglas de comportamiento para agentes** (dominio, arquitectura, off-limits, comandos): ver [AGENTS.md](AGENTS.md) en la raíz. Este `CONTEXT.md` documenta el **estado mutable** del proyecto (cambia cada sesión); `AGENTS.md` documenta lo **casi-estático**.
@@ -52,8 +52,9 @@ app/
 │   │   ├── services/         # authorization.ts (guards RBAC), ai-structuring.ts (contrato IA), audit.ts, immutability.ts, note-validation.ts, voiceAssistant.ts
 │   │   └── pages/            # Patients, PatientDetail, Note, Epicrisis, Audit, Admin, Voice
 │   ├── landing-page/         # Landing (Hero, FeaturesGrid, FinalCTA, Testimonials, FAQ, Footer, VoiceOrbHero)
+│   ├── auth/                 # Auth email/password + layout "Ambient Voice Interface" (AuthPageLayout, ambientAuthTheme)
 │   ├── user/                 # Operaciones de usuarios (admin)
-│   ├── client/               # App root, componentes UI, layout
+│   ├── client/               # App root, componentes UI (ui/, clinical-layout/), layout
 │   ├── server/               # env, scripts/dbSeeds.ts
 │   └── shared/
 ├── .wasp/out/                # Build generado (SDK, server, web-app) — NO editar
@@ -119,6 +120,16 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **E2E flujo clínico completo (16-ago)**: verificado por API contra producción (login → create-note → IA → edición draft → confirm → audit, 6/6 pasos). Hallazgo **CRITICAL**: `requestAIStructuring` (actions.ts L197-210) escribe sin revalidar el estado de la nota, de modo que una llamada IA que quedó en vuelo puede sobrescribir ediciones manuales del médico; reportado en `week4-qa-report.md` (sección *Flujo clínico completo*).
 - Suites locales: Vitest 43/43 verde, Playwright E2E 10/10 verde.
 
+### Rediseño visual "Clinical Intelligence" (frente de UI, 17–18 ago) — COMPLETO
+
+- **Tokens + tipografía** (`app/src/client/Main.css`): paleta dark exacta de la referencia (#111318 fondo, #00daf3 primary, surfaces, outlines) + light adaptada; `@theme inline` con `surface`, `surface-container`, `surface-high`, `surface-highest`, `outline`, `outline-variant`, `primary-bright`; fuentes **Hanken Grotesk** (sans) + **JetBrains Mono** (mono) vía `head.wasp.ts`; utilities `glass-panel`, `text-glow-primary`, `mono-label`.
+- **Layout clínico** (`app/src/client/components/clinical-layout/`): `Sidebar` (256px, grupos Clínica/Gestión, item activo cyan con glow, footer usuario), `Topbar` (título de sección + breadcrumb mono + dark mode + user dropdown), `ClinicalLayout` (sidebar desktop + Sheet móvil), `nav-items.ts` (`isClinicalNavItemActive`). `App.tsx`: `/clinical/*` → `ClinicalLayout`; landing y auth intactas.
+- **Páginas clínicas rediseñadas** (misma lógica/queries/RBAC/rutas): Pacientes (dashboard con stats reales + tabla profesional + badges), Detalle de paciente (identidad + contadores + historial), Nota clínica (texto original inmutable RNF-004 + secciones + adendas), Epicrisis, Auditoría (timeline), Admin (tarjetas de gestión), Voz (pase de consistencia; orbe intacto).
+- **Componentes nuevos**: `client/components/ui/badge.tsx`, `clinical/components/StatusBadge.tsx`, `clinical/services/clinicalFormat.ts`.
+- **Auth "Ambient Voice Interface"** (`app/src/auth/`): fondo oscuro + gradientes cyan/violeta/verde + orbe decorativo + tarjeta glass (`AuthPageLayout`), formularios Wasp tematizados vía prop oficial `appearance` + CSS scoped (`ambientAuthTheme.ts`) en Login, Signup, Reset y Verify. **Solo capa visual** — no se tocó `useAuth`, validación, campos ni redirects.
+- **Validación visual contra prod (18-ago)**: Playwright `e2e-tests/playwright.prod.config.ts` + `tests/redesignProdValidation.spec.ts` → **4/4 verde** contra `doctoria-client.onrender.com` (login ambiental, dashboard médico, detalle de paciente, auditoría + voz). `tsc -p tsconfig.src.json` limpio salvo el error preexistente `aiService.ts:57` (OPENROUTER_API_KEY del SDK); Vitest no-IA 36/36.
+- Commits: `26be1fa` (tokens+layout), `3984528` (fix build crossorigin), `27fe648` (páginas clínicas), `61dca5b` (auth ambiental). Todos en `main`.
+
 ---
 
 ## 6. Repositorio y flujo de trabajo
@@ -176,10 +187,11 @@ specs/001-doctoria-mvp/
 
 ## 8. Próximos pasos (Semana 5 — vigente)
 
-1. **Estrategia comercial**: plan de adquisición de clientes + agenda de 5 contactos reales documentados en `specs/001-doctoria-mvp/week5-commercial-plan.md`.
-2. Preparar demo de la aplicación (landing + flujo clínico con cuentas seed).
-3. Iterar el MVP con feedback de pilotos (Semana 7).
-4. **Fix pendiente (CRITICAL, de deuda técnica)**: revalidar estado/`updatedAt` en `requestAIStructuring` antes de escribir para evitar que una llamada IA tardía sobrescriba ediciones del médico.
+1. ✓ **Frente visual cerrado (17–18 ago)**: rediseño Clinical Intelligence + auth Ambient Voice Interface, validado 4/4 contra prod y en `main`.
+2. **Estrategia comercial**: plan de adquisición de clientes + agenda de 5 contactos reales documentados en `specs/001-doctoria-mvp/week5-commercial-plan.md`.
+3. Preparar demo de la aplicación (landing + flujo clínico con cuentas seed).
+4. Iterar el MVP con feedback de pilotos (Semana 7).
+5. **Fix pendiente (CRITICAL, de deuda técnica)**: revalidar estado/`updatedAt` en `requestAIStructuring` antes de escribir para evitar que una llamada IA tardía sobrescriba ediciones del médico.
 
 > **Nota de despliegue (15-ago)**: la integración de IA migró de Gemini (bloqueado 403) a **OpenRouter**. El deploy de Render requiere la variable `OPENROUTER_API_KEY` configurada en el dashboard (el free tier `gpt-oss-20b:free` funciona para demo; para producción usar clave paga/BYOK).
 
