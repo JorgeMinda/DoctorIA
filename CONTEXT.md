@@ -1,6 +1,6 @@
 # CONTEXT: DoctorIA MVP — Estado actual del proyecto (para IA colaboradora)
 
-**Última actualización**: 2026-08-15 · **Rama de trabajo**: `001-doctoria-mvp` → se promueve a `main` (deploy de Render)
+**Última actualización**: 2026-08-16 · **Rama de trabajo**: `001-doctoria-mvp` → se promueve a `main` (deploy de Render)
 **Autor de este contexto**: agente principal del equipo DoctorIA
 
 > **Reglas de comportamiento para agentes** (dominio, arquitectura, off-limits, comandos): ver [AGENTS.md](AGENTS.md) en la raíz. Este `CONTEXT.md` documenta el **estado mutable** del proyecto (cambia cada sesión); `AGENTS.md` documenta lo **casi-estático**.
@@ -154,6 +154,7 @@ specs/001-doctoria-mvp/
 │   ├── requirements.md    # QA de la spec
 │   └── production.md      # Checklist producción (Semana 4, 100%)
 ├── qa/week4-qa-report.md  # Reporte QA (D-01 + verificación 5/5 + flujo clínico completo 16-ago)
+├── qa/week34-informe.md   # Informe detallado de las Semanas 3-4 (16-ago, mismo formato que Semana 2)
 └── tasks.md               # Registro de tareas T001–T031 (Semana 3–4)
 ```
 
@@ -167,6 +168,8 @@ specs/001-doctoria-mvp/
 | Google Stitch (PD-03) | ✅ **HECHO** — pantallas del flujo clínico diseñadas e implementadas (UI directa validada, 15-ago) |
 | Deploy manual del client | Documentado como caveat del free tier |
 | Race en `requestAIStructuring` | PENDIENTE — **CRITICAL**: escritura sin revalidar (actions.ts L197-210); una llamada IA en vuelo puede sobrescribir ediciones del médico. Fix propuesto: revalidar estado/`updatedAt` justo antes de escribir (409 si cambió) |
+| Latencia IA (~120–130 s) | PENDIENTE — **MAJOR**: 3 intentos × timeout 30 s + backoff de OpenRouter free (aiService.ts). Mitigación: reducir `AI_MAX_RETRIES` a 1 o mover IA a job/cola con progreso (16-ago) |
+| IA no determinista | PENDIENTE — **MINOR**: dos corridas devuelven divisiones distintas de las secciones; mitigar con `temperature` baja o bloqueo del campo editado (16-ago) |
 | DB free expira 30 días | Requiere plan pagado para pilotos largos |
 
 ---
