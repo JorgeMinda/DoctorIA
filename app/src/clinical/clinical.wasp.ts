@@ -4,6 +4,8 @@
 import { action, page, query, route, type Spec } from "@wasp.sh/spec";
 
 import {
+  adminCreateMedicoUser,
+  adminUpdateMedicoUser,
   createClinicalNote,
   createEpicrisisAddendum,
   createNoteAddendum,
@@ -17,6 +19,7 @@ import {
   updateEpicrisisDraft,
 } from "./actions" with { type: "ref" };
 import {
+  adminGetPatients,
   getAuditLog,
   getClinicalNote,
   getEpicrisis,
@@ -40,10 +43,15 @@ export const clinicalSpec: Spec = [
     entities: ["SyntheticPatient", "MedicoPatientAccess"],
   }),
   query(getPatientById, {
-    entities: ["SyntheticPatient", "ClinicalNote", "Epicrisis", "MedicoPatientAccess"],
+    entities: [
+      "SyntheticPatient",
+      "ClinicalNote",
+      "Epicrisis",
+      "MedicoPatientAccess",
+    ],
   }),
   query(getPatientHistory, {
-    entities: ["ClinicalNote", "MedicoPatientAccess"],
+    entities: ["ClinicalNote", "Epicrisis", "MedicoPatientAccess"],
   }),
   query(getClinicalNote, {
     entities: ["ClinicalNote", "MedicoPatientAccess"],
@@ -55,10 +63,18 @@ export const clinicalSpec: Spec = [
   query(getVoiceAssistantResponse, {
     entities: ["SyntheticPatient", "MedicoPatientAccess", "AuditLog"],
   }),
+  query(adminGetPatients, {
+    entities: ["SyntheticPatient", "MedicoPatientAccess", "User"],
+  }),
 
   // Actions (contracts §2, §3, §5)
   action(createClinicalNote, {
-    entities: ["ClinicalNote", "SyntheticPatient", "MedicoPatientAccess", "AuditLog"],
+    entities: [
+      "ClinicalNote",
+      "SyntheticPatient",
+      "MedicoPatientAccess",
+      "AuditLog",
+    ],
   }),
   action(updateClinicalNoteDraft, {
     entities: ["ClinicalNote", "MedicoPatientAccess", "AuditLog"],
@@ -73,7 +89,13 @@ export const clinicalSpec: Spec = [
     entities: ["ClinicalNote", "MedicoPatientAccess", "AuditLog"],
   }),
   action(generateEpicrisisDraft, {
-    entities: ["Epicrisis", "ClinicalNote", "SyntheticPatient", "MedicoPatientAccess", "AuditLog"],
+    entities: [
+      "Epicrisis",
+      "ClinicalNote",
+      "SyntheticPatient",
+      "MedicoPatientAccess",
+      "AuditLog",
+    ],
   }),
   action(updateEpicrisisDraft, {
     entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],
@@ -85,18 +107,58 @@ export const clinicalSpec: Spec = [
     entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],
   }),
   action(manageSyntheticPatients, {
-    entities: ["SyntheticPatient", "ClinicalNote", "Epicrisis", "MedicoPatientAccess", "AuditLog"],
+    entities: [
+      "SyntheticPatient",
+      "ClinicalNote",
+      "Epicrisis",
+      "MedicoPatientAccess",
+      "AuditLog",
+    ],
   }),
   action(manageMedicoPatientAccess, {
     entities: ["MedicoPatientAccess", "User", "SyntheticPatient", "AuditLog"],
   }),
+  action(adminCreateMedicoUser, {
+    entities: ["User", "AuditLog"],
+  }),
+  action(adminUpdateMedicoUser, {
+    entities: ["User", "AuditLog"],
+  }),
 
   // Rutas / páginas clínicas
-  route("ClinicalPatientsRoute", "/clinical/patients", page(ClinicalPatientsPage, { authRequired: true })),
-  route("ClinicalPatientDetailRoute", "/clinical/patients/:patientId", page(ClinicalPatientDetailPage, { authRequired: true })),
-  route("ClinicalNoteRoute", "/clinical/notes/:noteId", page(ClinicalNotePage, { authRequired: true })),
-  route("ClinicalEpicrisisRoute", "/clinical/epicrises/:epicrisisId", page(ClinicalEpicrisisPage, { authRequired: true })),
-  route("ClinicalAuditRoute", "/clinical/audit", page(ClinicalAuditPage, { authRequired: true })),
-  route("ClinicalAdminRoute", "/clinical/admin", page(ClinicalAdminPage, { authRequired: true })),
-  route("ClinicalVoiceRoute", "/clinical/voice", page(ClinicalVoicePage, { authRequired: true })),
+  route(
+    "ClinicalPatientsRoute",
+    "/clinical/patients",
+    page(ClinicalPatientsPage, { authRequired: true }),
+  ),
+  route(
+    "ClinicalPatientDetailRoute",
+    "/clinical/patients/:patientId",
+    page(ClinicalPatientDetailPage, { authRequired: true }),
+  ),
+  route(
+    "ClinicalNoteRoute",
+    "/clinical/notes/:noteId",
+    page(ClinicalNotePage, { authRequired: true }),
+  ),
+  route(
+    "ClinicalEpicrisisRoute",
+    "/clinical/epicrises/:epicrisisId",
+    page(ClinicalEpicrisisPage, { authRequired: true }),
+  ),
+  route(
+    "ClinicalAuditRoute",
+    "/clinical/audit",
+    page(ClinicalAuditPage, { authRequired: true }),
+  ),
+  route(
+    "ClinicalAdminRoute",
+    "/clinical/admin",
+    page(ClinicalAdminPage, { authRequired: true }),
+  ),
+  route(
+    "ClinicalVoiceRoute",
+    "/clinical/voice",
+    page(ClinicalVoicePage, { authRequired: true }),
+  ),
 ];

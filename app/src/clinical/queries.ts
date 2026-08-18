@@ -4,6 +4,7 @@
 import { HttpError, prisma } from "wasp/server";
 import { type SyntheticPatient } from "wasp/entities";
 import type {
+  AdminGetPatients,
   GetPatients,
   GetPatientById,
   GetPatientHistory,
@@ -14,7 +15,7 @@ import type {
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
-import { ensureMedico } from "./services/guards";
+import { ensureMedico, ensureAdmin } from "./services/guards";
 import { assertMedicoPatientAccess } from "./services/patientAccess";
 import { createAuditEntry } from "./services/audit";
 import {
@@ -43,16 +44,17 @@ type GetPatientsOutput = {
   totalPages: number;
 };
 
-export const getPatients: GetPatients<GetPatientsInput, GetPatientsOutput> = async (
-  rawArgs,
-  context,
-) => {
+export const getPatients: GetPatients<
+  GetPatientsInput,
+  GetPatientsOutput
+> = async (rawArgs, context) => {
   const user = ensureMedico(context.user);
 
-  const { search, page = 1, pageSize = 20 } = ensureArgsSchemaOrThrowHttpError(
-    getPatientsInputSchema,
-    rawArgs,
-  );
+  const {
+    search,
+    page = 1,
+    pageSize = 20,
+  } = ensureArgsSchemaOrThrowHttpError(getPatientsInputSchema, rawArgs);
 
   const medicoId = user.id;
   const skip = (page - 1) * pageSize;
@@ -102,8 +104,16 @@ type GetPatientByIdOutput = {
     noteType: string;
     createdAt: Date;
     originalText: string;
-    author: { fullName: string | null; username: string | null; email: string | null };
-    confirmedBy: { fullName: string | null; username: string | null; email: string | null } | null;
+    author: {
+      fullName: string | null;
+      username: string | null;
+      email: string | null;
+    };
+    confirmedBy: {
+      fullName: string | null;
+      username: string | null;
+      email: string | null;
+    } | null;
   }[];
   epicrisisCount: number;
 };
@@ -199,9 +209,28 @@ type HistoryNote = {
   }[];
 };
 
+type HistoryEpicrisis = {
+  id: string;
+  status: string;
+  noteType: string;
+  addendumReason: string | null;
+  reasonForAdmission: string | null;
+  validatedDiagnoses: string | null;
+  responsibleProfessional: string;
+  dateTime: Date;
+  createdAt: Date;
+  author: PersonSummary;
+  confirmedBy: PersonSummary | null;
+};
+
+type GetPatientHistoryOutput = {
+  notes: HistoryNote[];
+  epicrises: HistoryEpicrisis[];
+};
+
 export const getPatientHistory: GetPatientHistory<
   GetPatientHistoryInput,
-  HistoryNote[]
+  GetPatientHistoryOutput
 > = async (rawArgs, context) => {
   const user = ensureMedico(context.user);
 
@@ -210,25 +239,49 @@ export const getPatientHistory: GetPatientHistory<
 
   await assertMedicoPatientAccess(user.id, patientId);
 
-  const notes = await context.entities.ClinicalNote.findMany({
-    where: {
-      patientId,
-      ...(includeAddenda ? {} : { parentNoteId: null }),
-    },
-    orderBy: { createdAt: "desc" },
-    include: {
-      author: { select: { fullName: true, username: true, email: true } },
-      confirmedBy: { select: { fullName: true, username: true, email: true } },
-      childNotes: {
-        orderBy: { createdAt: "asc" },
-        include: {
-          author: { select: { fullName: true, username: true, email: true } },
+  const authorSelect = { fullName: true, username: true, email: true };
+
+  const [notes, epicrises] = await Promise.all([
+    context.entities.ClinicalNote.findMany({
+      where: {
+        patientId,
+        ...(includeAddenda ? {} : { parentNoteId: null }),
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: { select: authorSelect },
+        confirmedBy: { select: authorSelect },
+        childNotes: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            author: { select: authorSelect },
+          },
         },
       },
-    },
-  });
+    }),
+    context.entities.Epicrisis.findMany({
+      where: { patientId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        status: true,
+        noteType: true,
+        addendumReason: true,
+        reasonForAdmission: true,
+        validatedDiagnoses: true,
+        responsibleProfessional: true,
+        dateTime: true,
+        createdAt: true,
+        author: { select: authorSelect },
+        confirmedBy: { select: authorSelect },
+      },
+    }),
+  ]);
 
-  return notes as HistoryNote[];
+  return {
+    notes: notes as HistoryNote[],
+    epicrises: epicrises as HistoryEpicrisis[],
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -262,7 +315,12 @@ type ClinicalNoteDetail = {
   confirmedBy: PersonSummary | null;
   parentNote: HistoryNote | null;
   childNotes: HistoryNote[];
-  patient: { id: string; syntheticId: string; firstName: string; lastName: string };
+  patient: {
+    id: string;
+    syntheticId: string;
+    firstName: string;
+    lastName: string;
+  };
 };
 
 export const getClinicalNote: GetClinicalNote<
@@ -284,7 +342,12 @@ export const getClinicalNote: GetClinicalNote<
       parentNote: true,
       childNotes: { orderBy: { createdAt: "asc" } },
       patient: {
-        select: { id: true, syntheticId: true, firstName: true, lastName: true },
+        select: {
+          id: true,
+          syntheticId: true,
+          firstName: true,
+          lastName: true,
+        },
       },
     },
   });
@@ -331,7 +394,12 @@ type EpicrisisDetail = {
   confirmedBy: PersonSummary | null;
   parentEpicrisis: HistoryNote | null;
   childEpicrises: HistoryNote[];
-  patient: { id: string; syntheticId: string; firstName: string; lastName: string };
+  patient: {
+    id: string;
+    syntheticId: string;
+    firstName: string;
+    lastName: string;
+  };
 };
 
 export const getEpicrisis: GetEpicrisis<
@@ -353,7 +421,12 @@ export const getEpicrisis: GetEpicrisis<
       parentEpicrisis: true,
       childEpicrises: { orderBy: { createdAt: "asc" } },
       patient: {
-        select: { id: true, syntheticId: true, firstName: true, lastName: true },
+        select: {
+          id: true,
+          syntheticId: true,
+          firstName: true,
+          lastName: true,
+        },
       },
     },
   });
@@ -402,8 +475,12 @@ export const getAuditLog: GetAuditLog<
     throw new HttpError(401, "Debe iniciar sesión");
   }
 
-  const { page = 1, resourceType, dateFrom, dateTo } =
-    ensureArgsSchemaOrThrowHttpError(getAuditLogInputSchema, rawArgs);
+  const {
+    page = 1,
+    resourceType,
+    dateFrom,
+    dateTo,
+  } = ensureArgsSchemaOrThrowHttpError(getAuditLogInputSchema, rawArgs);
 
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
@@ -446,7 +523,10 @@ export const getAuditLog: GetAuditLog<
     prisma.auditLog.count({ where }),
   ]);
 
-  return { entries, totalPages: Math.ceil(total / pageSize) } as GetAuditLogOutput;
+  return {
+    entries,
+    totalPages: Math.ceil(total / pageSize),
+  } as GetAuditLogOutput;
 };
 
 // ---------------------------------------------------------------------------
@@ -457,7 +537,9 @@ const getVoiceAssistantResponseInputSchema = z.object({
   query: z.string().min(1),
 });
 
-type GetVoiceAssistantResponseInput = z.infer<typeof getVoiceAssistantResponseInputSchema>;
+type GetVoiceAssistantResponseInput = z.infer<
+  typeof getVoiceAssistantResponseInputSchema
+>;
 
 export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
   GetVoiceAssistantResponseInput,
@@ -497,4 +579,86 @@ export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
   }
 
   return buildVoiceSummary(query, match);
+};
+
+// ---------------------------------------------------------------------------
+// adminGetPatients (Admin) - gestión de pacientes sintéticos sin filtro de acceso
+// ---------------------------------------------------------------------------
+
+const adminGetPatientsInputSchema = z.object({
+  search: z.string().optional(),
+  page: z.number().int().nonnegative().optional(),
+  pageSize: z.number().int().positive().max(100).optional(),
+  medicoId: z.string().optional(),
+});
+
+type AdminGetPatientsInput = z.infer<typeof adminGetPatientsInputSchema>;
+
+type AdminPatientOutput = SyntheticPatient & {
+  authorizedMedicos: {
+    id: string;
+    fullName: string | null;
+    username: string | null;
+    email: string | null;
+  }[];
+};
+
+type AdminGetPatientsOutput = {
+  patients: AdminPatientOutput[];
+  totalPages: number;
+};
+
+export const adminGetPatients: AdminGetPatients<
+  AdminGetPatientsInput,
+  AdminGetPatientsOutput
+> = async (rawArgs, context) => {
+  ensureAdmin(context.user);
+
+  const {
+    search,
+    page = 1,
+    pageSize = 20,
+    medicoId,
+  } = ensureArgsSchemaOrThrowHttpError(adminGetPatientsInputSchema, rawArgs);
+
+  const skip = (page - 1) * pageSize;
+
+  const where = {
+    ...(search
+      ? {
+          OR: [
+            { firstName: { contains: search, mode: "insensitive" as const } },
+            { lastName: { contains: search, mode: "insensitive" as const } },
+            { syntheticId: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+    ...(medicoId ? { authorizedMedicos: { some: { medicoId } } } : {}),
+  };
+
+  const [patients, total] = await Promise.all([
+    context.entities.SyntheticPatient.findMany({
+      where,
+      orderBy: { syntheticId: "asc" },
+      skip,
+      take: pageSize,
+      include: {
+        authorizedMedicos: {
+          include: {
+            medico: {
+              select: { id: true, fullName: true, username: true, email: true },
+            },
+          },
+        },
+      },
+    }),
+    context.entities.SyntheticPatient.count({ where }),
+  ]);
+
+  const adminPatients: AdminPatientOutput[] = patients.map((p: any) => ({
+    ...p,
+    authorizedMedicos: p.authorizedMedicos.map((a: any) => a.medico),
+  }));
+
+  return { patients: adminPatients, totalPages: Math.ceil(total / pageSize) };
 };

@@ -1,17 +1,25 @@
-import { useState } from "react";
-import { useQuery } from "wasp/client/operations";
-import { getPaginatedUsers } from "wasp/client/operations";
+import { useState, type ReactNode } from "react";
+import { useQuery, useAction } from "wasp/client/operations";
 import {
+  adminCreateMedicoUser,
+  adminGetPatients,
+  adminUpdateMedicoUser,
+  getPaginatedUsers,
   manageMedicoPatientAccess,
   manageSyntheticPatients,
 } from "wasp/client/operations";
-import { useAction } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
 import {
   AlertCircle,
+  ClipboardList,
   KeyRound,
+  Pencil,
+  Plus,
+  Search,
   ShieldAlert,
+  Stethoscope,
   UserPlus,
+  Users,
 } from "lucide-react";
 import { Button } from "../../client/components/ui/button";
 import { Input } from "../../client/components/ui/input";
@@ -22,18 +30,165 @@ import {
   CardHeader,
   CardTitle,
 } from "../../client/components/ui/card";
+import { Badge } from "../../client/components/ui/badge";
+import { patientAge, sexLabel } from "../services/clinicalFormat";
 
-export function ClinicalAdminPage() {
-  const { data: user } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+type Notice = (message: string) => void;
+type ReportError = (message: string) => void;
 
-  const { data: medicos } = useQuery(getPaginatedUsers, {
-    skipPages: 0,
-    filter: { isMedico: true },
-  });
+const TAB_CLASS =
+  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors";
+const TAB_ACTIVE = "bg-primary/15 text-primary";
+const TAB_IDLE =
+  "text-muted-foreground hover:bg-accent/40 hover:text-foreground";
 
-  // Alta de paciente sintético
+function run(
+  fn: () => Promise<unknown>,
+  notice: Notice,
+  reportError: ReportError,
+) {
+  return async () => {
+    try {
+      await fn();
+      notice("Operación realizada correctamente");
+    } catch (err: any) {
+      reportError(err?.message ?? "Operación fallida");
+    }
+  };
+}
+
+function StatusBanner({
+  error,
+  notice,
+}: {
+  error: string | null;
+  notice: string | null;
+}) {
+  if (!error && !notice) return null;
+  return (
+    <Card className={error ? "border-destructive/50" : "border-success/50"}>
+      <CardContent
+        className={`flex items-start gap-2 p-4 text-sm ${
+          error ? "text-destructive" : "text-success"
+        }`}
+      >
+        <AlertCircle className="mt-0.5 size-4 shrink-0" />
+        {error ?? notice}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tab: Pacientes
+// ---------------------------------------------------------------------------
+
+function EditPatientForm({
+  patient,
+  onCancel,
+  notice,
+  reportError,
+}: {
+  patient: any;
+  onCancel: () => void;
+  notice: Notice;
+  reportError: ReportError;
+}) {
+  const managePatientsFn = useAction(manageSyntheticPatients);
+  const [firstName, setFirstName] = useState(patient.firstName);
+  const [lastName, setLastName] = useState(patient.lastName);
+  const [birthDate, setBirthDate] = useState(
+    new Date(patient.birthDate).toISOString().slice(0, 10),
+  );
+  const [sex, setSex] = useState(patient.sex);
+  const [medicalHistory, setMedicalHistory] = useState(
+    patient.medicalHistory ?? "",
+  );
+  const [allergies, setAllergies] = useState(patient.allergies ?? "");
+
+  const handleSave = run(
+    () =>
+      managePatientsFn({
+        action: "UPDATE",
+        patientId: patient.id,
+        data: {
+          firstName,
+          lastName,
+          birthDate: new Date(birthDate),
+          sex,
+          medicalHistory: medicalHistory || null,
+          allergies: allergies || null,
+        },
+      }),
+    notice,
+    reportError,
+  );
+
+  return (
+    <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Nombres"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Apellidos"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          type="date"
+          value={birthDate}
+          onChange={(e) => setBirthDate(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Sexo (M/F/O)"
+          value={sex}
+          onChange={(e) => setSex(e.target.value)}
+        />
+        <Textarea
+          className="border-outline-variant bg-surface"
+          placeholder="Antecedentes médicos"
+          rows={2}
+          value={medicalHistory}
+          onChange={(e) => setMedicalHistory(e.target.value)}
+        />
+        <Textarea
+          className="border-outline-variant bg-surface"
+          placeholder="Alergias"
+          rows={2}
+          value={allergies}
+          onChange={(e) => setAllergies(e.target.value)}
+        />
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button
+          onClick={handleSave}
+          disabled={!firstName || !lastName || !birthDate}
+        >
+          Guardar cambios
+        </Button>
+        <Button variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CreatePatientForm({
+  notice,
+  reportError,
+}: {
+  notice: Notice;
+  reportError: ReportError;
+}) {
+  const managePatientsFn = useAction(manageSyntheticPatients);
   const [synthId, setSynthId] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -42,15 +197,767 @@ export function ClinicalAdminPage() {
   const [medicalHistory, setMedicalHistory] = useState("");
   const [allergies, setAllergies] = useState("");
 
-  // Asignación de acceso médico
-  const [medicoId, setMedicoId] = useState("");
-  const [accessPatientId, setAccessPatientId] = useState("");
-  const [accessAction, setAccessAction] = useState<"GRANT" | "REVOKE">(
-    "GRANT",
+  const handleCreate = run(
+    () =>
+      managePatientsFn({
+        action: "CREATE",
+        data: {
+          syntheticId: synthId,
+          firstName,
+          lastName,
+          birthDate: new Date(birthDate),
+          sex,
+          medicalHistory: medicalHistory || null,
+          allergies: allergies || null,
+        },
+      }),
+    notice,
+    reportError,
   );
 
-  const managePatientsFn = useAction(manageSyntheticPatients);
+  return (
+    <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="ID sintético (PAC-xxx)"
+          value={synthId}
+          onChange={(e) => setSynthId(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Sexo (M/F/O)"
+          value={sex}
+          onChange={(e) => setSex(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Nombres"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Apellidos"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          type="date"
+          value={birthDate}
+          onChange={(e) => setBirthDate(e.target.value)}
+        />
+        <div />
+        <Textarea
+          className="border-outline-variant bg-surface sm:col-span-2"
+          placeholder="Antecedentes médicos"
+          rows={2}
+          value={medicalHistory}
+          onChange={(e) => setMedicalHistory(e.target.value)}
+        />
+        <Textarea
+          className="border-outline-variant bg-surface sm:col-span-2"
+          placeholder="Alergias"
+          rows={2}
+          value={allergies}
+          onChange={(e) => setAllergies(e.target.value)}
+        />
+      </div>
+      <div className="mt-3">
+        <Button
+          onClick={handleCreate}
+          disabled={!synthId || !firstName || !lastName || !birthDate}
+        >
+          <UserPlus className="size-4" />
+          Crear paciente
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PatientsTab({
+  notice,
+  reportError,
+}: {
+  notice: Notice;
+  reportError: ReportError;
+}) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const { data, isLoading, error } = useQuery(adminGetPatients, {
+    search: search || undefined,
+    page,
+    pageSize: 20,
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="border-outline-variant bg-surface pl-9"
+            placeholder="Buscar por nombre o PAC-…"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        <Button onClick={() => setCreating((c) => !c)}>
+          <Plus className="size-4" />
+          Nuevo paciente
+        </Button>
+      </div>
+
+      {creating && (
+        <CreatePatientForm notice={notice} reportError={reportError} />
+      )}
+
+      {error && (
+        <Card className="border-destructive/50">
+          <CardContent className="p-4 text-sm text-destructive">
+            {error.message}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="overflow-hidden border-outline-variant">
+        <div className="flex items-center justify-between border-b border-outline-variant/50 bg-surface-container/60 px-5 py-3">
+          <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
+            Pacientes sintéticos
+          </p>
+          <Badge variant="outline" className="mono-label">
+            {data ? `${data.patients.length} resultado(s)` : "—"}
+          </Badge>
+        </div>
+
+        <div className="divide-y divide-outline-variant/40">
+          {isLoading && (
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+              Cargando pacientes…
+            </div>
+          )}
+          {data && data.patients.length === 0 && (
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+              {search
+                ? "Sin resultados para la búsqueda."
+                : "No hay pacientes registrados."}
+            </div>
+          )}
+          {data &&
+            data.patients.length > 0 &&
+            data.patients.map((patient: any) => (
+              <div key={patient.id}>
+                <div className="group flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/40">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-sm font-semibold text-primary">
+                    {patient.firstName[0]}
+                    {patient.lastName[0]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {patient.firstName} {patient.lastName}
+                      </span>
+                      <Badge variant="outline" className="mono-label">
+                        {patient.syntheticId}
+                      </Badge>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <span>{sexLabel(patient.sex)}</span>
+                      <span>·</span>
+                      <span>{patientAge(patient.birthDate)} años</span>
+                      <span>·</span>
+                      <span>
+                        {patient.authorizedMedicos.length} médico(s) asignado(s)
+                      </span>
+                      {patient.allergies && patient.allergies.trim() !== "" && (
+                        <>
+                          <span>·</span>
+                          <span className="text-warning">
+                            Alergias: {patient.allergies}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {patient.authorizedMedicos.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {patient.authorizedMedicos.map((m: any) => (
+                          <Badge
+                            key={m.id}
+                            variant="secondary"
+                            className="mono-label text-[10px]"
+                          >
+                            {m.fullName ?? m.username ?? m.email}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() =>
+                        setEditingId(
+                          editingId === patient.id ? null : patient.id,
+                        )
+                      }
+                    >
+                      <Pencil className="size-3.5" />
+                      Editar
+                    </Button>
+                  </div>
+                </div>
+                {editingId === patient.id && (
+                  <EditPatientForm
+                    patient={patient}
+                    onCancel={() => setEditingId(null)}
+                    notice={notice}
+                    reportError={reportError}
+                  />
+                )}
+              </div>
+            ))}
+        </div>
+
+        {data && data.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 border-t border-outline-variant/50 bg-surface-container/60 px-5 py-3">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Anterior
+            </Button>
+            <span className="mono-label text-xs">
+              {page} / {data.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= data.totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tab: Médicos
+// ---------------------------------------------------------------------------
+
+function CreateMedicoForm({
+  notice,
+  reportError,
+}: {
+  notice: Notice;
+  reportError: ReportError;
+}) {
+  const createMedicoFn = useAction(adminCreateMedicoUser);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [specialty, setSpecialty] = useState("");
+
+  const handleCreate = run(
+    () =>
+      createMedicoFn({
+        email,
+        password,
+        fullName: fullName || undefined,
+        specialty: specialty || undefined,
+      }),
+    notice,
+    reportError,
+  );
+
+  return (
+    <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Input
+          className="border-outline-variant bg-surface"
+          type="email"
+          placeholder="Correo electrónico"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          type="password"
+          placeholder="Contraseña (mín. 8, mayúscula y número)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Nombre completo"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Especialidad"
+          value={specialty}
+          onChange={(e) => setSpecialty(e.target.value)}
+        />
+      </div>
+      <div className="mt-3">
+        <Button onClick={handleCreate} disabled={!email || !password}>
+          <Stethoscope className="size-4" />
+          Crear médico
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function EditMedicoForm({
+  medico,
+  onCancel,
+  notice,
+  reportError,
+}: {
+  medico: any;
+  onCancel: () => void;
+  notice: Notice;
+  reportError: ReportError;
+}) {
+  const updateMedicoFn = useAction(adminUpdateMedicoUser);
+  const [fullName, setFullName] = useState(medico.fullName ?? "");
+  const [specialty, setSpecialty] = useState(medico.specialty ?? "");
+
+  const handleSave = run(
+    () =>
+      updateMedicoFn({
+        id: medico.id,
+        fullName: fullName || undefined,
+        specialty: specialty || undefined,
+      }),
+    notice,
+    reportError,
+  );
+
+  return (
+    <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Nombre completo"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Especialidad"
+          value={specialty}
+          onChange={(e) => setSpecialty(e.target.value)}
+        />
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button onClick={handleSave}>Guardar cambios</Button>
+        <Button variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function MedicosTab({
+  notice,
+  reportError,
+}: {
+  notice: Notice;
+  reportError: ReportError;
+}) {
+  const [skipPages, setSkipPages] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [patientsForId, setPatientsForId] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery(getPaginatedUsers, {
+    skipPages,
+    filter: { isMedico: true },
+  });
+
+  const { data: patientsData } = useQuery(adminGetPatients, {
+    page: 1,
+    pageSize: 50,
+    ...(patientsForId ? { medicoId: patientsForId } : {}),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={() => setCreating((c) => !c)}>
+          <UserPlus className="size-4" />
+          Nuevo médico
+        </Button>
+      </div>
+
+      {creating && (
+        <CreateMedicoForm notice={notice} reportError={reportError} />
+      )}
+
+      <Card className="overflow-hidden border-outline-variant">
+        <div className="flex items-center justify-between border-b border-outline-variant/50 bg-surface-container/60 px-5 py-3">
+          <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
+            Usuarios con rol Médico
+          </p>
+          <Badge variant="outline" className="mono-label">
+            {data ? `${data.users.length} resultado(s)` : "—"}
+          </Badge>
+        </div>
+
+        <div className="divide-y divide-outline-variant/40">
+          {isLoading && (
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+              Cargando médicos…
+            </div>
+          )}
+          {data && data.users.length === 0 && (
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+              No hay médicos registrados.
+            </div>
+          )}
+          {data &&
+            data.users.length > 0 &&
+            data.users.map((medico: any) => (
+              <div key={medico.id}>
+                <div className="group flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/40">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-sm font-semibold text-primary">
+                    {medico.fullName
+                      ? medico.fullName[0]
+                      : (medico.email ?? medico.username ?? "?")[0]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {medico.fullName ?? medico.username ?? medico.email}
+                      </span>
+                      <Badge variant="success">Médico</Badge>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <span className="mono-label">{medico.email}</span>
+                      {medico.specialty && (
+                        <>
+                          <span>·</span>
+                          <span>{medico.specialty}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() =>
+                        setPatientsForId(
+                          patientsForId === medico.id ? null : medico.id,
+                        )
+                      }
+                    >
+                      <ClipboardList className="size-3.5" />
+                      Pacientes
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() =>
+                        setEditingId(editingId === medico.id ? null : medico.id)
+                      }
+                    >
+                      <Pencil className="size-3.5" />
+                      Editar
+                    </Button>
+                  </div>
+                </div>
+                {patientsForId === medico.id && (
+                  <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
+                    <p className="mono-label mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+                      Pacientes asignados
+                    </p>
+                    {patientsData && patientsData.patients.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Sin pacientes asignados.
+                      </p>
+                    )}
+                    {patientsData && patientsData.patients.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {patientsData.patients.map((p: any) => (
+                          <Badge
+                            key={p.id}
+                            variant="outline"
+                            className="mono-label"
+                          >
+                            {p.firstName} {p.lastName} · {p.syntheticId}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {editingId === medico.id && (
+                  <EditMedicoForm
+                    medico={medico}
+                    onCancel={() => setEditingId(null)}
+                    notice={notice}
+                    reportError={reportError}
+                  />
+                )}
+              </div>
+            ))}
+        </div>
+
+        {data && data.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 border-t border-outline-variant/50 bg-surface-container/60 px-5 py-3">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={skipPages <= 0}
+              onClick={() => setSkipPages((s) => Math.max(0, s - 1))}
+            >
+              Anterior
+            </Button>
+            <span className="mono-label text-xs">
+              {skipPages + 1} / {data.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={skipPages + 1 >= data.totalPages}
+              onClick={() => setSkipPages((s) => s + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tab: Asignaciones
+// ---------------------------------------------------------------------------
+
+function AssignmentsTab({
+  notice,
+  reportError,
+}: {
+  notice: Notice;
+  reportError: ReportError;
+}) {
   const manageAccessFn = useAction(manageMedicoPatientAccess);
+  const [medicoId, setMedicoId] = useState("");
+  const [accessPatientId, setAccessPatientId] = useState("");
+  const [accessAction, setAccessAction] = useState<"GRANT" | "REVOKE">("GRANT");
+
+  const { data: medicos } = useQuery(getPaginatedUsers, {
+    skipPages: 0,
+    filter: { isMedico: true },
+  });
+  const { data: patientsData } = useQuery(adminGetPatients, {
+    page: 1,
+    pageSize: 50,
+  });
+
+  const handleApply = run(
+    () =>
+      manageAccessFn({
+        action: accessAction,
+        medicoId,
+        patientId: accessPatientId,
+      }),
+    notice,
+    reportError,
+  );
+
+  return (
+    <div className="space-y-4">
+      <Card className="overflow-hidden border-outline-variant">
+        <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <KeyRound className="size-4 text-primary" />
+            Acceso Médico ↔ Paciente
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <select
+              className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
+              value={medicoId}
+              onChange={(e) => setMedicoId(e.target.value)}
+            >
+              <option value="">Seleccione un médico…</option>
+              {medicos?.users.map((m: any) => (
+                <option key={m.id} value={m.id}>
+                  {m.fullName ?? m.username ?? m.email}
+                </option>
+              ))}
+            </select>
+            <select
+              className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
+              value={accessPatientId}
+              onChange={(e) => setAccessPatientId(e.target.value)}
+            >
+              <option value="">Seleccione un paciente…</option>
+              {patientsData?.patients.map((p: any) => (
+                <option key={p.id} value={p.id}>
+                  {p.syntheticId} · {p.firstName} {p.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => setAccessAction("GRANT")}
+              variant={accessAction === "GRANT" ? "default" : "outline"}
+            >
+              Otorgar acceso
+            </Button>
+            <Button
+              onClick={() => setAccessAction("REVOKE")}
+              variant={accessAction === "REVOKE" ? "destructive" : "outline"}
+            >
+              Revocar acceso
+            </Button>
+            <Button
+              onClick={handleApply}
+              disabled={!medicoId || !accessPatientId}
+            >
+              Aplicar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="overflow-hidden border-outline-variant">
+        <div className="flex items-center justify-between border-b border-outline-variant/50 bg-surface-container/60 px-5 py-3">
+          <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
+            Asignaciones actuales
+          </p>
+          <Badge variant="outline" className="mono-label">
+            {patientsData ? `${patientsData.patients.length} paciente(s)` : "—"}
+          </Badge>
+        </div>
+        <div className="divide-y divide-outline-variant/40">
+          {patientsData && patientsData.patients.length === 0 && (
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+              No hay pacientes registrados.
+            </div>
+          )}
+          {patientsData &&
+            patientsData.patients.map((patient: any) => (
+              <div key={patient.id} className="px-5 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        {patient.firstName} {patient.lastName}
+                      </span>
+                      <Badge variant="outline" className="mono-label">
+                        {patient.syntheticId}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {patient.authorizedMedicos.length === 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          Sin médicos asignados.
+                        </span>
+                      )}
+                      {patient.authorizedMedicos.map((m: any) => (
+                        <div
+                          key={m.id}
+                          className="inline-flex items-center gap-1 rounded-md border border-outline-variant/60 bg-surface px-2 py-0.5"
+                        >
+                          <Badge
+                            variant="secondary"
+                            className="border-0 bg-transparent p-0"
+                          >
+                            {m.fullName ?? m.username ?? m.email}
+                          </Badge>
+                          <button
+                            type="button"
+                            aria-label={`Revocar acceso a ${
+                              m.fullName ?? m.email
+                            }`}
+                            className="text-destructive transition-opacity hover:opacity-70"
+                            onClick={() => {
+                              const p = patient;
+                              setMedicoId(m.id);
+                              setAccessPatientId(p.id);
+                              setAccessAction("REVOKE");
+                              notice(
+                                "Seleccione Aplicar para confirmar la revocación",
+                              );
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setMedicoId("");
+                      setAccessPatientId(patient.id);
+                      setAccessAction("GRANT");
+                      notice("Seleccione el médico y Aplicar para asignar");
+                    }}
+                  >
+                    <Plus className="size-3.5" />
+                    Asignar
+                  </Button>
+                </div>
+              </div>
+            ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Página principal
+// ---------------------------------------------------------------------------
+
+type TabKey = "pacientes" | "medicos" | "asignaciones";
+
+export function ClinicalAdminPage() {
+  const { data: user } = useAuth();
+  const [tab, setTab] = useState<TabKey>("pacientes");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const reportError = (message: string) => {
+    setNotice(null);
+    setError(message);
+  };
+  const showNotice = (message: string) => {
+    setError(null);
+    setNotice(message);
+  };
 
   if (!user?.isAdmin || user.isMedico) {
     return (
@@ -65,45 +972,23 @@ export function ClinicalAdminPage() {
     );
   }
 
-  const run = async (fn: () => Promise<unknown>, successMsg: string) => {
-    setError(null);
-    setNotice(null);
-    try {
-      await fn();
-      setNotice(successMsg);
-    } catch (err: any) {
-      setError(err?.message ?? "Operación fallida");
-    }
-  };
-
-  const handleCreatePatient = () =>
-    run(
-      () =>
-        managePatientsFn({
-          action: "CREATE",
-          data: {
-            syntheticId: synthId,
-            firstName,
-            lastName,
-            birthDate: new Date(birthDate),
-            sex,
-            medicalHistory: medicalHistory || null,
-            allergies: allergies || null,
-          },
-        }),
-      "Paciente sintético creado",
-    );
-
-  const handleManageAccess = () =>
-    run(
-      () =>
-        manageAccessFn({
-          action: accessAction,
-          medicoId,
-          patientId: accessPatientId,
-        }),
-      accessAction === "GRANT" ? "Acceso concedido" : "Acceso revocado",
-    );
+  const tabs: { key: TabKey; label: string; icon: ReactNode }[] = [
+    {
+      key: "pacientes",
+      label: "Pacientes",
+      icon: <Users className="size-4" />,
+    },
+    {
+      key: "medicos",
+      label: "Médicos",
+      icon: <Stethoscope className="size-4" />,
+    },
+    {
+      key: "asignaciones",
+      label: "Asignaciones",
+      icon: <KeyRound className="size-4" />,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -115,142 +1000,37 @@ export function ClinicalAdminPage() {
           Administración
         </h1>
         <p className="text-sm text-muted-foreground">
-          Gestión de pacientes sintéticos y accesos de médicos.
+          Gestión de pacientes sintéticos, médicos y asignaciones de acceso.
         </p>
       </div>
 
-      {error && (
-        <Card className="border-destructive/50">
-          <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            {error}
-          </CardContent>
-        </Card>
-      )}
-      {notice && (
-        <Card className="border-success/50">
-          <CardContent className="flex items-start gap-2 p-4 text-sm text-success">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            {notice}
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="overflow-hidden border-outline-variant">
-          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <UserPlus className="size-4 text-primary" />
-              Alta de paciente sintético
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                className="border-outline-variant bg-surface"
-                placeholder="ID sintético (PAC-xxx)"
-                value={synthId}
-                onChange={(e) => setSynthId(e.target.value)}
-              />
-              <Input
-                className="border-outline-variant bg-surface"
-                placeholder="Sexo (M/F/O)"
-                value={sex}
-                onChange={(e) => setSex(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                className="border-outline-variant bg-surface"
-                placeholder="Nombres"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
-              <Input
-                className="border-outline-variant bg-surface"
-                placeholder="Apellidos"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </div>
-            <Input
-              className="border-outline-variant bg-surface"
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-            />
-            <Textarea
-              className="border-outline-variant bg-surface"
-              placeholder="Antecedentes médicos"
-              rows={2}
-              value={medicalHistory}
-              onChange={(e) => setMedicalHistory(e.target.value)}
-            />
-            <Textarea
-              className="border-outline-variant bg-surface"
-              placeholder="Alergias"
-              rows={2}
-              value={allergies}
-              onChange={(e) => setAllergies(e.target.value)}
-            />
-            <Button
-              onClick={handleCreatePatient}
-              disabled={!synthId || !firstName || !lastName || !birthDate}
-            >
-              Crear paciente
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border-outline-variant">
-          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <KeyRound className="size-4 text-primary" />
-              Acceso Médico ↔ Paciente
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <select
-              className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
-              value={medicoId}
-              onChange={(e) => setMedicoId(e.target.value)}
-            >
-              <option value="">Seleccione un médico…</option>
-              {medicos?.users.map((m: any) => (
-                <option key={m.id} value={m.id}>
-                  {m.fullName ?? m.username ?? m.email}
-                </option>
-              ))}
-            </select>
-            <Input
-              className="border-outline-variant bg-surface"
-              placeholder="ID de paciente"
-              value={accessPatientId}
-              onChange={(e) => setAccessPatientId(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setAccessAction("GRANT")}
-                variant={accessAction === "GRANT" ? "default" : "outline"}
-              >
-                Otorgar acceso
-              </Button>
-              <Button
-                onClick={() => setAccessAction("REVOKE")}
-                variant={accessAction === "REVOKE" ? "destructive" : "outline"}
-              >
-                Revocar acceso
-              </Button>
-            </div>
-            <Button
-              onClick={handleManageAccess}
-              disabled={!medicoId || !accessPatientId}
-            >
-              Aplicar
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap gap-1 rounded-lg border border-outline-variant bg-surface-container/60 p-1">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`${TAB_CLASS} ${
+              tab === t.key ? TAB_ACTIVE : TAB_IDLE
+            } inline-flex items-center gap-1.5`}
+            onClick={() => setTab(t.key)}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
       </div>
+
+      <StatusBanner error={error} notice={notice} />
+
+      {tab === "pacientes" && (
+        <PatientsTab notice={showNotice} reportError={reportError} />
+      )}
+      {tab === "medicos" && (
+        <MedicosTab notice={showNotice} reportError={reportError} />
+      )}
+      {tab === "asignaciones" && (
+        <AssignmentsTab notice={showNotice} reportError={reportError} />
+      )}
     </div>
   );
 }

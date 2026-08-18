@@ -3,12 +3,20 @@
 
 import { HttpError, prisma } from "wasp/server";
 import {
+  createProviderId,
+  createUser,
+  sanitizeAndSerializeProviderData,
+} from "wasp/server/auth";
+import {
   type ClinicalNote,
   type Epicrisis,
   type MedicoPatientAccess,
   type SyntheticPatient,
+  type User,
 } from "wasp/entities";
 import type {
+  AdminCreateMedicoUser,
+  AdminUpdateMedicoUser,
   CreateClinicalNote,
   UpdateClinicalNoteDraft,
   RequestAIStructuring,
@@ -26,8 +34,14 @@ import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
 import { ensureMedico, ensureAdmin } from "./services/guards";
 import { assertMedicoPatientAccess } from "./services/patientAccess";
 import { createAuditEntry } from "./services/audit";
-import { structureClinicalText, generateEpicrisisFromHistory } from "./services/aiService";
-import { validateConfirmableNote, SECTION_LABELS } from "./services/noteValidation";
+import {
+  structureClinicalText,
+  generateEpicrisisFromHistory,
+} from "./services/aiService";
+import {
+  validateConfirmableNote,
+  SECTION_LABELS,
+} from "./services/noteValidation";
 
 // ---------------------------------------------------------------------------
 // createClinicalNote
@@ -96,7 +110,9 @@ const updateClinicalNoteDraftInputSchema = z.object({
   sectionsNotApplicable: z.record(z.string(), z.string()).optional(),
 });
 
-type UpdateClinicalNoteDraftInput = z.infer<typeof updateClinicalNoteDraftInputSchema>;
+type UpdateClinicalNoteDraftInput = z.infer<
+  typeof updateClinicalNoteDraftInputSchema
+>;
 
 export const updateClinicalNoteDraft: UpdateClinicalNoteDraft<
   UpdateClinicalNoteDraftInput,
@@ -104,7 +120,10 @@ export const updateClinicalNoteDraft: UpdateClinicalNoteDraft<
 > = async (rawArgs, context) => {
   const user = ensureMedico(context.user);
 
-  const args = ensureArgsSchemaOrThrowHttpError(updateClinicalNoteDraftInputSchema, rawArgs);
+  const args = ensureArgsSchemaOrThrowHttpError(
+    updateClinicalNoteDraftInputSchema,
+    rawArgs,
+  );
 
   const note = await context.entities.ClinicalNote.findUnique({
     where: { id: args.noteId },
@@ -118,11 +137,15 @@ export const updateClinicalNoteDraft: UpdateClinicalNoteDraft<
   await assertMedicoPatientAccess(user.id, note.patientId);
 
   if (note.status === "CONFIRMED") {
-    throw new HttpError(409, "Registro confirmado: solo se permite crear adenda");
+    throw new HttpError(
+      409,
+      "Registro confirmado: solo se permite crear adenda",
+    );
   }
 
   // originalText NUNCA se modifica vía esta operación (RNF-004)
-  const newStatus = note.status === "DRAFT_AI_ASSISTED" ? "REVIEWED" : note.status;
+  const newStatus =
+    note.status === "DRAFT_AI_ASSISTED" ? "REVIEWED" : note.status;
 
   const updated = await context.entities.ClinicalNote.update({
     where: { id: note.id },
@@ -158,7 +181,9 @@ const requestAIStructuringInputSchema = z.object({
   noteId: z.string().min(1),
 });
 
-type RequestAIStructuringInput = z.infer<typeof requestAIStructuringInputSchema>;
+type RequestAIStructuringInput = z.infer<
+  typeof requestAIStructuringInputSchema
+>;
 
 export const requestAIStructuring: RequestAIStructuring<
   RequestAIStructuringInput,
@@ -183,15 +208,24 @@ export const requestAIStructuring: RequestAIStructuring<
   await assertMedicoPatientAccess(user.id, note.patientId);
 
   if (note.status !== "DRAFT_MANUAL") {
-    throw new HttpError(409, "Solo las notas en estado Borrador manual pueden estructurarse");
+    throw new HttpError(
+      409,
+      "Solo las notas en estado Borrador manual pueden estructurarse",
+    );
   }
 
   let result;
   try {
-    result = await structureClinicalText({ text: note.originalText, mode: "NOTE" });
+    result = await structureClinicalText({
+      text: note.originalText,
+      mode: "NOTE",
+    });
   } catch (err: any) {
     // RNF-008: falla de IA -> la nota permanece en DRAFT_MANUAL, texto intacto
-    throw new HttpError(504, err?.message ?? "El servicio de IA no está disponible");
+    throw new HttpError(
+      504,
+      err?.message ?? "El servicio de IA no está disponible",
+    );
   }
 
   const updated = await context.entities.ClinicalNote.update({
@@ -265,7 +299,8 @@ export const confirmClinicalNote: ConfirmClinicalNote<
       planIndicaciones: note.planIndicaciones,
     },
     sectionsNotApplicable:
-      (note.sectionsNotApplicable as Record<string, string> | null) ?? undefined,
+      (note.sectionsNotApplicable as Record<string, string> | null) ??
+      undefined,
     originalText: note.originalText,
     patientId: note.patientId,
     authorId: note.authorId,
@@ -276,7 +311,9 @@ export const confirmClinicalNote: ConfirmClinicalNote<
     const labels = validation.missing.map((k) => SECTION_LABELS[k]);
     throw new HttpError(
       422,
-      `Secciones obligatorias incompletas: ${labels.join(", ")}. Complételas o márquelas como "No aplica" con justificación.`,
+      `Secciones obligatorias incompletas: ${labels.join(
+        ", ",
+      )}. Complételas o márquelas como "No aplica" con justificación.`,
     );
   }
 
@@ -330,7 +367,10 @@ export const createNoteAddendum: CreateNoteAddendum<
     throw new HttpError(404, "Nota original no encontrada");
   }
   if (parent.status !== "CONFIRMED") {
-    throw new HttpError(409, "Solo se pueden crear adendas sobre notas confirmadas");
+    throw new HttpError(
+      409,
+      "Solo se pueden crear adendas sobre notas confirmadas",
+    );
   }
   await assertMedicoPatientAccess(user.id, parent.patientId);
 
@@ -367,7 +407,9 @@ const generateEpicrisisDraftInputSchema = z.object({
   patientId: z.string().min(1),
 });
 
-type GenerateEpicrisisDraftInput = z.infer<typeof generateEpicrisisDraftInputSchema>;
+type GenerateEpicrisisDraftInput = z.infer<
+  typeof generateEpicrisisDraftInputSchema
+>;
 
 export const generateEpicrisisDraft: GenerateEpicrisisDraft<
   GenerateEpicrisisDraftInput,
@@ -400,7 +442,10 @@ export const generateEpicrisisDraft: GenerateEpicrisisDraft<
       confirmedNotes.map((n) => n.originalText),
     );
   } catch (err: any) {
-    throw new HttpError(504, err?.message ?? "El servicio de IA no está disponible");
+    throw new HttpError(
+      504,
+      err?.message ?? "El servicio de IA no está disponible",
+    );
   }
 
   const patient = await context.entities.SyntheticPatient.findUnique({
@@ -414,7 +459,9 @@ export const generateEpicrisisDraft: GenerateEpicrisisDraft<
       status: "DRAFT_AI_ASSISTED",
       noteType: "ORIGINAL",
       aiAssisted: true,
-      patientIdentification: `${patient?.syntheticId ?? ""} - ${patient?.firstName ?? ""} ${patient?.lastName ?? ""}`.trim(),
+      patientIdentification: `${patient?.syntheticId ?? ""} - ${
+        patient?.firstName ?? ""
+      } ${patient?.lastName ?? ""}`.trim(),
       reasonForAdmission: result.elements.reasonForAdmission ?? undefined,
       relevantHistory: result.elements.relevantHistory ?? undefined,
       evolutionSummary: result.elements.evolutionSummary ?? undefined,
@@ -422,7 +469,8 @@ export const generateEpicrisisDraft: GenerateEpicrisisDraft<
       validatedDiagnoses: result.elements.validatedDiagnoses ?? undefined,
       conditionAtDischarge: result.elements.conditionAtDischarge ?? undefined,
       followUpInstructions: result.elements.followUpInstructions ?? undefined,
-      responsibleProfessional: user.fullName ?? user.username ?? user.email ?? "",
+      responsibleProfessional:
+        user.fullName ?? user.username ?? user.email ?? "",
       dateTime: new Date(),
     },
   });
@@ -454,7 +502,9 @@ const updateEpicrisisDraftInputSchema = z.object({
   followUpInstructions: z.string().optional(),
 });
 
-type UpdateEpicrisisDraftInput = z.infer<typeof updateEpicrisisDraftInputSchema>;
+type UpdateEpicrisisDraftInput = z.infer<
+  typeof updateEpicrisisDraftInputSchema
+>;
 
 export const updateEpicrisisDraft: UpdateEpicrisisDraft<
   UpdateEpicrisisDraftInput,
@@ -462,7 +512,10 @@ export const updateEpicrisisDraft: UpdateEpicrisisDraft<
 > = async (rawArgs, context) => {
   const user = ensureMedico(context.user);
 
-  const args = ensureArgsSchemaOrThrowHttpError(updateEpicrisisDraftInputSchema, rawArgs);
+  const args = ensureArgsSchemaOrThrowHttpError(
+    updateEpicrisisDraftInputSchema,
+    rawArgs,
+  );
 
   const epicrisis = await context.entities.Epicrisis.findUnique({
     where: { id: args.epicrisisId },
@@ -476,10 +529,14 @@ export const updateEpicrisisDraft: UpdateEpicrisisDraft<
   await assertMedicoPatientAccess(user.id, epicrisis.patientId);
 
   if (epicrisis.status === "CONFIRMED") {
-    throw new HttpError(409, "Registro confirmado: solo se permite crear adenda");
+    throw new HttpError(
+      409,
+      "Registro confirmado: solo se permite crear adenda",
+    );
   }
 
-  const newStatus = epicrisis.status === "DRAFT_AI_ASSISTED" ? "REVIEWED" : epicrisis.status;
+  const newStatus =
+    epicrisis.status === "DRAFT_AI_ASSISTED" ? "REVIEWED" : epicrisis.status;
 
   const updated = await context.entities.Epicrisis.update({
     where: { id: epicrisis.id },
@@ -540,18 +597,26 @@ export const confirmEpicrisis: ConfirmEpicrisis<
   if (epicrisis.status === "CONFIRMED") {
     throw new HttpError(409, "La epicrisis ya está confirmada");
   }
-  if (epicrisis.status !== "DRAFT_AI_ASSISTED" && epicrisis.status !== "REVIEWED") {
+  if (
+    epicrisis.status !== "DRAFT_AI_ASSISTED" &&
+    epicrisis.status !== "REVIEWED"
+  ) {
     throw new HttpError(409, "Estado inválido para confirmar");
   }
 
   // Validación RF-018: elementos obligatorios
   const missing: string[] = [];
-  if (!epicrisis.patientIdentification) missing.push("Identificación del paciente");
-  if (!epicrisis.responsibleProfessional) missing.push("Profesional responsable");
+  if (!epicrisis.patientIdentification)
+    missing.push("Identificación del paciente");
+  if (!epicrisis.responsibleProfessional)
+    missing.push("Profesional responsable");
   if (!epicrisis.dateTime) missing.push("Fecha y hora");
 
   if (missing.length > 0) {
-    throw new HttpError(422, `Elementos obligatorios incompletos: ${missing.join(", ")}`);
+    throw new HttpError(
+      422,
+      `Elementos obligatorios incompletos: ${missing.join(", ")}`,
+    );
   }
 
   const confirmed = await context.entities.Epicrisis.update({
@@ -593,7 +658,9 @@ const createEpicrisisAddendumInputSchema = z.object({
   followUpInstructions: z.string().optional(),
 });
 
-type CreateEpicrisisAddendumInput = z.infer<typeof createEpicrisisAddendumInputSchema>;
+type CreateEpicrisisAddendumInput = z.infer<
+  typeof createEpicrisisAddendumInputSchema
+>;
 
 export const createEpicrisisAddendum: CreateEpicrisisAddendum<
   CreateEpicrisisAddendumInput,
@@ -601,7 +668,10 @@ export const createEpicrisisAddendum: CreateEpicrisisAddendum<
 > = async (rawArgs, context) => {
   const user = ensureMedico(context.user);
 
-  const args = ensureArgsSchemaOrThrowHttpError(createEpicrisisAddendumInputSchema, rawArgs);
+  const args = ensureArgsSchemaOrThrowHttpError(
+    createEpicrisisAddendumInputSchema,
+    rawArgs,
+  );
 
   const parent = await context.entities.Epicrisis.findUnique({
     where: { id: args.parentEpicrisisId },
@@ -610,7 +680,10 @@ export const createEpicrisisAddendum: CreateEpicrisisAddendum<
     throw new HttpError(404, "Epicrisis original no encontrada");
   }
   if (parent.status !== "CONFIRMED") {
-    throw new HttpError(409, "Solo se pueden crear adendas sobre epicrisis confirmadas");
+    throw new HttpError(
+      409,
+      "Solo se pueden crear adendas sobre epicrisis confirmadas",
+    );
   }
   await assertMedicoPatientAccess(user.id, parent.patientId);
 
@@ -630,7 +703,8 @@ export const createEpicrisisAddendum: CreateEpicrisisAddendum<
       validatedDiagnoses: args.validatedDiagnoses ?? undefined,
       conditionAtDischarge: args.conditionAtDischarge ?? undefined,
       followUpInstructions: args.followUpInstructions ?? undefined,
-      responsibleProfessional: user.fullName ?? user.username ?? user.email ?? "",
+      responsibleProfessional:
+        user.fullName ?? user.username ?? user.email ?? "",
       dateTime: new Date(),
     },
   });
@@ -666,7 +740,9 @@ const manageSyntheticPatientsInputSchema = z.object({
   patientId: z.string().optional(),
 });
 
-type ManageSyntheticPatientsInput = z.infer<typeof manageSyntheticPatientsInputSchema>;
+type ManageSyntheticPatientsInput = z.infer<
+  typeof manageSyntheticPatientsInputSchema
+>;
 
 export const manageSyntheticPatients: ManageSyntheticPatients<
   ManageSyntheticPatientsInput,
@@ -674,19 +750,31 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
 > = async (rawArgs, context) => {
   const user = ensureAdmin(context.user);
 
-  const args = ensureArgsSchemaOrThrowHttpError(manageSyntheticPatientsInputSchema, rawArgs);
+  const args = ensureArgsSchemaOrThrowHttpError(
+    manageSyntheticPatientsInputSchema,
+    rawArgs,
+  );
 
   const { action, data, patientId } = args;
 
   if (action === "CREATE") {
-    if (!data.syntheticId || !data.firstName || !data.lastName || !data.birthDate || !data.sex) {
+    if (
+      !data.syntheticId ||
+      !data.firstName ||
+      !data.lastName ||
+      !data.birthDate ||
+      !data.sex
+    ) {
       throw new HttpError(400, "Campos obligatorios incompletos");
     }
     const existing = await context.entities.SyntheticPatient.findUnique({
       where: { syntheticId: data.syntheticId },
     });
     if (existing) {
-      throw new HttpError(409, "Ya existe un paciente con ese identificador sintético");
+      throw new HttpError(
+        409,
+        "Ya existe un paciente con ese identificador sintético",
+      );
     }
     const patient = await context.entities.SyntheticPatient.create({
       data: {
@@ -743,9 +831,14 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
     where: { patientId, status: "CONFIRMED" },
   });
   if (confirmedCount > 0) {
-    throw new HttpError(409, "No se puede eliminar un paciente con notas confirmadas");
+    throw new HttpError(
+      409,
+      "No se puede eliminar un paciente con notas confirmadas",
+    );
   }
-  await context.entities.MedicoPatientAccess.deleteMany({ where: { patientId } });
+  await context.entities.MedicoPatientAccess.deleteMany({
+    where: { patientId },
+  });
   await context.entities.ClinicalNote.deleteMany({ where: { patientId } });
   await context.entities.Epicrisis.deleteMany({ where: { patientId } });
   const deleted = await context.entities.SyntheticPatient.delete({
@@ -772,7 +865,9 @@ const manageMedicoPatientAccessInputSchema = z.object({
   patientId: z.string().min(1),
 });
 
-type ManageMedicoPatientAccessInput = z.infer<typeof manageMedicoPatientAccessInputSchema>;
+type ManageMedicoPatientAccessInput = z.infer<
+  typeof manageMedicoPatientAccessInputSchema
+>;
 
 export const manageMedicoPatientAccess: ManageMedicoPatientAccess<
   ManageMedicoPatientAccessInput,
@@ -785,9 +880,14 @@ export const manageMedicoPatientAccess: ManageMedicoPatientAccess<
     rawArgs,
   );
 
-  const medico = await context.entities.User.findUnique({ where: { id: medicoId } });
+  const medico = await context.entities.User.findUnique({
+    where: { id: medicoId },
+  });
   if (!medico || !medico.isMedico || medico.isAdmin) {
-    throw new HttpError(400, "medicoId debe referenciar un usuario con isMedico=true");
+    throw new HttpError(
+      400,
+      "medicoId debe referenciar un usuario con isMedico=true",
+    );
   }
 
   const patient = await context.entities.SyntheticPatient.findUnique({
@@ -837,4 +937,127 @@ export const manageMedicoPatientAccess: ManageMedicoPatientAccess<
     metadata: { accessAction: "REVOKE", medicoId },
   });
   return { success: true };
+};
+
+// ---------------------------------------------------------------------------
+// adminCreateMedicoUser (Admin) - alta de usuario con rol Médico
+// ---------------------------------------------------------------------------
+
+const adminCreateMedicoUserInputSchema = z.object({
+  email: z.string().email(),
+  password: z
+    .string()
+    .min(8, "La contraseña debe tener al menos 8 caracteres")
+    .regex(/[A-Z]/, "La contraseña debe incluir al menos una mayúscula")
+    .regex(/[0-9]/, "La contraseña debe incluir al menos un número"),
+  fullName: z.string().min(1).optional(),
+  specialty: z.string().min(1).optional(),
+  username: z.string().min(1).optional(),
+});
+
+type AdminCreateMedicoUserInput = z.infer<
+  typeof adminCreateMedicoUserInputSchema
+>;
+
+export const adminCreateMedicoUser: AdminCreateMedicoUser<
+  AdminCreateMedicoUserInput,
+  User
+> = async (rawArgs, context) => {
+  const user = ensureAdmin(context.user);
+
+  const { email, password, fullName, specialty, username } =
+    ensureArgsSchemaOrThrowHttpError(adminCreateMedicoUserInputSchema, rawArgs);
+
+  const existingUser = await context.entities.User.findUnique({
+    where: { email },
+  });
+  if (existingUser) {
+    throw new HttpError(409, "Ya existe un usuario con ese correo");
+  }
+
+  const serializedProviderData =
+    await sanitizeAndSerializeProviderData<"email">({
+      hashedPassword: password,
+      isEmailVerified: true,
+      emailVerificationSentAt: null,
+      passwordResetSentAt: null,
+    });
+
+  const created = await createUser(
+    createProviderId("email", email),
+    serializedProviderData,
+    {
+      email,
+      username: username ?? email.split("@")[0].toLowerCase(),
+      fullName: fullName ?? null,
+      specialty: specialty ?? null,
+      isMedico: true,
+      isAdmin: false,
+    },
+  );
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "ADMIN_MANAGE_USER",
+    resourceType: "USER",
+    resourceId: created.id,
+    metadata: { adminAction: "CREATE_MEDICO", email },
+  });
+
+  return created;
+};
+
+// ---------------------------------------------------------------------------
+// adminUpdateMedicoUser (Admin) - edición de campos permitidos del perfil médico
+// ---------------------------------------------------------------------------
+
+const adminUpdateMedicoUserInputSchema = z.object({
+  id: z.string().min(1),
+  fullName: z.string().min(1).optional(),
+  specialty: z.string().min(1).optional(),
+});
+
+type AdminUpdateMedicoUserInput = z.infer<
+  typeof adminUpdateMedicoUserInputSchema
+>;
+
+export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
+  AdminUpdateMedicoUserInput,
+  User
+> = async (rawArgs, context) => {
+  const user = ensureAdmin(context.user);
+
+  const { id, fullName, specialty } = ensureArgsSchemaOrThrowHttpError(
+    adminUpdateMedicoUserInputSchema,
+    rawArgs,
+  );
+
+  const target = await context.entities.User.findUnique({ where: { id } });
+  if (!target) {
+    throw new HttpError(404, "Usuario no encontrado");
+  }
+  if (!target.isMedico || target.isAdmin) {
+    throw new HttpError(
+      400,
+      "Solo se pueden editar perfiles de usuarios con rol Médico",
+    );
+  }
+
+  const updated = await context.entities.User.update({
+    where: { id },
+    data: {
+      fullName: fullName ?? target.fullName,
+      specialty: specialty ?? target.specialty,
+    },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "ADMIN_MANAGE_USER",
+    resourceType: "USER",
+    resourceId: id,
+    metadata: { adminAction: "UPDATE_MEDICO", email: target.email ?? "" },
+  });
+
+  return updated;
 };
