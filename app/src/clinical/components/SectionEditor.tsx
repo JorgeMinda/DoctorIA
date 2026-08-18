@@ -50,6 +50,7 @@ export function SectionEditor({ draft, onChange }: SectionEditorProps) {
             </div>
             {isNa ? (
               <Input
+                className="border-outline-variant bg-surface"
                 placeholder="Justificación de por qué no aplica esta sección"
                 value={sectionsNotApplicable[key] ?? ""}
                 onChange={(e) => {
@@ -59,6 +60,7 @@ export function SectionEditor({ draft, onChange }: SectionEditorProps) {
               />
             ) : (
               <Textarea
+                className="border-outline-variant bg-surface"
                 rows={3}
                 value={sections[key] ?? ""}
                 onChange={(e) => update(key, e.target.value)}

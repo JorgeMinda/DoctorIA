@@ -108,9 +108,10 @@ export function ClinicalVoicePage() {
 
   if (!user?.isMedico || user.isAdmin) {
     return (
-      <div className="mt-10 px-6">
-        <Card className="mb-4 lg:m-8">
-          <CardContent className="p-6">
+      <div className="mx-auto max-w-2xl">
+        <Card className="border-outline-variant">
+          <CardContent className="flex items-start gap-3 p-6 text-sm">
+            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
             Solo profesionales médicos habilitados pueden acceder a este módulo.
           </CardContent>
         </Card>
@@ -352,14 +353,19 @@ export function ClinicalVoicePage() {
     <div className="mt-6 px-6 pb-16">
       <div className="mx-auto max-w-3xl">
         {/* Encabezado */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Asistente de voz</h1>
+            <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-primary">
+              Clínica · Voz
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Asistente de voz
+            </h1>
             <p className="text-sm text-muted-foreground">
               Consulta clínica asistida por IA sobre tus pacientes asignados.
             </p>
           </div>
-            <div className="flex items-center gap-2 rounded-full border px-3 py-1.5">
+            <div className="flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3 py-1.5">
               <Sparkles className="size-4 text-primary" />
               <label htmlFor="demo-mode" className="text-sm font-medium">
                 {demoMode ? "Modo demo" : "Modo real"}
@@ -376,7 +382,7 @@ export function ClinicalVoicePage() {
         </div>
 
         {/* Orbe + estado */}
-        <div className="relative flex flex-col items-center rounded-2xl border border-border/60 bg-background/40 py-10 backdrop-blur-sm">
+        <div className="relative flex flex-col items-center rounded-2xl border border-outline-variant/60 bg-surface/40 py-10 backdrop-blur-sm">
           <VoiceOrb
             state={phase}
             onActivate={handleOrbActivate}
@@ -475,7 +481,7 @@ export function ClinicalVoicePage() {
                     key={p.id}
                     type="button"
                     onClick={() => askForPatient(p)}
-                    className="rounded-full border border-border/60 px-3 py-1 text-xs transition-colors hover:bg-muted/40"
+                    className="rounded-full border border-outline-variant px-3 py-1 text-xs transition-colors hover:bg-accent/40"
                   >
                     {p.firstName} {p.lastName}{" "}
                     <span className="text-muted-foreground">({p.syntheticId})</span>
@@ -566,7 +572,7 @@ export function ClinicalVoicePage() {
                     {response.vitals.map((v) => (
                       <div
                         key={v.label}
-                        className="rounded-xl border border-border/60 bg-muted/30 p-4"
+                        className="rounded-xl border border-outline-variant bg-surface/60 p-4"
                       >
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           {v.label}
@@ -599,7 +605,7 @@ export function ClinicalVoicePage() {
                       </Button>
                     </div>
                     {showSparkline ? (
-                      <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                      <div className="rounded-xl border border-outline-variant bg-surface/60 p-4">
                         <SparklineSeries
                           values={response.evolutionSeries.map((p) => parseFloat(p.value))}
                           labels={response.evolutionSeries.map((p) => p.label)}
@@ -618,7 +624,7 @@ export function ClinicalVoicePage() {
                         {response.evolutionSeries.map((p) => (
                           <span
                             key={p.label}
-                            className="rounded-full border border-border/60 px-3 py-1 text-xs"
+                            className="rounded-full border border-outline-variant px-3 py-1 text-xs"
                           >
                             {p.label}: <span className="font-semibold">{p.value}</span>
                           </span>

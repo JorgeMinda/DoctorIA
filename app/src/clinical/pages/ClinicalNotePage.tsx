@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { routes } from "wasp/client/router";
+import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useAction, useQuery } from "wasp/client/operations";
 import { getClinicalNote } from "wasp/client/operations";
 import {
@@ -10,6 +10,17 @@ import {
   updateClinicalNoteDraft,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CalendarDays,
+  FileText,
+  FilePlus2,
+  Save,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Button } from "../../client/components/ui/button";
 import { Textarea } from "../../client/components/ui/textarea";
 import {
@@ -18,8 +29,12 @@ import {
   CardHeader,
   CardTitle,
 } from "../../client/components/ui/card";
-import { SectionEditor, type SectionDraft } from "../components/SectionEditor";
-import { statusLabel } from "../services/statusLabels";
+import { Badge } from "../../client/components/ui/badge";
+import {
+  SectionEditor,
+  type SectionDraft,
+} from "../components/SectionEditor";
+import { StatusBadge } from "../components/StatusBadge";
 import type { SectionKey } from "../services/noteValidation";
 import { toast } from "../../client/hooks/use-toast";
 
@@ -69,11 +84,27 @@ export function ClinicalNotePage() {
   }, [note?.id]);
 
   if (isLoading) {
-    return <div className="mt-10 px-6 lg:m-8">Cargando…</div>;
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="size-2 animate-pulse rounded-full bg-primary" />
+          Cargando nota clínica…
+        </div>
+      </div>
+    );
   }
 
   if (!note || !user?.isMedico || user.isAdmin) {
-    return <div className="mt-10 px-6 lg:m-8">No autorizado.</div>;
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Card className="border-destructive/50">
+          <CardContent className="flex items-start gap-3 p-6 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            No autorizado.
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const isConfirmed = note.status === "CONFIRMED";
@@ -138,7 +169,9 @@ export function ClinicalNotePage() {
         addendumReason,
       });
       toast({ title: "Adenda creada correctamente" });
-      navigate(routes.ClinicalNoteRoute.build({ params: { noteId: addendum.id } }));
+      navigate(
+        routes.ClinicalNoteRoute.build({ params: { noteId: addendum.id } }),
+      );
     } catch (err: any) {
       setError(err?.message ?? "No se pudo crear la adenda");
     } finally {
@@ -147,173 +180,232 @@ export function ClinicalNotePage() {
   };
 
   return (
-    <div className="mt-10 px-6">
-      <div className="mb-4 lg:mx-8">
-        <h1 className="text-2xl font-bold">
-          {note.noteType === "ADDENDUM" ? "Adenda" : "Nota clínica"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {note.patient.firstName} {note.patient.lastName} ({note.patient.syntheticId})
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-xs font-semibold">
-            {statusLabel(note.status)}
-          </span>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <WaspRouterLink
+        to={routes.ClinicalPatientDetailRoute.to}
+        params={{ patientId: note.patient.id }}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+      >
+        <ArrowLeft className="size-3.5" />
+        Volver a la historia de {note.patient.firstName} {note.patient.lastName}
+      </WaspRouterLink>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-primary">
+            Nota clínica
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {note.noteType === "ADDENDUM" ? "Adenda" : "Nota clínica"}
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <WaspRouterLink
+              to={routes.ClinicalPatientDetailRoute.to}
+              params={{ patientId: note.patient.id }}
+              className="text-sm text-muted-foreground transition-colors hover:text-primary"
+            >
+              {note.patient.firstName} {note.patient.lastName}
+            </WaspRouterLink>
+            <Badge variant="outline" className="mono-label">
+              {note.patient.syntheticId}
+            </Badge>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={note.status} />
           {note.aiAssisted && (
-            <span className="bg-accent text-accent-foreground rounded-full px-2.5 py-0.5 text-xs font-semibold">
-              Contenido asistido por IA
-            </span>
+            <Badge variant="secondary">
+              <Sparkles className="size-3" />
+              Asistido por IA
+            </Badge>
           )}
-          <span className="text-xs text-muted-foreground">
+          <span className="mono-label inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <CalendarDays className="size-3.5" />
             {new Date(note.createdAt).toLocaleString()}
           </span>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 lg:mx-8">
-          <Card className="border-destructive/50">
-            <CardContent className="p-4 text-sm text-destructive">
-              {error}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      <div className="mb-4 lg:mx-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">
-              Texto original (campo unificado)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{note.originalText}</p>
+        <Card className="border-destructive/50">
+          <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            {error}
           </CardContent>
         </Card>
-      </div>
+      )}
+
+      <Card className="overflow-hidden border-outline-variant">
+        <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <FileText className="size-4 text-primary" />
+            Texto original
+            <Badge variant="outline" className="mono-label">
+              Inmutable · RNF-004
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm whitespace-pre-wrap text-foreground">
+            {note.originalText}
+          </p>
+        </CardContent>
+      </Card>
 
       {!isConfirmed && (
-        <div className="mb-4 lg:mx-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">
-                Secciones clínicas estructuradas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <SectionEditor draft={draft} onChange={setDraft} />
-              <div className="flex flex-wrap gap-2">
-                {note.status === "DRAFT_MANUAL" && (
-                  <Button onClick={handleRequestAI} disabled={saving}>
-                    Estructurar con IA
-                  </Button>
-                )}
-                <Button variant="secondary" onClick={handleSave} disabled={saving}>
-                  Guardar cambios
+        <Card className="overflow-hidden border-outline-variant">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="text-base font-semibold">
+              Secciones clínicas estructuradas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <SectionEditor draft={draft} onChange={setDraft} />
+            <div className="flex flex-wrap gap-2">
+              {note.status === "DRAFT_MANUAL" && (
+                <Button
+                  onClick={handleRequestAI}
+                  disabled={saving}
+                  className="shadow-[0_0_20px_rgba(0,218,243,0.25)]"
+                >
+                  <Sparkles className="size-4" />
+                  Estructurar con IA
                 </Button>
-                <Button onClick={handleConfirm} disabled={saving}>
-                  Confirmar nota
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              )}
+              <Button
+                variant="secondary"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                <Save className="size-4" />
+                Guardar cambios
+              </Button>
+              <Button onClick={handleConfirm} disabled={saving}>
+                <ShieldCheck className="size-4" />
+                Confirmar nota
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {isConfirmed && (
-        <div className="mb-4 lg:mx-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">
-                Secciones clínicas (solo lectura)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {([
+        <Card className="overflow-hidden border-outline-variant">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="text-base font-semibold">
+              Secciones clínicas
+              <Badge variant="success" className="ml-2">
+                Solo lectura
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y divide-outline-variant/40">
+            {(
+              [
                 ["motivoConsulta", "Motivo de consulta"],
                 ["notaClinica", "Nota clínica / evolución"],
                 ["examenFisico", "Examen físico"],
                 ["valoracionClinica", "Valoración clínica"],
                 ["planIndicaciones", "Plan / indicaciones"],
-              ] as [SectionKey, string][]).map(([key, label]) => (
-                <div key={key}>
-                  <div className="text-sm font-semibold">{label}</div>
-                  <p className="text-sm whitespace-pre-wrap">
-                    {note[key] ?? (note.sectionsNotApplicable?.[key]
+              ] as [SectionKey, string][]
+            ).map(([key, label]) => (
+              <div key={key} className="py-4">
+                <p className="mono-label mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                  {label}
+                </p>
+                <p className="text-sm whitespace-pre-wrap text-foreground">
+                  {note[key] ??
+                    (note.sectionsNotApplicable?.[key]
                       ? `No aplica: ${note.sectionsNotApplicable[key]}`
                       : "—")}
-                  </p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       {isConfirmed && (
-        <div className="mb-4 lg:mx-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">
-                Corrección por adenda
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {!addendumOpen && (
-                <Button variant="outline" onClick={() => setAddendumOpen(true)}>
-                  Crear adenda
-                </Button>
-              )}
-              {addendumOpen && (
-                <>
-                  <Textarea
-                    placeholder="Texto de la adenda (campo unificado)"
-                    rows={4}
-                    value={addendumText}
-                    onChange={(e) => setAddendumText(e.target.value)}
-                  />
-                  <Textarea
-                    placeholder="Motivo de la adenda"
-                    rows={2}
-                    value={addendumReason}
-                    onChange={(e) => setAddendumReason(e.target.value)}
-                  />
-                  <div className="flex gap-2">
-                    <Button onClick={handleAddendum} disabled={saving || !addendumText || !addendumReason}>
-                      Crear adenda
-                    </Button>
-                    <Button variant="ghost" onClick={() => setAddendumOpen(false)}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="overflow-hidden border-outline-variant">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <FilePlus2 className="size-4 text-primary" />
+              Corrección por adenda
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!addendumOpen && (
+              <Button
+                variant="outline"
+                onClick={() => setAddendumOpen(true)}
+              >
+                Crear adenda
+              </Button>
+            )}
+            {addendumOpen && (
+              <>
+                <Textarea
+                  className="border-outline-variant bg-surface"
+                  placeholder="Texto de la adenda (campo unificado)"
+                  rows={4}
+                  value={addendumText}
+                  onChange={(e) => setAddendumText(e.target.value)}
+                />
+                <Textarea
+                  className="border-outline-variant bg-surface"
+                  placeholder="Motivo de la adenda"
+                  rows={2}
+                  value={addendumReason}
+                  onChange={(e) => setAddendumReason(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleAddendum}
+                    disabled={
+                      saving || !addendumText || !addendumReason
+                    }
+                  >
+                    Crear adenda
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setAddendumOpen(false)}
+                  >
+                    <X className="size-4" />
+                    Cancelar
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {note.childNotes && note.childNotes.length > 0 && (
-        <div className="mb-4 lg:mx-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Adendas</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {note.childNotes.map((child: any) => (
-                  <div key={child.id} className="px-6 py-4">
-                    <div className="text-sm font-semibold">
-                      Adenda · {statusLabel(child.status)}
-                    </div>
-                    <p className="mt-1 text-sm">{child.originalText}</p>
+        <Card className="overflow-hidden border-outline-variant">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="text-base font-semibold">
+              Adendas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-outline-variant/40">
+              {note.childNotes.map((child: any) => (
+                <div key={child.id} className="px-6 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">
+                      Adenda
+                    </span>
+                    <StatusBadge status={child.status} />
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {child.originalText}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

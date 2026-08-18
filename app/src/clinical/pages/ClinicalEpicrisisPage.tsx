@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { routes } from "wasp/client/router";
+import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useAction, useQuery } from "wasp/client/operations";
 import { getEpicrisis } from "wasp/client/operations";
 import {
@@ -9,6 +9,17 @@ import {
   updateEpicrisisDraft,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CalendarDays,
+  FilePlus2,
+  NotebookPen,
+  Save,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Button } from "../../client/components/ui/button";
 import { Textarea } from "../../client/components/ui/textarea";
 import {
@@ -17,7 +28,8 @@ import {
   CardHeader,
   CardTitle,
 } from "../../client/components/ui/card";
-import { statusLabel } from "../services/statusLabels";
+import { Badge } from "../../client/components/ui/badge";
+import { StatusBadge } from "../components/StatusBadge";
 import { toast } from "../../client/hooks/use-toast";
 
 type EpicrisisFieldKey =
@@ -58,14 +70,32 @@ export function ClinicalEpicrisisPage() {
   const [error, setError] = useState<string | null>(null);
   const [addendumOpen, setAddendumOpen] = useState(false);
   const [addendumReason, setAddendumReason] = useState("");
-  const [addendumDraft, setAddendumDraft] = useState<Record<string, string>>({});
+  const [addendumDraft, setAddendumDraft] = useState<Record<string, string>>(
+    {},
+  );
 
   if (isLoading) {
-    return <div className="mt-10 px-6 lg:m-8">Cargando…</div>;
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="size-2 animate-pulse rounded-full bg-primary" />
+          Cargando epicrisis…
+        </div>
+      </div>
+    );
   }
 
   if (!epicrisis || !user?.isMedico || user.isAdmin) {
-    return <div className="mt-10 px-6 lg:m-8">No autorizado.</div>;
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Card className="border-destructive/50">
+          <CardContent className="flex items-start gap-3 p-6 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            No autorizado.
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const isConfirmed = epicrisis.status === "CONFIRMED";
@@ -118,7 +148,11 @@ export function ClinicalEpicrisisPage() {
         ...addendumDraft,
       });
       toast({ title: "Adenda de epicrisis creada" });
-      navigate(routes.ClinicalEpicrisisRoute.build({ params: { epicrisisId: addendum.id } }));
+      navigate(
+        routes.ClinicalEpicrisisRoute.build({
+          params: { epicrisisId: addendum.id },
+        }),
+      );
     } catch (err: any) {
       setError(err?.message ?? "No se pudo crear la adenda");
     } finally {
@@ -127,133 +161,189 @@ export function ClinicalEpicrisisPage() {
   };
 
   return (
-    <div className="mt-10 px-6">
-      <div className="mb-4 lg:mx-8">
-        <h1 className="text-2xl font-bold">
-          {epicrisis.noteType === "ADDENDUM" ? "Adenda de epicrisis" : "Epicrisis"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {epicrisis.patient.firstName} {epicrisis.patient.lastName} ({epicrisis.patient.syntheticId})
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-xs font-semibold">
-            {statusLabel(epicrisis.status)}
-          </span>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <WaspRouterLink
+        to={routes.ClinicalPatientDetailRoute.to}
+        params={{ patientId: epicrisis.patient.id }}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+      >
+        <ArrowLeft className="size-3.5" />
+        Volver a la historia de {epicrisis.patient.firstName}{" "}
+        {epicrisis.patient.lastName}
+      </WaspRouterLink>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-primary">
+            Epicrisis
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {epicrisis.noteType === "ADDENDUM"
+              ? "Adenda de epicrisis"
+              : "Epicrisis"}
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <WaspRouterLink
+              to={routes.ClinicalPatientDetailRoute.to}
+              params={{ patientId: epicrisis.patient.id }}
+              className="text-sm text-muted-foreground transition-colors hover:text-primary"
+            >
+              {epicrisis.patient.firstName} {epicrisis.patient.lastName}
+            </WaspRouterLink>
+            <Badge variant="outline" className="mono-label">
+              {epicrisis.patient.syntheticId}
+            </Badge>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={epicrisis.status} />
           {epicrisis.aiAssisted && (
-            <span className="bg-accent text-accent-foreground rounded-full px-2.5 py-0.5 text-xs font-semibold">
-              Contenido asistido por IA
-            </span>
+            <Badge variant="secondary">
+              <Sparkles className="size-3" />
+              Asistido por IA
+            </Badge>
           )}
+          <span className="mono-label inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <CalendarDays className="size-3.5" />
+            {new Date(epicrisis.createdAt).toLocaleString()}
+          </span>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 lg:mx-8">
-          <Card className="border-destructive/50">
-            <CardContent className="p-4 text-sm text-destructive">
-              {error}
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="border-destructive/50">
+          <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            {error}
+          </CardContent>
+        </Card>
       )}
 
-      <div className="mb-4 lg:mx-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">
-              Elementos de la epicrisis
+      <Card className="overflow-hidden border-outline-variant">
+        <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <NotebookPen className="size-4 text-primary" />
+            Elementos de la epicrisis
+            {isConfirmed && (
+              <Badge variant="success" className="ml-auto">
+                Solo lectura
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {EPICRISIS_FIELDS.map(([key, label]) => (
+            <div key={key}>
+              <p className="mono-label mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                {label}
+              </p>
+              {isConfirmed ? (
+                <p className="text-sm whitespace-pre-wrap text-foreground">
+                  {epicrisis[key] ?? "—"}
+                </p>
+              ) : (
+                <Textarea
+                  className="border-outline-variant bg-surface"
+                  rows={key === "patientIdentification" ? 1 : 3}
+                  value={epicrisis[key] ?? ""}
+                  readOnly={key === "patientIdentification"}
+                  onChange={(e) => {
+                    if (key === "patientIdentification") {
+                      return;
+                    }
+                    void updateDraftFn({
+                      epicrisisId: epicrisis.id,
+                      [key]: e.target.value,
+                    });
+                  }}
+                />
+              )}
+            </div>
+          ))}
+          {!isConfirmed && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button
+                variant="secondary"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                <Save className="size-4" />
+                Guardar cambios
+              </Button>
+              <Button onClick={handleConfirm} disabled={saving}>
+                <ShieldCheck className="size-4" />
+                Confirmar epicrisis
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {isConfirmed && (
+        <Card className="overflow-hidden border-outline-variant">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <FilePlus2 className="size-4 text-primary" />
+              Corrección por adenda
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {EPICRISIS_FIELDS.map(([key, label]) => (
-              <div key={key}>
-                <label className="mb-1 block text-sm font-semibold">{label}</label>
-                {isConfirmed ? (
-                  <p className="text-sm whitespace-pre-wrap">{epicrisis[key] ?? "—"}</p>
-                ) : (
-                  <Textarea
-                    rows={key === "patientIdentification" ? 1 : 3}
-                    value={epicrisis[key] ?? ""}
-                    readOnly={key === "patientIdentification"}
-                    onChange={(e) => {
-                      if (key === "patientIdentification") {
-                        return;
+          <CardContent className="space-y-3">
+            {!addendumOpen && (
+              <Button
+                variant="outline"
+                onClick={() => setAddendumOpen(true)}
+              >
+                Crear adenda
+              </Button>
+            )}
+            {addendumOpen && (
+              <>
+                <Textarea
+                  className="border-outline-variant bg-surface"
+                  placeholder="Motivo de la adenda"
+                  rows={2}
+                  value={addendumReason}
+                  onChange={(e) => setAddendumReason(e.target.value)}
+                />
+                {EPICRISIS_FIELDS.filter(
+                  ([key]) => key !== "patientIdentification",
+                ).map(([key, label]) => (
+                  <div key={key}>
+                    <p className="mono-label mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                      {label}
+                    </p>
+                    <Textarea
+                      className="border-outline-variant bg-surface"
+                      rows={2}
+                      value={addendumDraft[key] ?? ""}
+                      onChange={(e) =>
+                        setAddendumDraft((d) => ({
+                          ...d,
+                          [key]: e.target.value,
+                        }))
                       }
-                      void updateDraftFn({
-                        epicrisisId: epicrisis.id,
-                        [key]: e.target.value,
-                      });
-                    }}
-                  />
-                )}
-              </div>
-            ))}
-            {!isConfirmed && (
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Button variant="secondary" onClick={handleSave} disabled={saving}>
-                  Guardar cambios
-                </Button>
-                <Button onClick={handleConfirm} disabled={saving}>
-                  Confirmar epicrisis
-                </Button>
-              </div>
+                    />
+                  </div>
+                ))}
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleAddendum}
+                    disabled={saving || !addendumReason}
+                  >
+                    Crear adenda
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setAddendumOpen(false)}
+                  >
+                    <X className="size-4" />
+                    Cancelar
+                  </Button>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {isConfirmed && (
-        <div className="mb-4 lg:mx-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">
-                Corrección por adenda
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {!addendumOpen && (
-                <Button variant="outline" onClick={() => setAddendumOpen(true)}>
-                  Crear adenda
-                </Button>
-              )}
-              {addendumOpen && (
-                <>
-                  <Textarea
-                    placeholder="Motivo de la adenda"
-                    rows={2}
-                    value={addendumReason}
-                    onChange={(e) => setAddendumReason(e.target.value)}
-                  />
-                  {EPICRISIS_FIELDS.filter(([key]) => key !== "patientIdentification").map(
-                    ([key, label]) => (
-                      <div key={key}>
-                        <label className="mb-1 block text-sm font-semibold">{label}</label>
-                        <Textarea
-                          rows={2}
-                          value={addendumDraft[key] ?? ""}
-                          onChange={(e) =>
-                            setAddendumDraft((d) => ({ ...d, [key]: e.target.value }))
-                          }
-                        />
-                      </div>
-                    ),
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleAddendum}
-                      disabled={saving || !addendumReason}
-                    >
-                      Crear adenda
-                    </Button>
-                    <Button variant="ghost" onClick={() => setAddendumOpen(false)}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
       )}
     </div>
   );
