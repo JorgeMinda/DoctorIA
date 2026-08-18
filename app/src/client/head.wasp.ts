@@ -4,7 +4,7 @@ export const head: App["head"] = [
   "<link rel='icon' href='/favicon.ico' />",
 
   "<link rel='preconnect' href='https://fonts.googleapis.com' />",
-  "<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin />",
+  "<link rel='preconnect' href='https://fonts.gstatic.com' />",
   "<link href='https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap' rel='stylesheet' />",
 
   "<meta name='description' content='DoctorIA - capa de inteligencia artificial asistiva sobre el historial clínico.' />",
