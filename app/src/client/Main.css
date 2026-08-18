@@ -53,6 +53,19 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
+  --color-surface: hsl(var(--surface));
+  --color-surface-container: hsl(var(--surface-container));
+  --color-surface-high: hsl(var(--surface-high));
+  --color-surface-highest: hsl(var(--surface-highest));
+  --color-outline: hsl(var(--outline));
+  --color-outline-variant: hsl(var(--outline-variant));
+  --color-primary-bright: hsl(var(--primary-bright));
+
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+
   --breakpoint-2xsm: 375px;
   --breakpoint-xsm: 425px;
   --breakpoint-3xl: 2000px;
@@ -213,68 +226,87 @@
 
 @layer base {
   :root {
-    --background: 216 40% 98%;
-    --foreground: 217 44% 12%;
+    --background: 220 33% 97%;
+    --foreground: 216 40% 14%;
     --card: 0 0% 100%;
-    --card-foreground: 217 44% 12%;
-    --card-accent: 216 40% 98%;
-    --card-accent-foreground: 217 44% 12%;
-    --card-subtle: 216 45% 96%;
-    --card-subtle-foreground: 217 44% 12%;
+    --card-foreground: 216 40% 14%;
+    --card-accent: 220 30% 95%;
+    --card-accent-foreground: 216 40% 14%;
+    --card-subtle: 220 25% 93%;
+    --card-subtle-foreground: 216 40% 18%;
     --popover: 0 0% 100%;
-    --popover-foreground: 217 44% 12%;
-    --primary: 216 60% 18%;
-    --primary-foreground: 216 33% 97%;
-    --secondary: 223 70% 55%;
-    --secondary-foreground: 216 33% 97%;
-    --secondary-muted: 247 80% 68%;
-    --secondary-muted-foreground: 216 33% 97%;
-    --muted: 216 45% 95%;
-    --muted-foreground: 217 15% 40%;
-    --accent: 194 90% 58%;
-    --accent-foreground: 216 60% 5%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 162 66% 42%;
-    --success-foreground: 0 0% 98%;
-    --warning: 36 100% 50%;
-    --warning-foreground: 0 0% 98%;
-    --border: 216 30% 88%;
-    --input: 216 30% 88%;
-    --ring: 194 90% 58%;
-    --radius: 0.5rem;
+    --popover-foreground: 216 40% 14%;
+    --primary: 186 91% 45%;
+    --primary-foreground: 220 17% 6%;
+    --secondary: 220 88% 47%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-muted: 254 100% 92%;
+    --secondary-muted-foreground: 254 40% 20%;
+    --muted: 220 25% 93%;
+    --muted-foreground: 210 12% 42%;
+    --accent: 220 30% 91%;
+    --accent-foreground: 216 40% 14%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 58% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 48%;
+    --warning-foreground: 0 0% 100%;
+    --border: 210 20% 84%;
+    --input: 210 20% 84%;
+    --ring: 186 91% 45%;
+    --radius: 0.75rem;
+
+    /* Clinical Intelligence — extended tokens (light) */
+    --surface: 0 0% 100%;
+    --surface-container: 220 28% 96%;
+    --surface-high: 220 24% 90%;
+    --surface-highest: 220 22% 85%;
+    --outline: 210 14% 45%;
+    --outline-variant: 210 18% 82%;
+    --primary-bright: 187 100% 48%;
   }
 
   .dark {
-    --background: 216 60% 5%;
-    --foreground: 216 33% 97%;
-    --card: 217 51% 9%;
-    --card-foreground: 216 33% 97%;
-    --card-accent: 216 44% 12%;
-    --card-accent-foreground: 216 33% 97%;
-    --card-subtle: 216 44% 12%;
-    --card-subtle-foreground: 216 33% 97%;
-    --popover: 217 51% 9%;
-    --popover-foreground: 216 33% 97%;
-    --primary: 194 90% 58%;
-    --primary-foreground: 216 60% 5%;
-    --secondary: 223 100% 68%;
-    --secondary-foreground: 216 60% 5%;
-    --secondary-muted: 247 100% 74%;
-    --secondary-muted-foreground: 216 60% 5%;
-    --muted: 216 44% 12%;
-    --muted-foreground: 216 16% 61%;
-    --accent: 216 44% 16%;
-    --accent-foreground: 216 33% 97%;
-    --destructive: 0 62.8% 63%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 162 66% 52%;
-    --success-foreground: 216 60% 5%;
-    --warning: 36 100% 50%;
-    --warning-foreground: 0 0% 98%;
-    --border: 216 30% 16%;
-    --input: 216 30% 16%;
-    --ring: 194 90% 58%;
+    --background: 220 17% 8%;
+    --foreground: 240 12% 90%;
+    --card: 220 10% 11%;
+    --card-foreground: 240 12% 90%;
+    --card-accent: 220 9% 13%;
+    --card-accent-foreground: 240 12% 90%;
+    --card-subtle: 220 7% 17%;
+    --card-subtle-foreground: 240 12% 90%;
+    --popover: 220 9% 13%;
+    --popover-foreground: 240 12% 90%;
+    --primary: 186 91% 48%;
+    --primary-foreground: 220 17% 6%;
+    --secondary: 220 88% 47%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-muted: 254 100% 89%;
+    --secondary-muted-foreground: 254 30% 12%;
+    --muted: 220 9% 13%;
+    --muted-foreground: 190 15% 77%;
+    --accent: 220 7% 17%;
+    --accent-foreground: 240 12% 90%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 58% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 191 5% 26%;
+    --input: 191 5% 26%;
+    --ring: 187 100% 50%;
+    --radius: 0.75rem;
+
+    /* Clinical Intelligence — extended tokens (dark) */
+    --surface: 220 10% 11%;
+    --surface-container: 220 9% 13%;
+    --surface-high: 220 7% 17%;
+    --surface-highest: 220 6% 21%;
+    --outline: 190 8% 55%;
+    --outline-variant: 191 5% 26%;
+    --primary-bright: 187 100% 50%;
   }
 }
 
@@ -283,8 +315,26 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
   }
+}
+
+/* Clinical Intelligence — utility helpers */
+
+@utility glass-panel {
+  background: color-mix(in srgb, hsl(var(--surface-container)) 72%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid hsl(var(--outline-variant));
+}
+
+@utility text-glow-primary {
+  text-shadow: 0 0 24px hsl(var(--primary) / 0.45);
+}
+
+@utility mono-label {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
 }
 
 /* third-party libraries CSS */

@@ -4,10 +4,8 @@ import { routes } from "wasp/client/router";
 import { Toaster } from "../client/components/ui/toaster";
 import "./Main.css";
 import { NavBar } from "./components/NavBar/NavBar";
-import {
-  clinicalNavigationItems,
-  marketingNavigationItems,
-} from "./components/NavBar/constants";
+import { marketingNavigationItems } from "./components/NavBar/constants";
+import { ClinicalLayout } from "./components/clinical-layout/ClinicalLayout";
 import { CookieConsentBanner } from "./components/cookie-consent/Banner";
 
 /**
@@ -22,7 +20,7 @@ export function App() {
 
   const navigationItems = isMarketingPage
     ? marketingNavigationItems
-    : clinicalNavigationItems;
+    : [];
 
   const shouldDisplayAppNavBar = useMemo(() => {
     return (
@@ -30,6 +28,10 @@ export function App() {
       location.pathname !== routes.SignupRoute.build()
     );
   }, [location]);
+
+  const isClinicalArea = useMemo(() => {
+    return shouldDisplayAppNavBar && location.pathname.startsWith("/clinical");
+  }, [location, shouldDisplayAppNavBar]);
 
   useEffect(() => {
     if (location.hash) {
@@ -44,12 +46,24 @@ export function App() {
   return (
     <>
       <div className="bg-background text-foreground min-h-screen">
-        {shouldDisplayAppNavBar && (
-          <NavBar navigationItems={navigationItems} />
+        {shouldDisplayAppNavBar ? (
+          isClinicalArea ? (
+            <ClinicalLayout>
+              <Outlet />
+            </ClinicalLayout>
+          ) : (
+            <>
+              <NavBar navigationItems={navigationItems} />
+              <div className="max-w-(--breakpoint-2xl) mx-auto">
+                <Outlet />
+              </div>
+            </>
+          )
+        ) : (
+          <div className="max-w-(--breakpoint-2xl) mx-auto">
+            <Outlet />
+          </div>
         )}
-        <div className="max-w-(--breakpoint-2xl) mx-auto">
-          <Outlet />
-        </div>
       </div>
       <Toaster position="bottom-right" />
       <CookieConsentBanner />
