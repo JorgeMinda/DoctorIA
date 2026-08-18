@@ -5,6 +5,8 @@ import { HttpError, prisma } from "wasp/server";
 import { type SyntheticPatient } from "wasp/entities";
 import type {
   AdminGetPatients,
+  GetAgenda,
+  GetDoctorsAgenda,
   GetPatients,
   GetPatientById,
   GetPatientHistory,
@@ -661,4 +663,315 @@ export const adminGetPatients: AdminGetPatients<
   }));
 
   return { patients: adminPatients, totalPages: Math.ceil(total / pageSize) };
+};
+
+// ---------------------------------------------------------------------------
+// getAgenda (Médico = agenda propia; Admin = agenda por médico)
+// ---------------------------------------------------------------------------
+
+const getAgendaInputSchema = z.object({
+  medicoId: z.string().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+type GetAgendaInput = z.infer<typeof getAgendaInputSchema>;
+
+type AgendaCita = {
+  id: string;
+  scheduledAt: Date;
+  durationMinutes: number;
+  status: string;
+  reason: string | null;
+  patient: {
+    id: string;
+    syntheticId: string;
+    firstName: string;
+    lastName: string;
+  };
+  medico: {
+    id: string;
+    fullName: string | null;
+    email: string | null;
+  };
+};
+
+type AgendaMetrics = {
+  pacientesAtendidos: number;
+  atencionesHoy: number;
+  citasHoy: number;
+  citasCompletadasHoy: number;
+};
+
+type GetAgendaOutput = {
+  citas: AgendaCita[];
+  currentStatus: "EN_CITA" | "DESOCUPADO";
+  metrics: AgendaMetrics;
+};
+
+export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
+  rawArgs,
+  context,
+) => {
+  if (!context.user) {
+    throw new HttpError(401, "Debe iniciar sesión");
+  }
+  const authUser = context.user;
+  const isMedico = authUser.isMedico && !authUser.isAdmin;
+  if (!isMedico && !(authUser.isAdmin && !authUser.isMedico)) {
+    throw new HttpError(403, "Rol inválido");
+  }
+
+  const { medicoId, from, to } = ensureArgsSchemaOrThrowHttpError(
+    getAgendaInputSchema,
+    rawArgs,
+  );
+
+  const isAdmin = authUser.isAdmin && !authUser.isMedico;
+  const scopeMedicoId = isAdmin ? medicoId : authUser.id;
+
+  const now = new Date();
+  const fromDate = from ?? new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+  const toDate = to ?? new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const where = {
+    ...(scopeMedicoId ? { medicoId: scopeMedicoId } : {}),
+    scheduledAt: { gte: fromDate, lte: toDate },
+  };
+
+  const citas = await context.entities.Cita.findMany({
+    where,
+    orderBy: { scheduledAt: "asc" },
+    include: {
+      patient: {
+        select: {
+          id: true,
+          syntheticId: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+      medico: { select: { id: true, fullName: true, email: true } },
+    },
+  });
+
+  const statusRef = { SCHEDULED: "SCHEDULED", IN_PROGRESS: "IN_PROGRESS" };
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+
+  const currentStatus = citas.some(
+    (c) =>
+      (c.status === statusRef.SCHEDULED ||
+        c.status === statusRef.IN_PROGRESS) &&
+      c.scheduledAt.getTime() <= now.getTime() &&
+      now.getTime() < c.scheduledAt.getTime() + c.durationMinutes * 60_000,
+  )
+    ? ("EN_CITA" as const)
+    : ("DESOCUPADO" as const);
+
+  let pacientesAtendidos = 0;
+  let atencionesHoy = 0;
+  let citasHoy = 0;
+  let citasCompletadasHoy = 0;
+
+  if (scopeMedicoId) {
+    const [
+      authoredPatients,
+      confirmedPatients1,
+      authoredEpicrisisPatients,
+      confirmedEpicrisisPatients,
+    ] = await Promise.all([
+      context.entities.ClinicalNote.findMany({
+        where: { authorId: scopeMedicoId },
+        select: { patientId: true },
+        distinct: ["patientId" as const],
+      }),
+      context.entities.ClinicalNote.findMany({
+        where: { confirmedById: scopeMedicoId },
+        select: { patientId: true },
+        distinct: ["patientId" as const],
+      }),
+      context.entities.Epicrisis.findMany({
+        where: { authorId: scopeMedicoId },
+        select: { patientId: true },
+        distinct: ["patientId" as const],
+      }),
+      context.entities.Epicrisis.findMany({
+        where: { confirmedById: scopeMedicoId },
+        select: { patientId: true },
+        distinct: ["patientId" as const],
+      }),
+    ]);
+    const ids = new Set<string>();
+    [
+      ...authoredPatients,
+      ...confirmedPatients1,
+      ...authoredEpicrisisPatients,
+      ...confirmedEpicrisisPatients,
+    ].forEach((p) => ids.add(p.patientId));
+    pacientesAtendidos = ids.size;
+
+    const todayWhere = {
+      authorId: scopeMedicoId,
+      createdAt: { gte: startOfToday, lt: endOfToday },
+    };
+    const [notesToday, epicrisisToday, citasToday] = await Promise.all([
+      context.entities.ClinicalNote.count({ where: todayWhere }),
+      context.entities.Epicrisis.count({ where: todayWhere }),
+      context.entities.Cita.findMany({
+        where: {
+          medicoId: scopeMedicoId,
+          scheduledAt: { gte: startOfToday, lt: endOfToday },
+        },
+        select: { status: true },
+      }),
+    ]);
+    citasHoy = citasToday.length;
+    citasCompletadasHoy = citasToday.filter(
+      (c) => c.status === "COMPLETED",
+    ).length;
+    atencionesHoy = notesToday + epicrisisToday + citasCompletadasHoy;
+  }
+
+  return {
+    citas: citas as AgendaCita[],
+    currentStatus,
+    metrics: {
+      pacientesAtendidos,
+      atencionesHoy,
+      citasHoy,
+      citasCompletadasHoy,
+    },
+  };
+};
+
+// ---------------------------------------------------------------------------
+// getDoctorsAgenda (Admin) - métricas y estado por profesional
+// ---------------------------------------------------------------------------
+
+type DoctorAgendaRow = {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+  specialty: string | null;
+  currentStatus: "EN_CITA" | "DESOCUPADO";
+  pacientesAtendidos: number;
+  atencionesHoy: number;
+  citasHoy: number;
+  proximaCita: Date | null;
+};
+
+type GetDoctorsAgendaOutput = {
+  medicos: DoctorAgendaRow[];
+};
+
+export const getDoctorsAgenda: GetDoctorsAgenda<
+  Record<string, never>,
+  GetDoctorsAgendaOutput
+> = async (_rawArgs, context) => {
+  ensureAdmin(context.user);
+
+  const medicos = await context.entities.User.findMany({
+    where: { isMedico: true, isAdmin: false },
+    select: { id: true, fullName: true, email: true, specialty: true },
+  });
+
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+
+  const rows = await Promise.all(
+    medicos.map(async (medico) => {
+      const [
+        authoredNotes,
+        confirmedNotes,
+        authoredEpicrises,
+        confirmedEpicrises,
+      ] = await Promise.all([
+        context.entities.ClinicalNote.findMany({
+          where: { authorId: medico.id },
+          select: { patientId: true },
+          distinct: ["patientId" as const],
+        }),
+        context.entities.ClinicalNote.findMany({
+          where: { confirmedById: medico.id },
+          select: { patientId: true },
+          distinct: ["patientId" as const],
+        }),
+        context.entities.Epicrisis.findMany({
+          where: { authorId: medico.id },
+          select: { patientId: true },
+          distinct: ["patientId" as const],
+        }),
+        context.entities.Epicrisis.findMany({
+          where: { confirmedById: medico.id },
+          select: { patientId: true },
+          distinct: ["patientId" as const],
+        }),
+      ]);
+      const patientIds = new Set<string>();
+      [
+        ...authoredNotes,
+        ...confirmedNotes,
+        ...authoredEpicrises,
+        ...confirmedEpicrises,
+      ].forEach((p) => patientIds.add(p.patientId));
+
+      const todayWhere = {
+        authorId: medico.id,
+        createdAt: { gte: startOfToday, lt: endOfToday },
+      };
+      const [notesToday, epicrisisToday, citas] = await Promise.all([
+        context.entities.ClinicalNote.count({ where: todayWhere }),
+        context.entities.Epicrisis.count({ where: todayWhere }),
+        context.entities.Cita.findMany({
+          where: {
+            medicoId: medico.id,
+            scheduledAt: { gte: startOfToday, lt: endOfToday },
+          },
+          select: { status: true, scheduledAt: true, durationMinutes: true },
+        }),
+      ]);
+      const citasHoy = citas.length;
+      const citasCompletadasHoy = citas.filter(
+        (c) => c.status === "COMPLETED",
+      ).length;
+      const atencionesHoy = notesToday + epicrisisToday + citasCompletadasHoy;
+
+      const currentStatus = citas.some(
+        (c) =>
+          (c.status === "SCHEDULED" || c.status === "IN_PROGRESS") &&
+          c.scheduledAt.getTime() <= now.getTime() &&
+          now.getTime() < c.scheduledAt.getTime() + c.durationMinutes * 60_000,
+      )
+        ? ("EN_CITA" as const)
+        : ("DESOCUPADO" as const);
+
+      const upcoming = await context.entities.Cita.findFirst({
+        where: {
+          medicoId: medico.id,
+          scheduledAt: { gte: now },
+          status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+        },
+        orderBy: { scheduledAt: "asc" },
+        select: { scheduledAt: true },
+      });
+
+      return {
+        id: medico.id,
+        fullName: medico.fullName,
+        email: medico.email,
+        specialty: medico.specialty,
+        currentStatus,
+        pacientesAtendidos: patientIds.size,
+        atencionesHoy,
+        citasHoy,
+        proximaCita: upcoming?.scheduledAt ?? null,
+      };
+    }),
+  );
+
+  return { medicos: rows };
 };

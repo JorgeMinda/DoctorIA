@@ -43,6 +43,7 @@ model User {
   auditLogs            AuditLog[]
   authorizedPatients   MedicoPatientAccess[] @relation("MedicoAccess")
   grantedAccesses      MedicoPatientAccess[] @relation("AccessGranter")
+  citasAsMedico        Cita[]         @relation("MedicoCitas")
 }
 
 // ─────────────── PACIENTES SINTÉTICOS (solo datos ficticios, P5) ───────────────
@@ -62,6 +63,7 @@ model SyntheticPatient {
   clinicalNotes     ClinicalNote[]
   epicrises         Epicrisis[]
   authorizedMedicos MedicoPatientAccess[]
+  citas             Cita[]
   auditLogs         AuditLog[]
 
   @@index([syntheticId])
@@ -82,6 +84,31 @@ model MedicoPatientAccess {
 
   @@unique([medicoId, patientId])
   @@index([patientId])
+}
+
+// ─────────────── AGENDA / CITAS (Semana 5 - historial y disponibilidad del médico) ───────────────
+model Cita {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  medicoId  String
+  medico    User             @relation("MedicoCitas", fields: [medicoId], references: [id])
+  patientId String
+  patient   SyntheticPatient @relation(fields: [patientId], references: [id])
+
+  scheduledAt     DateTime // comienzo de la cita (UTC)
+  durationMinutes Int      @default(30)
+
+  // SCHEDULED | IN_PROGRESS | COMPLETED | CANCELLED | NO_SHOW
+  status String @default("SCHEDULED")
+
+  reason String? // motivo de la cita (no clínico estructurado)
+
+  auditLogs AuditLog[]
+
+  @@index([medicoId, scheduledAt])
+  @@index([patientId, scheduledAt])
 }
 
 // ─────────────── NOTA CLÍNICA (estados + adendas, RF-005..RF-029) ───────────────
@@ -182,7 +209,7 @@ model AuditLog {
   user   User   @relation(fields: [userId], references: [id])
 
   action       String // ver lista de Audit Actions en data-model.md §2
-  resourceType String // PATIENT | NOTE | EPICRISIS | USER | SYSTEM
+  resourceType String // PATIENT | NOTE | EPICRISIS | CITA | USER | SYSTEM
   resourceId   String?
   metadata     Json?  // solo metadata no clínica (transiciones de estado, accessAction)
 
@@ -192,6 +219,8 @@ model AuditLog {
   clinicalNote   ClinicalNote? @relation(fields: [clinicalNoteId], references: [id])
   epicrisisId    String?
   epicrisis      Epicrisis? @relation(fields: [epicrisisId], references: [id])
+  citaId         String?
+  cita           Cita? @relation(fields: [citaId], references: [id])
 
   @@index([userId, createdAt])
   @@index([resourceType, resourceId])

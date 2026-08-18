@@ -4,6 +4,7 @@ import {
   adminCreateMedicoUser,
   adminGetPatients,
   adminUpdateMedicoUser,
+  getDoctorsAgenda,
   getPaginatedUsers,
   manageMedicoPatientAccess,
   manageSyntheticPatients,
@@ -11,6 +12,7 @@ import {
 import { useAuth } from "wasp/client/auth";
 import {
   AlertCircle,
+  CalendarClock,
   ClipboardList,
   KeyRound,
   Pencil,
@@ -32,6 +34,7 @@ import {
 } from "../../client/components/ui/card";
 import { Badge } from "../../client/components/ui/badge";
 import { patientAge, sexLabel } from "../services/clinicalFormat";
+import { MedicoAgendaPanel } from "../components/MedicoAgendaPanel";
 
 type Notice = (message: string) => void;
 type ReportError = (message: string) => void;
@@ -588,17 +591,26 @@ function MedicosTab({
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [patientsForId, setPatientsForId] = useState<string | null>(null);
+  const [agendaForId, setAgendaForId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery(getPaginatedUsers, {
     skipPages,
     filter: { isMedico: true },
   });
 
+  const { data: doctorsData } = useQuery(getDoctorsAgenda, {});
+
   const { data: patientsData } = useQuery(adminGetPatients, {
     page: 1,
     pageSize: 50,
     ...(patientsForId ? { medicoId: patientsForId } : {}),
   });
+
+  const doctorRows =
+    doctorsData?.medicos.reduce<Record<string, any>>((acc, doctor) => {
+      acc[doctor.id] = doctor;
+      return acc;
+    }, {}) ?? {};
 
   return (
     <div className="space-y-4">
@@ -636,93 +648,151 @@ function MedicosTab({
           )}
           {data &&
             data.users.length > 0 &&
-            data.users.map((medico: any) => (
-              <div key={medico.id}>
-                <div className="group flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/40">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-sm font-semibold text-primary">
-                    {medico.fullName
-                      ? medico.fullName[0]
-                      : (medico.email ?? medico.username ?? "?")[0]}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-semibold text-foreground">
-                        {medico.fullName ?? medico.username ?? medico.email}
-                      </span>
-                      <Badge variant="success">Médico</Badge>
+            data.users.map((medico: any) => {
+              const doctor = doctorRows[medico.id];
+              const enCita = doctor?.currentStatus === "EN_CITA";
+              return (
+                <div key={medico.id}>
+                  <div className="group flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/40">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-sm font-semibold text-primary">
+                      {medico.fullName
+                        ? medico.fullName[0]
+                        : (medico.email ?? medico.username ?? "?")[0]}
                     </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                      <span className="mono-label">{medico.email}</span>
-                      {medico.specialty && (
-                        <>
-                          <span>·</span>
-                          <span>{medico.specialty}</span>
-                        </>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-semibold text-foreground">
+                          {medico.fullName ?? medico.username ?? medico.email}
+                        </span>
+                        <Badge variant="success">Médico</Badge>
+                        {doctor && (
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${
+                              enCita
+                                ? "border-warning/40 bg-warning/10 text-warning"
+                                : "border-success/40 bg-success/10 text-success"
+                            }`}
+                          >
+                            <span
+                              className={`size-1.5 rounded-full ${
+                                enCita ? "bg-warning" : "bg-success"
+                              }`}
+                            />
+                            {enCita ? "En cita" : "Desocupado"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <span className="mono-label">{medico.email}</span>
+                        {medico.specialty && (
+                          <>
+                            <span>·</span>
+                            <span>{medico.specialty}</span>
+                          </>
+                        )}
+                        {doctor && (
+                          <>
+                            <span>·</span>
+                            <span>
+                              {doctor.pacientesAtendidos} paciente(s)
+                              atendido(s)
+                            </span>
+                            <span>·</span>
+                            <span>{doctor.atencionesHoy} de hoy</span>
+                          </>
+                        )}
+                        {doctor && doctor.proximaCita && (
+                          <>
+                            <span>·</span>
+                            <span>
+                              próx.{" "}
+                              {new Date(doctor.proximaCita).toLocaleString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() =>
+                          setAgendaForId(
+                            agendaForId === medico.id ? null : medico.id,
+                          )
+                        }
+                      >
+                        <CalendarClock className="size-3.5" />
+                        Agenda
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() =>
+                          setPatientsForId(
+                            patientsForId === medico.id ? null : medico.id,
+                          )
+                        }
+                      >
+                        <ClipboardList className="size-3.5" />
+                        Pacientes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() =>
+                          setEditingId(
+                            editingId === medico.id ? null : medico.id,
+                          )
+                        }
+                      >
+                        <Pencil className="size-3.5" />
+                        Editar
+                      </Button>
+                    </div>
+                  </div>
+                  {agendaForId === medico.id && (
+                    <MedicoAgendaPanel medicoId={medico.id} />
+                  )}
+                  {patientsForId === medico.id && (
+                    <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
+                      <p className="mono-label mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+                        Pacientes asignados
+                      </p>
+                      {patientsData && patientsData.patients.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          Sin pacientes asignados.
+                        </p>
+                      )}
+                      {patientsData && patientsData.patients.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {patientsData.patients.map((p: any) => (
+                            <Badge
+                              key={p.id}
+                              variant="outline"
+                              className="mono-label"
+                            >
+                              {p.firstName} {p.lastName} · {p.syntheticId}
+                            </Badge>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() =>
-                        setPatientsForId(
-                          patientsForId === medico.id ? null : medico.id,
-                        )
-                      }
-                    >
-                      <ClipboardList className="size-3.5" />
-                      Pacientes
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() =>
-                        setEditingId(editingId === medico.id ? null : medico.id)
-                      }
-                    >
-                      <Pencil className="size-3.5" />
-                      Editar
-                    </Button>
-                  </div>
+                  )}
+                  {editingId === medico.id && (
+                    <EditMedicoForm
+                      medico={medico}
+                      onCancel={() => setEditingId(null)}
+                      notice={notice}
+                      reportError={reportError}
+                    />
+                  )}
                 </div>
-                {patientsForId === medico.id && (
-                  <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
-                    <p className="mono-label mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-                      Pacientes asignados
-                    </p>
-                    {patientsData && patientsData.patients.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        Sin pacientes asignados.
-                      </p>
-                    )}
-                    {patientsData && patientsData.patients.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {patientsData.patients.map((p: any) => (
-                          <Badge
-                            key={p.id}
-                            variant="outline"
-                            className="mono-label"
-                          >
-                            {p.firstName} {p.lastName} · {p.syntheticId}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {editingId === medico.id && (
-                  <EditMedicoForm
-                    medico={medico}
-                    onCancel={() => setEditingId(null)}
-                    notice={notice}
-                    reportError={reportError}
-                  />
-                )}
-              </div>
-            ))}
+              );
+            })}
         </div>
 
         {data && data.totalPages > 1 && (

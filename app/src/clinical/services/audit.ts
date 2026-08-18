@@ -15,11 +15,18 @@ export type AuditAction =
   | "CONFIRM_EPICRISIS"
   | "CREATE_ADDENDUM"
   | "VOICE_ASSISTANT_QUERY"
+  | "MANAGE_CITA"
   | "ADMIN_MANAGE_USER"
   | "ADMIN_MANAGE_ROLE"
   | "ADMIN_MANAGE_DATA";
 
-export type AuditResourceType = "PATIENT" | "NOTE" | "EPICRISIS" | "USER" | "SYSTEM";
+export type AuditResourceType =
+  | "PATIENT"
+  | "NOTE"
+  | "EPICRISIS"
+  | "CITA"
+  | "USER"
+  | "SYSTEM";
 
 export interface CreateAuditEntryArgs {
   userId: string;
@@ -30,9 +37,12 @@ export interface CreateAuditEntryArgs {
   patientId?: string | null;
   clinicalNoteId?: string | null;
   epicrisisId?: string | null;
+  citaId?: string | null;
 }
 
-export async function createAuditEntry(args: CreateAuditEntryArgs): Promise<void> {
+export async function createAuditEntry(
+  args: CreateAuditEntryArgs,
+): Promise<void> {
   await prisma.auditLog.create({
     data: {
       userId: args.userId,
@@ -43,6 +53,7 @@ export async function createAuditEntry(args: CreateAuditEntryArgs): Promise<void
       patientId: args.patientId ?? null,
       clinicalNoteId: args.clinicalNoteId ?? null,
       epicrisisId: args.epicrisisId ?? null,
+      citaId: args.citaId ?? null,
     },
   });
 }

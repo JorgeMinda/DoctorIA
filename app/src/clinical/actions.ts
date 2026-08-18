@@ -9,6 +9,7 @@ import {
 } from "wasp/server/auth";
 import {
   type ClinicalNote,
+  type Cita,
   type Epicrisis,
   type MedicoPatientAccess,
   type SyntheticPatient,
@@ -27,7 +28,9 @@ import type {
   ConfirmEpicrisis,
   CreateEpicrisisAddendum,
   ManageSyntheticPatients,
+  ManageCita,
   ManageMedicoPatientAccess,
+  UpdateCitaStatus,
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
@@ -42,6 +45,7 @@ import {
   validateConfirmableNote,
   SECTION_LABELS,
 } from "./services/noteValidation";
+import { canTransitionCita, isCitaStatusValid } from "./services/citaLifecycle";
 
 // ---------------------------------------------------------------------------
 // createClinicalNote
@@ -1057,6 +1061,251 @@ export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
     resourceType: "USER",
     resourceId: id,
     metadata: { adminAction: "UPDATE_MEDICO", email: target.email ?? "" },
+  });
+
+  return updated;
+};
+
+// ---------------------------------------------------------------------------
+// manageCita (Admin) - CRUD de citas de agenda
+// ---------------------------------------------------------------------------
+
+const manageCitaInputSchema = z.object({
+  action: z.enum(["CREATE", "UPDATE", "DELETE"]),
+  citaId: z.string().optional(),
+  data: z
+    .object({
+      medicoId: z.string().min(1).optional(),
+      patientId: z.string().min(1).optional(),
+      scheduledAt: z.coerce.date().optional(),
+      durationMinutes: z.number().int().min(5).max(240).optional(),
+      status: z.string().optional(),
+      reason: z.string().max(500).nullable().optional(),
+    })
+    .optional(),
+});
+
+type ManageCitaInput = z.infer<typeof manageCitaInputSchema>;
+
+const CITA_STATUS_OPTIONS = [
+  "SCHEDULED",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
+  "NO_SHOW",
+];
+
+export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
+  rawArgs,
+  context,
+) => {
+  const user = ensureAdmin(context.user);
+
+  const { action, citaId, data } = ensureArgsSchemaOrThrowHttpError(
+    manageCitaInputSchema,
+    rawArgs,
+  );
+
+  if (data?.medicoId) {
+    const medico = await context.entities.User.findUnique({
+      where: { id: data.medicoId },
+    });
+    if (!medico || !medico.isMedico || medico.isAdmin) {
+      throw new HttpError(
+        400,
+        "medicoId debe referenciar un usuario con isMedico=true",
+      );
+    }
+  }
+
+  if (data?.patientId) {
+    const patient = await context.entities.SyntheticPatient.findUnique({
+      where: { id: data.patientId },
+    });
+    if (!patient) {
+      throw new HttpError(404, "Paciente no encontrado");
+    }
+  }
+
+  if (action === "CREATE") {
+    if (!data?.medicoId || !data.patientId || !data.scheduledAt) {
+      throw new HttpError(
+        400,
+        "medicoId, patientId y scheduledAt son obligatorios",
+      );
+    }
+    const status = data.status ?? "SCHEDULED";
+    if (!isCitaStatusValid(status)) {
+      throw new HttpError(400, "Estado de cita inválido");
+    }
+    const cita = await context.entities.Cita.create({
+      data: {
+        medicoId: data.medicoId,
+        patientId: data.patientId,
+        scheduledAt: data.scheduledAt,
+        durationMinutes: data.durationMinutes ?? 30,
+        status,
+        reason: data.reason ?? undefined,
+      },
+    });
+    await createAuditEntry({
+      userId: user.id,
+      action: "MANAGE_CITA",
+      resourceType: "CITA",
+      resourceId: cita.id,
+      patientId: cita.patientId,
+      citaId: cita.id,
+      metadata: { action: "CREATE", status: cita.status },
+    });
+    return cita;
+  }
+
+  if (!citaId) {
+    throw new HttpError(400, "citaId es requerido");
+  }
+
+  const existing = await context.entities.Cita.findUnique({
+    where: { id: citaId },
+  });
+  if (!existing) {
+    throw new HttpError(404, "Cita no encontrada");
+  }
+
+  if (action === "UPDATE") {
+    const targetStatus = data?.status ?? existing.status;
+    if (!isCitaStatusValid(targetStatus)) {
+      throw new HttpError(400, "Estado de cita inválido");
+    }
+    if (
+      targetStatus !== existing.status &&
+      !canTransitionCita(existing.status, targetStatus)
+    ) {
+      throw new HttpError(
+        409,
+        `Transición no permitida: ${existing.status} → ${targetStatus}`,
+      );
+    }
+    const updated = await context.entities.Cita.update({
+      where: { id: citaId },
+      data: {
+        medicoId: data?.medicoId ?? undefined,
+        patientId: data?.patientId ?? undefined,
+        scheduledAt: data?.scheduledAt ?? undefined,
+        durationMinutes: data?.durationMinutes ?? undefined,
+        status: data?.status ?? undefined,
+        reason: data?.reason ?? undefined,
+      },
+    });
+    await createAuditEntry({
+      userId: user.id,
+      action: "MANAGE_CITA",
+      resourceType: "CITA",
+      resourceId: updated.id,
+      patientId: updated.patientId,
+      citaId: updated.id,
+      metadata: {
+        action: "UPDATE",
+        status: updated.status,
+        previousStatus: existing.status,
+      },
+    });
+    return updated;
+  }
+
+  // DELETE: nunca borrar citas completadas (trazabilidad).
+  if (existing.status === "COMPLETED") {
+    throw new HttpError(409, "No se puede eliminar una cita completada");
+  }
+  await context.entities.Cita.delete({ where: { id: citaId } });
+  await createAuditEntry({
+    userId: user.id,
+    action: "MANAGE_CITA",
+    resourceType: "CITA",
+    resourceId: citaId,
+    patientId: existing.patientId,
+    citaId,
+    metadata: { action: "DELETE", status: existing.status },
+  });
+  return existing;
+};
+
+// ---------------------------------------------------------------------------
+// updateCitaStatus (Médico de la cita o Admin) - transición de estado
+// ---------------------------------------------------------------------------
+
+const updateCitaStatusInputSchema = z.object({
+  citaId: z.string().min(1),
+  status: z.string().min(1),
+});
+
+type UpdateCitaStatusInput = z.infer<typeof updateCitaStatusInputSchema>;
+
+export const updateCitaStatus: UpdateCitaStatus<
+  UpdateCitaStatusInput,
+  Cita
+> = async (rawArgs, context) => {
+  const authUser = context.user;
+  if (!authUser) {
+    throw new HttpError(401, "Debe iniciar sesión");
+  }
+  const isAdmin = authUser.isAdmin && !authUser.isMedico;
+  const isMedico = authUser.isMedico && !authUser.isAdmin;
+  if (!isMedico && !isAdmin) {
+    throw new HttpError(403, "Rol inválido");
+  }
+
+  const { citaId, status } = ensureArgsSchemaOrThrowHttpError(
+    updateCitaStatusInputSchema,
+    rawArgs,
+  );
+
+  if (!isCitaStatusValid(status)) {
+    throw new HttpError(400, "Estado de cita inválido");
+  }
+
+  const cita = await context.entities.Cita.findUnique({
+    where: { id: citaId },
+  });
+  if (!cita) {
+    throw new HttpError(404, "Cita no encontrada");
+  }
+
+  if (isMedico && cita.medicoId !== authUser.id) {
+    throw new HttpError(403, "Solo puede operar sobre sus propias citas");
+  }
+
+  if (status !== cita.status && !canTransitionCita(cita.status, status)) {
+    throw new HttpError(
+      409,
+      `Transición no permitida: ${cita.status} → ${status}`,
+    );
+  }
+
+  if (
+    status === "IN_PROGRESS" &&
+    cita.scheduledAt.getTime() > Date.now() + 5 * 60_000
+  ) {
+    throw new HttpError(409, "La cita aún no comienza");
+  }
+
+  const updated = await context.entities.Cita.update({
+    where: { id: citaId },
+    data: { status },
+  });
+
+  await createAuditEntry({
+    userId: authUser.id,
+    action: "MANAGE_CITA",
+    resourceType: "CITA",
+    resourceId: updated.id,
+    patientId: updated.patientId,
+    citaId: updated.id,
+    metadata: {
+      action: "STATUS",
+      phase: isAdmin ? "ADMIN" : "MEDICO",
+      status: updated.status,
+      previousStatus: cita.status,
+    },
   });
 
   return updated;

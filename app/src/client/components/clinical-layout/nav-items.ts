@@ -1,4 +1,11 @@
-import { Mic, ScrollText, Settings, Users, type LucideIcon } from "lucide-react";
+import {
+  CalendarDays,
+  Mic,
+  ScrollText,
+  Settings,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface ClinicalNavItem {
   name: string;
@@ -16,6 +23,7 @@ export const clinicalNavGroups: ClinicalNavGroup[] = [
     label: "Clínica",
     items: [
       { name: "Pacientes", to: "/clinical/patients", icon: Users },
+      { name: "Mi agenda", to: "/clinical/agenda", icon: CalendarDays },
       { name: "Asistente de voz", to: "/clinical/voice", icon: Mic },
     ],
   },

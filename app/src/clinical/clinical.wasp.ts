@@ -12,16 +12,20 @@ import {
   confirmClinicalNote,
   confirmEpicrisis,
   generateEpicrisisDraft,
+  manageCita,
   manageMedicoPatientAccess,
   manageSyntheticPatients,
   requestAIStructuring,
   updateClinicalNoteDraft,
+  updateCitaStatus,
   updateEpicrisisDraft,
 } from "./actions" with { type: "ref" };
 import {
   adminGetPatients,
+  getAgenda,
   getAuditLog,
   getClinicalNote,
+  getDoctorsAgenda,
   getEpicrisis,
   getPatientById,
   getPatientHistory,
@@ -30,6 +34,7 @@ import {
 } from "./queries" with { type: "ref" };
 
 import { ClinicalAdminPage } from "./pages/ClinicalAdminPage" with { type: "ref" };
+import { ClinicalAgendaPage } from "./pages/ClinicalAgendaPage" with { type: "ref" };
 import { ClinicalAuditPage } from "./pages/ClinicalAuditPage" with { type: "ref" };
 import { ClinicalEpicrisisPage } from "./pages/ClinicalEpicrisisPage" with { type: "ref" };
 import { ClinicalNotePage } from "./pages/ClinicalNotePage" with { type: "ref" };
@@ -65,6 +70,12 @@ export const clinicalSpec: Spec = [
   }),
   query(adminGetPatients, {
     entities: ["SyntheticPatient", "MedicoPatientAccess", "User"],
+  }),
+  query(getAgenda, {
+    entities: ["Cita", "User", "SyntheticPatient", "ClinicalNote", "Epicrisis"],
+  }),
+  query(getDoctorsAgenda, {
+    entities: ["Cita", "User", "ClinicalNote", "Epicrisis"],
   }),
 
   // Actions (contracts §2, §3, §5)
@@ -124,6 +135,12 @@ export const clinicalSpec: Spec = [
   action(adminUpdateMedicoUser, {
     entities: ["User", "AuditLog"],
   }),
+  action(manageCita, {
+    entities: ["Cita", "User", "SyntheticPatient", "AuditLog"],
+  }),
+  action(updateCitaStatus, {
+    entities: ["Cita", "AuditLog"],
+  }),
 
   // Rutas / páginas clínicas
   route(
@@ -135,6 +152,11 @@ export const clinicalSpec: Spec = [
     "ClinicalPatientDetailRoute",
     "/clinical/patients/:patientId",
     page(ClinicalPatientDetailPage, { authRequired: true }),
+  ),
+  route(
+    "ClinicalAgendaRoute",
+    "/clinical/agenda",
+    page(ClinicalAgendaPage, { authRequired: true }),
   ),
   route(
     "ClinicalNoteRoute",
