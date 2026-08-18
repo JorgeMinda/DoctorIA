@@ -1,15 +1,19 @@
 import { VerifyEmailForm } from "wasp/client/auth";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { AuthPageLayout } from "../AuthPageLayout";
+import { AUTH_APPEARANCE } from "../ambientAuthTheme";
 
 export function EmailVerificationPage() {
   return (
     <AuthPageLayout>
-      <VerifyEmailForm />
+      <VerifyEmailForm appearance={AUTH_APPEARANCE} />
       <br />
-      <span className="text-sm font-medium text-gray-900">
+      <span className="text-sm font-medium text-muted-foreground">
         If everything is okay,{" "}
-        <WaspRouterLink to={routes.LoginRoute.to} className="underline">
+        <WaspRouterLink
+          to={routes.LoginRoute.to}
+          className="text-primary underline underline-offset-2"
+        >
           go to login
         </WaspRouterLink>
       </span>

@@ -1,15 +1,21 @@
 import { ResetPasswordForm } from "wasp/client/auth";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { AuthPageLayout } from "../AuthPageLayout";
+import { AUTH_APPEARANCE } from "../ambientAuthTheme";
 
 export function PasswordResetPage() {
   return (
     <AuthPageLayout>
-      <ResetPasswordForm />
+      <ResetPasswordForm appearance={AUTH_APPEARANCE} />
       <br />
-      <span className="text-sm font-medium text-gray-900">
+      <span className="text-sm font-medium text-muted-foreground">
         If everything is okay,{" "}
-        <WaspRouterLink to={routes.LoginRoute.to}>go to login</WaspRouterLink>
+        <WaspRouterLink
+          to={routes.LoginRoute.to}
+          className="text-primary underline underline-offset-2"
+        >
+          go to login
+        </WaspRouterLink>
       </span>
     </AuthPageLayout>
   );
