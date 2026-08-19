@@ -31,6 +31,7 @@ import type {
   ManageCita,
   ManageMedicoPatientAccess,
   UpdateCitaStatus,
+  CreateNoteFromVoice,
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
@@ -46,6 +47,15 @@ import {
   SECTION_LABELS,
 } from "./services/noteValidation";
 import { canTransitionCita, isCitaStatusValid } from "./services/citaLifecycle";
+import {
+  buildVoiceError,
+  buildVoiceSummary,
+  parseVoiceCommand,
+  resolvePatientByName,
+  resolvePatientMatches,
+  type VoiceAssistantResponse,
+  type VoicePatientMatch,
+} from "./services/voiceAssistant";
 
 // ---------------------------------------------------------------------------
 // createClinicalNote
@@ -1336,4 +1346,139 @@ export const updateCitaStatus: UpdateCitaStatus<
   });
 
   return updated;
+};
+
+// ---------------------------------------------------------------------------
+// createNoteFromVoice (Médico) - creación de notas por voz
+// ---------------------------------------------------------------------------
+
+const createNoteFromVoiceInputSchema = z.object({
+  query: z.string().min(1),
+});
+
+type CreateNoteFromVoiceInput = z.infer<typeof createNoteFromVoiceInputSchema>;
+
+type CreateNoteFromVoiceOutput =
+  | VoiceAssistantResponse
+  | {
+      actionType: "NOTE_CREATED";
+      noteId: string;
+      patientId: string;
+      patientName: string;
+      syntheticId: string;
+    };
+
+const toVoicePatientMatch = (patient: SyntheticPatient): VoicePatientMatch => ({
+  id: patient.id,
+  syntheticId: patient.syntheticId,
+  firstName: patient.firstName,
+  lastName: patient.lastName,
+  birthDate: patient.birthDate,
+  sex: patient.sex,
+  medicalHistory: patient.medicalHistory,
+  allergies: patient.allergies,
+});
+
+export const createNoteFromVoice: CreateNoteFromVoice<
+  CreateNoteFromVoiceInput,
+  CreateNoteFromVoiceOutput
+> = async (rawArgs, context) => {
+  const user = ensureMedico(context.user);
+
+  const { query } = ensureArgsSchemaOrThrowHttpError(
+    createNoteFromVoiceInputSchema,
+    rawArgs,
+  );
+
+  const command = parseVoiceCommand(query);
+
+  // Solo pacientes autorizados para este médico.
+  const authorizedPatients = await context.entities.SyntheticPatient.findMany({
+    where: { authorizedMedicos: { some: { medicoId: user.id } } },
+  });
+
+  const patients = authorizedPatients.map(toVoicePatientMatch);
+
+  if (command.intent === "RETRIEVE") {
+    const match = resolvePatientByName(patients, command.patientQuery);
+
+    await createAuditEntry({
+      userId: user.id,
+      action: "VOICE_ASSISTANT_QUERY",
+      resourceType: "PATIENT",
+      resourceId: match?.id ?? null,
+      patientId: match?.id ?? null,
+      metadata: {
+        queryLength: String(query.length),
+        matched: String(!!match),
+      },
+    });
+
+    if (!match) {
+      return buildVoiceError(query, "NOT_FOUND");
+    }
+    return buildVoiceSummary(query, match);
+  }
+
+  // intent === 'CREATE_NOTE'
+  if (!command.patientQuery) {
+    throw new HttpError(
+      400,
+      "No detecté a qué paciente corresponde la nota. Repite indicando el syntheticId o el nombre completo (ej. \u201cagrega una nota a PAC-001 que presenta fiebre\u201d).",
+    );
+  }
+
+  const matches = resolvePatientMatches(patients, command.patientQuery);
+  if (matches.length === 0) {
+    throw new HttpError(404, "No encontré ningún paciente autorizado con ese nombre o ID.");
+  }
+  if (matches.length > 1) {
+    const names = matches
+      .map((m) => `${m.firstName} ${m.lastName} (${m.syntheticId})`)
+      .join(", ");
+    throw new HttpError(
+      409,
+      `Encontré ${matches.length} pacientes con ese nombre: ${names}. Repite indicando el syntheticId exacto para no equivocarme de paciente.`,
+    );
+  }
+
+  const qualified = await context.entities.SyntheticPatient.findUnique({
+    where: { id: matches[0].id },
+  });
+  if (!qualified) {
+    throw new HttpError(404, "Paciente no encontrado.");
+  }
+
+  if (!command.clinicalText) {
+    throw new HttpError(
+      400,
+      "No detecté el texto clínico de la nota. Repite indicando el contenido del dictado (ej. \u201canota en la historia de PAC-001 que presenta fiebre de 38 grados\u201d).",
+    );
+  }
+
+  const created = await createClinicalNote(
+    { patientId: qualified.id, originalText: command.clinicalText },
+    context,
+  );
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "VOICE_NOTE_CREATE",
+    resourceType: "NOTE",
+    resourceId: created.id,
+    patientId: qualified.id,
+    metadata: {
+      phase: "MEDICO",
+      status: created.status,
+      patientMatchedBy: /^pac-\d+$/i.test(command.patientQuery) ? "pac" : "name",
+    },
+  });
+
+  return {
+    actionType: "NOTE_CREATED",
+    noteId: created.id,
+    patientId: qualified.id,
+    patientName: `${qualified.firstName} ${qualified.lastName}`.trim(),
+    syntheticId: qualified.syntheticId,
+  };
 };

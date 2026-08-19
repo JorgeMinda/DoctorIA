@@ -1,5 +1,5 @@
-// Módulo clínico DoctorIA (spec.md RF-014..RF-020, RF-025..RF-028; data-model.md).
-// Declara las 17 operaciones de contracts/clinical-operations.md y las rutas clínicas.
+// Módulo clínico DoctorIA (spec.md RF-014..RF-020, RF-025..RF-031; data-model.md).
+// Declara las 18 operaciones de contracts/clinical-operations.md y las rutas clínicas.
 
 import { action, page, query, route, type Spec } from "@wasp.sh/spec";
 
@@ -9,6 +9,7 @@ import {
   createClinicalNote,
   createEpicrisisAddendum,
   createNoteAddendum,
+  createNoteFromVoice,
   confirmClinicalNote,
   confirmEpicrisis,
   generateEpicrisisDraft,
@@ -140,6 +141,15 @@ export const clinicalSpec: Spec = [
   }),
   action(updateCitaStatus, {
     entities: ["Cita", "AuditLog"],
+  }),
+  action(createNoteFromVoice, {
+    entities: [
+      "SyntheticPatient",
+      "User",
+      "ClinicalNote",
+      "MedicoPatientAccess",
+      "AuditLog",
+    ],
   }),
 
   // Rutas / páginas clínicas
