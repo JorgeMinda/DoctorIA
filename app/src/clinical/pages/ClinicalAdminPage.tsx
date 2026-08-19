@@ -4,24 +4,34 @@ import {
   adminCreateMedicoUser,
   adminGetPatients,
   adminUpdateMedicoUser,
+  getAgenda,
   getDoctorsAgenda,
   getPaginatedUsers,
+  manageCita,
   manageMedicoPatientAccess,
   manageSyntheticPatients,
+  updateCitaStatus,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
 import {
+  Activity,
   AlertCircle,
   CalendarClock,
+  CalendarDays,
+  CheckCircle2,
   ClipboardList,
+  Clock,
   KeyRound,
   Pencil,
+  PhoneMissed,
   Plus,
   Search,
   ShieldAlert,
   Stethoscope,
+  Trash2,
   UserPlus,
   Users,
+  XCircle,
 } from "lucide-react";
 import { Button } from "../../client/components/ui/button";
 import { Input } from "../../client/components/ui/input";
@@ -34,6 +44,7 @@ import {
 } from "../../client/components/ui/card";
 import { Badge } from "../../client/components/ui/badge";
 import { patientAge, sexLabel } from "../services/clinicalFormat";
+import { citaStatusLabel } from "../services/statusLabels";
 import { MedicoAgendaPanel } from "../components/MedicoAgendaPanel";
 
 type Notice = (message: string) => void;
@@ -108,6 +119,20 @@ function EditPatientForm({
     patient.medicalHistory ?? "",
   );
   const [allergies, setAllergies] = useState(patient.allergies ?? "");
+  const [profile, setProfile] = useState({
+    nationality: patient.nationality ?? "",
+    heightCm: patient.heightCm ? String(patient.heightCm) : "",
+    weightKg: patient.weightKg ? String(patient.weightKg) : "",
+    ethnicity: patient.ethnicity ?? "",
+    bloodType: patient.bloodType ?? "",
+    address: patient.address ?? "",
+    phone: patient.phone ?? "",
+    emergencyPhone: patient.emergencyPhone ?? "",
+    insurance: patient.insurance ?? "",
+  });
+
+  const setProfileField = (field: keyof typeof profile, value: string) =>
+    setProfile((p) => ({ ...p, [field]: value }));
 
   const handleSave = run(
     () =>
@@ -121,6 +146,7 @@ function EditPatientForm({
           sex,
           medicalHistory: medicalHistory || null,
           allergies: allergies || null,
+          ...patientProfilePayload(profile),
         },
       }),
     notice,
@@ -168,6 +194,8 @@ function EditPatientForm({
           value={allergies}
           onChange={(e) => setAllergies(e.target.value)}
         />
+        <div className="sm:col-span-2" />
+        <ProfileFields values={profile} onChange={setProfileField} />
       </div>
       <div className="mt-3 flex gap-2">
         <Button
@@ -181,6 +209,124 @@ function EditPatientForm({
         </Button>
       </div>
     </div>
+  );
+}
+
+const BLOOD_TYPES = ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+
+function patientProfilePayload(data: {
+  nationality: string;
+  heightCm: string;
+  weightKg: string;
+  ethnicity: string;
+  bloodType: string;
+  address: string;
+  phone: string;
+  emergencyPhone: string;
+  insurance: string;
+}) {
+  return {
+    nationality: data.nationality.trim() ? data.nationality.trim() : null,
+    heightCm: data.heightCm ? Number(data.heightCm) : null,
+    weightKg: data.weightKg ? Number(data.weightKg) : null,
+    ethnicity: data.ethnicity.trim() ? data.ethnicity.trim() : null,
+    bloodType: data.bloodType || null,
+    address: data.address.trim() ? data.address.trim() : null,
+    phone: data.phone.trim() ? data.phone.trim() : null,
+    emergencyPhone: data.emergencyPhone.trim()
+      ? data.emergencyPhone.trim()
+      : null,
+    insurance: data.insurance.trim() ? data.insurance.trim() : null,
+  };
+}
+
+function ProfileFields({
+  values,
+  onChange,
+}: {
+  values: {
+    nationality: string;
+    heightCm: string;
+    weightKg: string;
+    ethnicity: string;
+    bloodType: string;
+    address: string;
+    phone: string;
+    emergencyPhone: string;
+    insurance: string;
+  };
+  onChange: (field: keyof typeof values, value: string) => void;
+}) {
+  return (
+    <>
+      <Textarea
+        className="border-outline-variant bg-surface"
+        placeholder="Dirección"
+        rows={2}
+        value={values.address}
+        onChange={(e) => onChange("address", e.target.value)}
+      />
+      <Textarea
+        className="border-outline-variant bg-surface"
+        placeholder="Seguro / entidad de salud (ej. IESS)"
+        rows={2}
+        value={values.insurance}
+        onChange={(e) => onChange("insurance", e.target.value)}
+      />
+      <Input
+        className="border-outline-variant bg-surface"
+        placeholder="Nacionalidad"
+        value={values.nationality}
+        onChange={(e) => onChange("nationality", e.target.value)}
+      />
+      <Input
+        className="border-outline-variant bg-surface"
+        placeholder="Etnia / grupo étnico"
+        value={values.ethnicity}
+        onChange={(e) => onChange("ethnicity", e.target.value)}
+      />
+      <Input
+        className="border-outline-variant bg-surface"
+        type="number"
+        min={1}
+        max={300}
+        placeholder="Talla (cm)"
+        value={values.heightCm}
+        onChange={(e) => onChange("heightCm", e.target.value)}
+      />
+      <Input
+        className="border-outline-variant bg-surface"
+        type="number"
+        min={1}
+        max={500}
+        placeholder="Peso (kg)"
+        value={values.weightKg}
+        onChange={(e) => onChange("weightKg", e.target.value)}
+      />
+      <select
+        className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
+        value={values.bloodType}
+        onChange={(e) => onChange("bloodType", e.target.value)}
+      >
+        {BLOOD_TYPES.map((bt) => (
+          <option key={bt || "none"} value={bt}>
+            {bt ? `Tipo de sangre: ${bt}` : "Tipo de sangre"}
+          </option>
+        ))}
+      </select>
+      <Input
+        className="border-outline-variant bg-surface"
+        placeholder="Teléfono"
+        value={values.phone}
+        onChange={(e) => onChange("phone", e.target.value)}
+      />
+      <Input
+        className="border-outline-variant bg-surface"
+        placeholder="Teléfono de emergencia"
+        value={values.emergencyPhone}
+        onChange={(e) => onChange("emergencyPhone", e.target.value)}
+      />
+    </>
   );
 }
 
@@ -199,6 +345,20 @@ function CreatePatientForm({
   const [sex, setSex] = useState("M");
   const [medicalHistory, setMedicalHistory] = useState("");
   const [allergies, setAllergies] = useState("");
+  const [profile, setProfile] = useState({
+    nationality: "",
+    heightCm: "",
+    weightKg: "",
+    ethnicity: "",
+    bloodType: "",
+    address: "",
+    phone: "",
+    emergencyPhone: "",
+    insurance: "",
+  });
+
+  const setProfileField = (field: keyof typeof profile, value: string) =>
+    setProfile((p) => ({ ...p, [field]: value }));
 
   const handleCreate = run(
     () =>
@@ -212,6 +372,7 @@ function CreatePatientForm({
           sex,
           medicalHistory: medicalHistory || null,
           allergies: allergies || null,
+          ...patientProfilePayload(profile),
         },
       }),
     notice,
@@ -266,6 +427,7 @@ function CreatePatientForm({
           value={allergies}
           onChange={(e) => setAllergies(e.target.value)}
         />
+        <ProfileFields values={profile} onChange={setProfileField} />
       </div>
       <div className="mt-3">
         <Button
@@ -1009,10 +1171,324 @@ function AssignmentsTab({
 }
 
 // ---------------------------------------------------------------------------
+// Tab: Citas (agendamiento para cada doctor)
+// ---------------------------------------------------------------------------
+
+function citaBadgeVariant(status: string) {
+  if (status === "COMPLETED") return "success";
+  if (status === "IN_PROGRESS") return "warning";
+  if (status === "CANCELLED") return "destructive";
+  return "outline";
+}
+
+function AdminCitaBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={citaBadgeVariant(status) as any} className="mono-label">
+      {citaStatusLabel(status)}
+    </Badge>
+  );
+}
+
+function AdminScheduleForm({
+  notice,
+  reportError,
+}: {
+  notice: Notice;
+  reportError: ReportError;
+}) {
+  const manageCitaFn = useAction(manageCita);
+  const { data: medicos } = useQuery(getPaginatedUsers, {
+    skipPages: 0,
+    filter: { isMedico: true },
+  });
+  const { data: patientsData } = useQuery(adminGetPatients, {
+    page: 1,
+    pageSize: 100,
+  });
+  const [medicoId, setMedicoId] = useState("");
+  const [patientId, setPatientId] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("30");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const handleCreate = async () => {
+    if (!medicoId || !patientId || !scheduledAt) return;
+    setBusy(true);
+    try {
+      await manageCitaFn({
+        action: "CREATE",
+        data: {
+          medicoId,
+          patientId,
+          scheduledAt: new Date(scheduledAt),
+          durationMinutes: Number(durationMinutes) || 30,
+          reason: reason || undefined,
+        },
+      });
+      notice("Cita programada correctamente");
+      setPatientId("");
+      setScheduledAt("");
+      setReason("");
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo programar la cita");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const patientOptions = patientsData?.patients ?? [];
+
+  return (
+    <Card className="overflow-hidden border-outline-variant">
+      <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <CalendarClock className="size-4 text-primary" />
+          Programar cita
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 p-4">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <select
+            className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
+            value={medicoId}
+            onChange={(e) => setMedicoId(e.target.value)}
+          >
+            <option value="">Seleccione el médico…</option>
+            {medicos?.users.map((m: any) => (
+              <option key={m.id} value={m.id}>
+                {m.fullName ?? m.username ?? m.email}
+              </option>
+            ))}
+          </select>
+          <select
+            className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
+            value={patientId}
+            onChange={(e) => setPatientId(e.target.value)}
+          >
+            <option value="">Seleccione el paciente…</option>
+            {patientOptions.map((p: any) => (
+              <option key={p.id} value={p.id}>
+                {p.syntheticId} · {p.firstName} {p.lastName}
+              </option>
+            ))}
+          </select>
+          <Input
+            className="border-outline-variant bg-surface"
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+          />
+          <Input
+            className="border-outline-variant bg-surface"
+            type="number"
+            min={5}
+            max={240}
+            placeholder="Duración (min)"
+            value={durationMinutes}
+            onChange={(e) => setDurationMinutes(e.target.value)}
+          />
+          <Input
+            className="border-outline-variant bg-surface sm:col-span-2"
+            placeholder="Motivo de la cita (opcional)"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
+        <Button
+          onClick={handleCreate}
+          disabled={busy || !medicoId || !patientId || !scheduledAt}
+        >
+          <Plus className="size-4" />
+          Programar cita
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdminCitasTab({
+  notice,
+  reportError,
+}: {
+  notice: Notice;
+  reportError: ReportError;
+}) {
+  const { data: agenda, isLoading } = useQuery(getAgenda, {});
+  const manageCitaFn = useAction(manageCita);
+  const updateStatusFn = useAction(updateCitaStatus);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const runTransition = async (
+    citaId: string,
+    status: string,
+    label: string,
+  ) => {
+    setBusyId(citaId);
+    try {
+      await updateStatusFn({ citaId, status });
+      notice(label);
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo actualizar la cita");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDelete = async (cita: any) => {
+    setBusyId(cita.id);
+    try {
+      await manageCitaFn({ action: "DELETE", citaId: cita.id });
+      notice("Cita eliminada");
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo eliminar la cita");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const sorted = [...(agenda?.citas ?? [])].sort(
+    (a, b) =>
+      new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime(),
+  );
+
+  return (
+    <div className="space-y-4">
+      <AdminScheduleForm notice={notice} reportError={reportError} />
+
+      <Card className="overflow-hidden border-outline-variant">
+        <div className="flex items-center justify-between border-b border-outline-variant/50 bg-surface-container/60 px-5 py-3">
+          <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
+            Citas de todos los médicos
+          </p>
+          <Badge variant="outline" className="mono-label">
+            {agenda ? `${sorted.length} cita(s)` : "—"}
+          </Badge>
+        </div>
+
+        <div className="divide-y divide-outline-variant/40">
+          {isLoading && (
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+              Cargando citas…
+            </div>
+          )}
+          {agenda && sorted.length === 0 && (
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+              Sin citas en el período.
+            </div>
+          )}
+          {agenda &&
+            sorted.length > 0 &&
+            sorted.map((cita: any) => (
+              <div
+                key={cita.id}
+                className="flex flex-wrap items-center gap-4 px-5 py-4"
+              >
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+                  <CalendarDays className="size-4 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">
+                      {cita.medico.fullName ?? cita.medico.email}
+                    </span>
+                    <span className="text-xs text-muted-foreground">→</span>
+                    <span className="text-sm font-medium text-foreground">
+                      {cita.patient.firstName} {cita.patient.lastName}
+                    </span>
+                    <Badge variant="outline" className="mono-label">
+                      {cita.patient.syntheticId}
+                    </Badge>
+                    <AdminCitaBadge status={cita.status} />
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="size-3.5" />
+                      {new Date(cita.scheduledAt).toLocaleString()}
+                    </span>
+                    <span>· {cita.durationMinutes} min</span>
+                    {cita.reason && <span>· {cita.reason}</span>}
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-1.5">
+                  {cita.status === "SCHEDULED" && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === cita.id}
+                        onClick={() =>
+                          runTransition(cita.id, "IN_PROGRESS", "Cita iniciada")
+                        }
+                      >
+                        <Activity className="size-3.5" />
+                        Iniciar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === cita.id}
+                        onClick={() =>
+                          runTransition(cita.id, "NO_SHOW", "No asistió")
+                        }
+                      >
+                        <PhoneMissed className="size-3.5" />
+                        No asistió
+                      </Button>
+                    </>
+                  )}
+                  {cita.status === "IN_PROGRESS" && (
+                    <Button
+                      size="sm"
+                      disabled={busyId === cita.id}
+                      onClick={() =>
+                        runTransition(cita.id, "COMPLETED", "Cita completada")
+                      }
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      Completar
+                    </Button>
+                  )}
+                  {(cita.status === "SCHEDULED" ||
+                    cita.status === "IN_PROGRESS") && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busyId === cita.id}
+                      onClick={() =>
+                        runTransition(cita.id, "CANCELLED", "Cita cancelada")
+                      }
+                    >
+                      <XCircle className="size-3.5" />
+                      Cancelar
+                    </Button>
+                  )}
+                  {cita.status !== "COMPLETED" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive"
+                      disabled={busyId === cita.id}
+                      onClick={() => handleDelete(cita)}
+                    >
+                      <Trash2 className="size-3.5" />
+                      Eliminar
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Página principal
 // ---------------------------------------------------------------------------
 
-type TabKey = "pacientes" | "medicos" | "asignaciones";
+type TabKey = "pacientes" | "medicos" | "asignaciones" | "citas";
 
 export function ClinicalAdminPage() {
   const { data: user } = useAuth();
@@ -1058,6 +1534,11 @@ export function ClinicalAdminPage() {
       label: "Asignaciones",
       icon: <KeyRound className="size-4" />,
     },
+    {
+      key: "citas",
+      label: "Citas",
+      icon: <CalendarClock className="size-4" />,
+    },
   ];
 
   return (
@@ -1100,6 +1581,9 @@ export function ClinicalAdminPage() {
       )}
       {tab === "asignaciones" && (
         <AssignmentsTab notice={showNotice} reportError={reportError} />
+      )}
+      {tab === "citas" && (
+        <AdminCitasTab notice={showNotice} reportError={reportError} />
       )}
     </div>
   );

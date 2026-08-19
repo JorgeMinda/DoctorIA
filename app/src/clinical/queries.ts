@@ -488,6 +488,7 @@ export const getAuditLog: GetAuditLog<
   const skip = (page - 1) * pageSize;
 
   // Scoping por rol (contracts §4)
+  // Admin: ve TODO el registro (incluye alta de pacientes, citas y notas).
   let where: any = {};
   if (context.user.isMedico && !context.user.isAdmin) {
     where = {
@@ -495,9 +496,7 @@ export const getAuditLog: GetAuditLog<
       resourceType: { in: ["PATIENT", "NOTE", "EPICRISIS"] },
     };
   } else if (context.user.isAdmin && !context.user.isMedico) {
-    where = {
-      resourceType: { in: ["USER", "SYSTEM"] },
-    };
+    where = {};
   } else {
     throw new HttpError(403, "Rol inválido");
   }
@@ -520,6 +519,13 @@ export const getAuditLog: GetAuditLog<
       take: pageSize,
       include: {
         user: { select: { fullName: true, username: true, email: true } },
+        patient: {
+          select: {
+            firstName: true,
+            lastName: true,
+            syntheticId: true,
+          },
+        },
       },
     }),
     prisma.auditLog.count({ where }),

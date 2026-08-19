@@ -28,11 +28,18 @@ export const AUTH_APPEARANCE = {
 
 // Sobreescrituras de presentación de los formularios de Wasp (scoped al
 // layout de auth, marcado con data-login-ambient).
+// Fondo/tinta adaptativos al tema: en modo claro el input usa superficie clara
+// (tinta oscura) y en modo oscuro superficie oscura (tinta clara). Soluciona el
+// texto ilegible al alternar entre claro y oscuro.
 export const AUTH_AMBIENT_STYLE = `
   [data-login-ambient] input {
     color: var(--color-foreground) !important;
-    background-color: #0d1117 !important;
+    background-color: var(--color-surface-container) !important;
     border-color: var(--color-outline) !important;
+  }
+  [data-login-ambient] input::placeholder {
+    color: color-mix(in srgb, var(--color-foreground) 55%, transparent) !important;
+    opacity: 1 !important;
   }
   [data-login-ambient] input:focus {
     border-color: #22d3ee !important;

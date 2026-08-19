@@ -66,7 +66,6 @@ function NewCitaForm({
   const { data: patientsData } = useQuery(adminGetPatients, {
     page: 1,
     pageSize: 100,
-    medicoId,
   });
   const [patientId, setPatientId] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");

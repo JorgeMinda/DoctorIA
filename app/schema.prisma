@@ -60,6 +60,17 @@ model SyntheticPatient {
   medicalHistory String?
   allergies      String?
 
+  // Perfil demográfico / contacto (datos sintéticos, rf-pacientes)
+  nationality     String?
+  heightCm        Int?     // talla (cm)
+  weightKg        Int?     // peso (kg)
+  ethnicity       String?
+  bloodType       String?  // A+, A-, B+, B-, AB+, AB-, O+, O-
+  address         String?
+  phone           String?
+  emergencyPhone  String?
+  insurance       String?  // tipo de seguro / entidad
+
   clinicalNotes     ClinicalNote[]
   epicrises         Epicrisis[]
   authorizedMedicos MedicoPatientAccess[]

@@ -13,7 +13,35 @@ type ProfilePatient = {
   birthDate: Date;
   medicalHistory: string | null;
   allergies: string | null;
+  nationality?: string | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  ethnicity?: string | null;
+  bloodType?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  emergencyPhone?: string | null;
+  insurance?: string | null;
 };
+
+function ProfileItem({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div className="rounded-lg border border-outline-variant/60 bg-surface px-3 py-2">
+      <p className="mono-label text-[10px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className="text-sm font-medium text-foreground">
+        {value && value.trim() !== "" ? value : "—"}
+      </p>
+    </div>
+  );
+}
 
 export function PatientProfileHeader({
   patient,
@@ -112,6 +140,22 @@ export function PatientProfileHeader({
             </p>
           )}
         </div>
+      </CardContent>
+      <div className="border-t border-outline-variant/50" />
+      <CardContent className="grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ProfileItem label="Nacionalidad" value={patient.nationality} />
+        <ProfileItem label="Etnia" value={patient.ethnicity} />
+        <ProfileItem
+          label="Talla / Peso"
+          value={`${patient.heightCm ? `${patient.heightCm} cm` : "—"} / ${
+            patient.weightKg ? `${patient.weightKg} kg` : "—"
+          }`}
+        />
+        <ProfileItem label="Tipo de sangre" value={patient.bloodType} />
+        <ProfileItem label="Teléfono" value={patient.phone} />
+        <ProfileItem label="Emergencia" value={patient.emergencyPhone} />
+        <ProfileItem label="Dirección" value={patient.address} />
+        <ProfileItem label="Seguro" value={patient.insurance} />
       </CardContent>
     </Card>
   );

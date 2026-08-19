@@ -89,8 +89,20 @@ export function ClinicalAuditPage() {
                     <ScrollText className="size-4 text-primary" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-foreground">
-                      {auditActionLabel(entry.action)}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-sm font-semibold text-foreground">
+                        {auditActionLabel(entry.action)}
+                      </div>
+                      {(entry.metadata?.adminAction === "CREATE" &&
+                        entry.resourceType === "PATIENT" && (
+                          <Badge variant="success">Creación de paciente</Badge>
+                        )) ||
+                        (entry.metadata?.adminAction === "UPDATE" && (
+                          <Badge variant="outline">Edición</Badge>
+                        )) ||
+                        (entry.metadata?.adminAction === "DELETE" && (
+                          <Badge variant="destructive">Eliminación</Badge>
+                        ))}
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       <span>
@@ -102,7 +114,13 @@ export function ClinicalAuditPage() {
                       <Badge variant="outline" className="mono-label">
                         {entry.resourceType}
                       </Badge>
-                      {entry.resourceId && (
+                      {entry.patient && (
+                        <span className="font-medium text-foreground">
+                          {entry.patient.firstName} {entry.patient.lastName} (
+                          {entry.patient.syntheticId})
+                        </span>
+                      )}
+                      {entry.resourceId && !entry.patient && (
                         <span className="mono-label">
                           #{entry.resourceId.slice(0, 8)}
                         </span>
