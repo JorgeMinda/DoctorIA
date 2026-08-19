@@ -8,9 +8,9 @@
 
 **Proyecto**: DoctorIA
 **Elaborado para**: Equipo DoctorIA
-**Fecha de corte**: 16 de agosto de 2026
+**Fecha de corte**: 16 de agosto de 2026 · **Actualizado (adenda v2.0)**: 19 de agosto de 2026
 **Carácter**: Informe consolidado de evidencia, decisiones, avances, limitaciones y pendientes
-**Fuentes principales**: `spec.md`, `plan.md`, `tasks.md` (T001–T031), `CONTEXT.md`, `qa/week4-qa-report.md`, `checklists/production.md`, `research.md`, historial de Git (`git log` del 09 al 16 de agosto), sesiones de verificación por API contra producción.
+**Fuentes principales**: `spec.md`, `plan.md`, `tasks.md` (T001–T031), `CONTEXT.md`, `qa/week4-qa-report.md`, `checklists/production.md`, `research.md`, historial de Git (`git log` del 09 al 19 de agosto), sesiones de verificación por API contra producción.
 
 ---
 
@@ -19,6 +19,7 @@
 | Versión | Fecha | Estado | Observación |
 |:--|:--|:--|:--|
 | 1.0 | 16 de agosto de 2026 | Emitido | Consolidación fiel de las Semanas 3–4 hasta el cierre documental con E2E del flujo clínico completo. |
+| 2.0 | 19 de agosto de 2026 | Actualizado | Adenda post-cierre (sección 23): fix de migración en producción, correcciones de usuario, auditoría expandible y notas por voz (`CREATE_NOTE`, RF-030/RF-031). Contenido histórico de S3–S4 intacto. |
 
 ---
 
@@ -46,6 +47,7 @@
 20. Deudas técnicas y pendientes
 21. Próxima secuencia
 22. Anexos técnicos
+23. **Adenda post-cierre (17–19 ago)** — ver sección 23
 
 ---
 
@@ -244,12 +246,13 @@ Posteriormente, un cierre complementario (14–16 de agosto) agregó toasts de c
 |:--|:--|
 | Remoto | `github.com/JorgeMinda/DoctorIA` (usuario `JorgeMinda`) |
 | Rama de trabajo | `001-doctoria-mvp` — promovida a `main` (deploy de Render) |
-| HEAD local y remoto | `b87b387` (docs cierre S3–S4) = `main` (fast-forward) |
+| HEAD local y remoto | `b32b72e` (merge 19-ago · notas por voz) = `main`; `001-doctoria-mvp` en `7c7d7d8` (equivalente, merge no-FF) |
 | Marcadores | Sin `[NEEDS CLARIFICATION]` en `spec.md` |
-| Aplicación | Cambios desplegados en `main` (client + server) |
+| Aplicación | Al corte 16-ago: cambios desplegados en `main`. Post-cierre (17–19 ago): migraciones aplicadas en prod y **código pendiente de Manual Deploy** (sección 23) |
 | Artículos de diseño | `DESIGN.md` en raíz; aprobación `8f2b717` (PD-03) |
 | Documentos | `spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/clinical-operations.md` |
-| Tareas | `tasks.md` T001–T031 |
+| Especificación | 29 RF → **31 RF** tras adenda RF-030/RF-031 (sección 23.4) / 13 RNF |
+| Tareas | `tasks.md` T001–T031 (S3–S4); trabajo post-cierre registrado en la sección 23 |
 
 ```
 specs/001-doctoria-mvp/
@@ -301,25 +304,27 @@ El desfase se declaró de forma transparente (Principio 8) y no genera deuda fal
 | 3 | Email verificado en Resend | 🟠 MAJOR | Dominio verificado para pilotos |
 | 4 | DB free expira en 30 días | 🟠 MAJOR | Plan pagado o backups |
 | 5 | Entrevistas Semana 1 (5/8) | 🟡 DEUDA | Completar con pilotos |
-| 6 | Deploy manual del client | 🟡 MINOR | Verificar trigger en Render antes del siguiente deploy |
+| 6 | Deploy manual del client | 🟡 MINOR | En curso: bloquea el pase a prod de los commits 17–19 ago (sección 23.6). Verificar trigger en Render |
 | 7 | IA no determinista | 🟡 MINOR | `temperature` baja / bloquear campo editado |
+| 8 | (nuevo) `aiService.test.ts` bloqueado por env local | 🟡 MINOR | Cargar `OPENROUTER_API_KEY` (y env de Wasp) en la sesión de test; no es regresión (sección 23.5) |
 
-**Gaps de verificación**: toasts en UI, micrófono real y flujo "No aplica" verificados por API/estructura, no con navegador (sin capturas).
+**Gaps de verificación**: toasts en UI, micrófono real y flujo "No aplica" verificados por API/estructura, no con navegador (sin capturas). La nueva UI de notas por voz y la auditoría expandible quedaron verificadas por build/typecheck/tests unitarios, no con capturas de navegador (sección 23).
 
 ---
 
 ## 21. Próxima secuencia
 
-1. (En curso) Semana 5 — plan de adquisición de clientes + agenda de 5 contactos (`week5-commercial-plan.md`).
-2. Preparar demo (landing + flujo clínico con cuentas seed).
-3. Fix CRITICAL del race en `requestAIStructuring` (deuda técnica priorizada).
-4. Iterar con feedback de pilotos (Semana 7).
+1. (Urgente) **Manual Deploy en Render** de `b32b72e` (client + server) para llevar a producción el trabajo post-cierre (fix migración, perfil paciente, auditoría, notas por voz) — deuda #6.
+2. (En curso) Semana 5 — plan de adquisición de clientes + agenda de 5 contactos (`week5-commercial-plan.md`).
+3. Preparar demo (landing + flujo clínico con cuentas seed, incluyendo dictado de nota por voz).
+4. Fix CRITICAL del race en `requestAIStructuring` (deuda técnica priorizada).
+5. Iterar con feedback de pilotos (Semana 7).
 
 ---
 
 ## 22. Anexos técnicos
 
-### Anexo A. Registro cronológico de commits (S3–S4, 09–16 ago)
+### Anexo A. Registro cronológico de commits (S3–S4 + post-cierre, 09–19 ago)
 
 | Fecha | Commit | Actividad |
 |:--|:--|:--|
@@ -334,6 +339,10 @@ El desfase se declaró de forma transparente (Principio 8) y no genera deuda fal
 | 15-ago | `6300a14` | Toasts (radix) |
 | 15-ago | `bfcd2bb`→`68be06b` | Voz real + 6 fix (Web Speech, parseo, dedup) |
 | 16-ago | `b87b387` | E2E flujo clínico + deuda CRITICAL (T030/T031) |
+| 18-ago | `be7adfe` | Fix migración prod `add_cita` (FK `AuditLog_citaId_fkey` sin columna → P3009); `migrate resolve --rolled-back` + deploy |
+| 19-ago | `f74164f` | Perfil del paciente (schema+migración+formularios), colores auth claro/oscuro, auditoría admin completa, tab Citas + agenda por doctor |
+| 19-ago | `861cdbe` | Auditoría expandible (filas clicables con detalle desplegable) |
+| 19-ago | `7c7d7d8` / `b32b72e` | Notas por voz `CREATE_NOTE` + RF-030/RF-031 (acción `createNoteFromVoice`, `DRAFT_MANUAL`, redirección al editor, tests de ambigüedad) |
 
 ### Anexo B. Comandos clave
 
@@ -367,9 +376,57 @@ curl -X POST .../operations/get-audit-log
 | Seguridad clínica | Controlado | IA asistiva, CONFIRMED inmutable, adendas |
 | Datos | Controlado | Solo sintéticos (P5) |
 
+---
+
+## 23. Adenda post-cierre (17–19 ago)
+
+Cierre complementario posterior al informe 1.0. El historial de S3–S4 permanece intacto; esta sección consolida el trabajo post-corte para tener la trazabilidad completa del avance.
+
+### 23.1 Fix de migración en producción (`be7adfe`, 18-ago)
+
+- La migración `20260818000130_add_cita` creaba la FK `AuditLog_citaId_fkey` **en la misma migración** que agregaba el módulo de citas, sin antes añadir la columna `citaId` → fallo **P3009** al aplicar en prod.
+- Resolución: corrección de la migración + `prisma migrate resolve --rolled-back` en prod + nuevo deploy → migración aplicada y columnas/relaciones verificadas.
+- **Lección (registrada)**: las migraciones deben agregar columna y FK en pasos separados cuando la tabla destino es nueva.
+
+### 23.2 Correcciones de usuario (`f74164f`, 19-ago)
+
+- **Colores de auth claro/oscuro**: `ambientAuthTheme.ts` pasó a tokens `--color-surface-container` / `--color-foreground` (sin colores fijos rotos en tema oscuro).
+- **Perfil del paciente**: 9 campos nuevos (`nationality`, `heightCm`, `weightKg`, `ethnicity`, `bloodType`, `address`, `phone`, `emergencyPhone`, `insurance`) con schema + migración `20260819000100_add_patient_profile` **aplicada en prod** + formularios (`ProfileFields` / `patientProfilePayload` en `ClinicalAdminPage`) y cabecera en `PatientProfileHeader`.
+- **Auditoría admin completa**: el administrador ve el registro completo con nombre/`PAC` del paciente asociado.
+- **Tab de Citas del admin**: `AdminCitasTab` con agendamiento por doctor y transiciones de estado; `MedicoAgendaPanel` operando sobre cualquier paciente.
+
+### 23.3 Auditoría expandible (`861cdbe`, 19-ago)
+
+- Filas clicables en `ClinicalAuditPage.tsx` con detalle desplegable: fecha ISO exacta, `id` de recurso y de usuario, y chips de metadata funcional (sin contenido clínico, RNF-002).
+
+### 23.4 Notas por voz — `CREATE_NOTE` (`7c7d7d8` → merge `b32b72e`, 19-ago)
+
+- **Spec (adenda)**: RF-030 formaliza el asistente de voz existente (consulta/resumen entre autorizados) y RF-031 define la **creación de nota clínica por voz** → `spec.md` pasa de 29 a **31 RF**. Nuevo contrato `createNoteFromVoice` en `clinical-operations.md`.
+- **Intención** (`parseVoiceCommand`): `CREATE_NOTE` ("anota en la historia de", "agrega una nota", "registra que", "crea una nota", …) vs `RETRIEVE` (consulta/resumen actual).
+- **Action `createNoteFromVoice`** (registrada en `clinical.wasp.ts`): mantiene el modo `RETRIEVE` (reutiliza `buildVoiceSummary`/`buildVoiceError`) y, en `CREATE_NOTE`, llama internamente a `createClinicalNote` (RBAC incluido, siempre **`DRAFT_MANUAL`**, nunca auto-confirmado — RF-014/RF-031). Guardia de **ambigüedad**: >1 paciente → **409 pidiendo el `syntheticId` exacto** (sin adivinar); sin dictado clínico → **400**; sin coincidencia → **404**.
+- **UI** (`ClinicalVoicePage.tsx`): enruta por intención, rama `NOTE_CREATED` con toast y **redirección al editor** (`/clinical/notes/:noteId`) a los 1,5 s para la revisión humana (Constitución P4).
+- **Auditoría**: `VOICE_NOTE_CREATE` (metadata sin contenido clínico, RNF-002) + label en `statusLabels.ts`.
+
+### 23.5 Estado de pruebas (corte 19-ago)
+
+| Suite | Resultado |
+|:--|:--|
+| `wasp build` | ✅ Compila (spec `*.wasp.ts` + SDK) |
+| `tsc --noEmit` | ✅ Limpio |
+| Vitest (4 suites) | ✅ **65/65** — `voiceAssistant.test.ts` **27** (+12 casos `CREATE_NOTE` y ambigüedad "dos Marías"), `citaLifecycle.test.ts` 17, `guards.test.ts` 11, `noteValidation.test.ts` 10 |
+| `aiService.test.ts` (7) | ⚠️ Bloqueado por env local (requiere `OPENROUTER_API_KEY`/env de Wasp en la sesión) — no es regresión |
+| Playwright (e2e) | Sin cambios de esta iteración (aplicable 10/10 de la 1.0) |
+
+### 23.6 Estado de producción (corte 19-ago)
+
+- Migraciones en prod: ✅ `20260819000100_add_patient_profile` aplicada (y fix de `be7adfe`).
+- **Código**: commits `f74164f` → `b32b72e` **pendientes de Manual Deploy** en Render (client + server) — la deuda #6 se vuelve bloqueante de demo. `main` ya contiene todo el trabajo post-cierre.
+
+---
+
 ### Fuentes de evidencia
 
-- `spec.md` (29 RF / 13 RNF), `plan.md`, `research.md`, `contracts/clinical-operations.md`
+- `spec.md` (31 RF / 13 RNF), `plan.md`, `research.md`, `contracts/clinical-operations.md`
 - `tasks.md` (T001–T031), `CONTEXT.md`, `qa/week4-qa-report.md`, `checklists/production.md`
-- `git log` del 09 al 16 de agosto de 2026 (rama `001-doctoria-mvp` ≡ `main`)
-- Verificaciones por API contra `doctoria-server.onrender.com` (16-ago)
+- `git log` del 09 al 19 de agosto de 2026 (rama `001-doctoria-mvp` y su merge a `main`)
+- Verificaciones por API contra `doctoria-server.onrender.com` (16-ago) y smoke checks del fix de migración en prod (18-ago)
