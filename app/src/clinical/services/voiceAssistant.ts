@@ -13,6 +13,17 @@ export type VoiceQueryParseResult = {
   tokens: string[];
 };
 
+export type VoiceCommandIntent = "RETRIEVE" | "CREATE_NOTE";
+
+// Comando de voz parseado: intención detectada + datos extraídos.
+// - patientQuery: nombre o syntheticId del paciente citado.
+// - clinicalText:  dictado clínico para `originalText` cuando intent === 'CREATE_NOTE'.
+export type VoiceCommand = {
+  intent: VoiceCommandIntent;
+  patientQuery: string;
+  clinicalText?: string;
+};
+
 export type VoicePatientMatch = {
   id: string;
   firstName: string;
@@ -37,6 +48,7 @@ export type VoiceSeriesPoint = {
 };
 
 export type VoiceAssistantResponse = {
+  actionType: "VOICE_RETRIEVED";
   query: string;
   patient: {
     id: string;
@@ -81,38 +93,141 @@ export function parseVoiceQuery(query: string): VoiceQueryParseResult {
 const stripAccents = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+// Frases que disparan el modo CREATE_NOTE (detection de intención).
+const CREATE_NOTE_PHRASES: readonly string[] = [
+  "agrega una nota",
+  "agrega la nota",
+  "agregar una nota",
+  "agregarle una nota",
+  "registra que",
+  "registrar que",
+  "anota en la historia",
+  "anota en el historial",
+  "apunta que",
+  "déjame una nota",
+  "dejame una nota",
+  "crea una nota",
+  "crear una nota",
+  "nueva nota",
+];
+
+// Marcadores tras los que aparece el paciente (nombre o ID).
+const PATIENT_MARKER_RE =
+  /(?:en el historial de|en la historia de|a la historia de|de la historia de|registra que|anota que|apunta que|sobre|para|con|de|a)\s+/i;
+
+// Nombre propio corto (1-2 palabras con mayúscula), evita capturar la
+// transcripción clínica posterior ("presenta fiebre...").
+const NAME_TOKEN_RE =
+  /([A-ZÁÉÍÓÚÜÑ][a-záéíóúüñ]+(?:\s+[A-ZÁÉÍÓÚÜÑ][a-záéíóúüñ]+)?)/;
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Detecta la intención del comando de voz:
+//   - CREATE_NOTE: el médico pide crear un borrador de nota por voz.
+//   - RETRIEVE:    comportamiento actual (buscar/resumir paciente).
+// NUNCA genera una nota confirmada: solo extrae patientQuery + clinicalText.
+export function parseVoiceCommand(query: string): VoiceCommand {
+  const normalized = query.trim().replace(/[.,;!?]+$/g, "");
+  const lower = normalized.toLowerCase();
+  const isCreate = CREATE_NOTE_PHRASES.some((phrase) =>
+    lower.includes(phrase),
+  );
+
+  if (!isCreate) {
+    return {
+      intent: "RETRIEVE",
+      patientQuery: parseVoiceQuery(normalized).name ?? "",
+    };
+  }
+
+  // 1) Preferencia por syntheticId (sin ambigüedad posible).
+  const idMatch = normalized.match(/\b(PAC-\d{1,4})\b/i);
+  if (idMatch) {
+    return {
+      intent: "CREATE_NOTE",
+      patientQuery: idMatch[1].toUpperCase(),
+      clinicalText: clinicalTextAfter(normalized, idMatch.index!, idMatch[0].length),
+    };
+  }
+
+  // 2) Nombre propio tras un marcador.
+  const markerMatch = normalized.match(PATIENT_MARKER_RE);
+  if (markerMatch && markerMatch.index != null) {
+    const afterMarker = normalized.slice(
+      markerMatch.index + markerMatch[0].length,
+    );
+    const nameMatch = afterMarker.match(NAME_TOKEN_RE);
+    if (nameMatch && nameMatch.index != null) {
+      const patientQuery = nameMatch[1].trim();
+      const start = markerMatch.index + markerMatch[0].length + nameMatch.index;
+      return {
+        intent: "CREATE_NOTE",
+        patientQuery,
+        clinicalText: clinicalTextAfter(normalized, start, patientQuery.length),
+      };
+    }
+  }
+
+  return { intent: "CREATE_NOTE", patientQuery: "", clinicalText: normalized };
+}
+
+// Extrae el dictado clínico: resto del texto tras la mención del paciente,
+// eliminando conectores iniciales ("que", "presenta", etc.).
+function clinicalTextAfter(
+  text: string,
+  start: number,
+  length: number,
+): string | undefined {
+  const after = text.slice(start + length).trim();
+  const cleaned = after
+    .replace(
+      /^(que|con|donde|por|sobre|y|le|la|el|se)\b/i,
+      "",
+    )
+    .trim()
+    .replace(/^[^A-ZÁÉÍÓÚÜÑa-záéíóúüñ0-9]+/, "");
+  return cleaned.length > 0 ? cleaned : undefined;
+}
+
+// Devuelve TODAS las coincidencias entre los pacientes autorizados, para poder
+// detectar ambigüedad (ej. dos "María"). Orden de confianza:
+//   1. syntheticId exacto.
+//   2. nombre + apellido completo.
+//   3. coincidencia parcial (token >= 3 chars en nombre/apellido/PAC).
+export function resolvePatientMatches(
+  patients: VoicePatientMatch[],
+  query: string | null,
+): VoicePatientMatch[] {
+  if (!query) return [];
+  const normalized = stripAccents(query).toLowerCase().normalize("NFC");
+  const parts = normalized.split(/\s+/).filter(Boolean);
+
+  if (/^pac-\d+$/.test(normalized)) {
+    const byId = patients.filter(
+      (p) => stripAccents(p.syntheticId).toLowerCase() === normalized,
+    );
+    if (byId.length > 0) return byId;
+  }
+
+  const byFull = patients.filter((p) => {
+    const full = stripAccents(`${p.firstName} ${p.lastName}`).toLowerCase();
+    return parts.every((part) => full.includes(part));
+  });
+  if (byFull.length > 0) return byFull;
+
+  return patients.filter((p) => {
+    const haystack = stripAccents(
+      `${p.firstName} ${p.lastName} ${p.syntheticId}`,
+    ).toLowerCase();
+    return parts.some((part) => part.length >= 3 && haystack.includes(part));
+  });
+}
+
 export function resolvePatientByName(
   patients: VoicePatientMatch[],
   name: string | null,
 ): VoicePatientMatch | null {
-  if (!name) return null;
-  const normalized = stripAccents(name).toLowerCase().normalize("NFC");
-  const parts = normalized.split(/\s+/).filter(Boolean);
-
-  // Busca coincidencia por syntheticId exacto.
-  if (/^pac-\d+$/.test(normalized)) {
-    const byId = patients.find(
-      (p) => stripAccents(p.syntheticId).toLowerCase() === normalized,
-    );
-    if (byId) return byId;
-  }
-
-  // Preferencia por coincidencia de apellido + nombre (mayor confianza).
-  const byFull = patients.find((p) => {
-    const full = stripAccents(`${p.firstName} ${p.lastName}`).toLowerCase();
-    return parts.every((part) => full.includes(part));
-  });
-  if (byFull) return byFull;
-
-  // Fallback: coincidencia parcial de cualquiera de los tokens (nombre o PAC).
-  return (
-    patients.find((p) => {
-      const haystack = stripAccents(
-        `${p.firstName} ${p.lastName} ${p.syntheticId}`,
-      ).toLowerCase();
-      return parts.some((part) => part.length >= 3 && haystack.includes(part));
-    }) ?? null
-  );
+  return resolvePatientMatches(patients, name)[0] ?? null;
 }
 
 // Hash determinista para valores sintéticos estables por paciente (sin PII).
@@ -178,6 +293,7 @@ export function buildVoiceSummary(
 
   return {
     query,
+    actionType: "VOICE_RETRIEVED" as const,
     patient: {
       id: patient.id,
       firstName: patient.firstName,
@@ -206,6 +322,7 @@ export function buildVoiceError(query: string, reason: "NOT_FOUND" | "NO_ACCESS"
 
   return {
     query,
+    actionType: "VOICE_RETRIEVED" as const,
     patient: null,
     summary: [message, "Verifica el nombre o revisa la lista de pacientes asignados."],
     vitals: [],

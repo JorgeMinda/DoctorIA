@@ -161,6 +161,23 @@ Creates an addendum for a confirmed note. The original note remains immutable.
 | **Audit** | Yes — `CREATE_ADDENDUM` |
 | **Validations** | Parent note must exist and be `CONFIRMED`; `addendumReason` must not be empty (RF-029) |
 
+### createNoteFromVoice
+
+Creates a clinical note draft from a voice command (RF-031). Complements the voice assistant retrieval behavior already defined in RF-030.
+
+| Property | Value |
+|:---|:---|
+| **Type** | Action |
+| **Entities** | `SyntheticPatient`, `User`, `ClinicalNote`, `AuditLog`, `MedicoPatientAccess` |
+| **Auth** | `ensureMedico(context)` |
+| **Patient auth** | Matches against `authorizedMedicos` only; unresolved patient → 404 |
+| **Input** | `{ query: string }` (full voice command text) |
+| **Output** | Discriminated by `actionType`: `VOICE_RETRIEVED` (existing summary payload, same as `getVoiceAssistantResponse`) or `NOTE_CREATED` `{ noteId, patientId, patientName, syntheticId }` |
+| **Intent** | `CREATE_NOTE`: phrases like "anota en la historia de", "agrega una nota", "registra que", "crea una nota"; `RETRIEVE`: everything else |
+| **Audit** | Yes — `VOICE_NOTE_CREATE` on creation, `VOICE_ASSISTANT_QUERY` on retrieval (metadata without clinical content, RNF-002) |
+| **Validations** | Ambiguous patient (multiple matches) → 409 requesting exact `syntheticId`; missing clinical dictation → 400; note CREATED always with status `DRAFT_MANUAL`, never auto-confirmed (RF-014, RF-031) |
+| **Note** | Voice dictation sets `originalText`; the note is opened in the editor for human review (Constitución P4) |
+
 ---
 
 ## 3. Epicrisis Operations

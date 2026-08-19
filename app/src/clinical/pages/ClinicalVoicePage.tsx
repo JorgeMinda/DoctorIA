@@ -1,15 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useQuery } from "wasp/client/operations";
-import { getPatients, getVoiceAssistantResponse } from "wasp/client/operations";
+import {
+  createNoteFromVoice,
+  getPatients,
+  getVoiceAssistantResponse,
+} from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
-import { Mic, Sparkles, TrendingDown, TrendingUp, Minus, ShieldAlert } from "lucide-react";
+import { Mic, Sparkles, TrendingDown, TrendingUp, Minus, ShieldAlert, FilePlus2 } from "lucide-react";
 import { Button } from "../../client/components/ui/button";
 import { Input } from "../../client/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../../client/components/ui/card";
 import { Switch } from "../../client/components/ui/switch";
 import { VoiceOrb, type VoiceAssistantState } from "../components/VoiceOrb";
-import type { VoiceAssistantResponse } from "../services/voiceAssistant";
+import { useToast } from "../../client/hooks/use-toast";
+import {
+  parseVoiceCommand,
+  type VoiceAssistantResponse,
+} from "../services/voiceAssistant";
 
 // Consulta de ejemplo (modo demo / placeholder). Los datos de la respuesta son SINTÉTICOS.
 const DEMO_QUERY = "DoctorIA, dame el resumen de María González antes de mi cita.";
@@ -17,6 +26,7 @@ const DEMO_QUERY = "DoctorIA, dame el resumen de María González antes de mi ci
 // Respuesta demo embebida (misma forma que la query, pero sin red) para probar los estados.
 const DEMO_RESPONSE: VoiceAssistantResponse = {
   query: DEMO_QUERY,
+  actionType: "VOICE_RETRIEVED",
   patient: {
     id: "demo-patient",
     firstName: "María",
@@ -55,13 +65,26 @@ const STATUS_HINT: Record<VoiceAssistantState, string> = {
   RESPONDING: "Respuesta lista.",
 };
 
+type VoiceNoteCreatedResponse = {
+  actionType: "NOTE_CREATED";
+  noteId: string;
+  patientId: string;
+  patientName: string;
+  syntheticId: string;
+};
+
 export function ClinicalVoicePage() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const { data: user } = useAuth();
   const [phase, setPhase] = useState<VoiceAssistantState>("IDLE");
   const [queryInput, setQueryInput] = useState("");
   const [demoMode, setDemoMode] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [response, setResponse] = useState<VoiceAssistantResponse | null>(null);
+  const [response, setResponse] = useState<
+    VoiceAssistantResponse | VoiceNoteCreatedResponse | null
+  >(null);
+  const [createdNote, setCreatedNote] = useState<VoiceNoteCreatedResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSparkline, setShowSparkline] = useState(false);
   const [speechOn, setSpeechOn] = useState(false);
@@ -106,6 +129,28 @@ export function ClinicalVoicePage() {
     [],
   );
 
+  // Al crear una nota por voz, se muestra un aviso y se redirige al editor
+  // del borrador (DRAFT_MANUAL) para la revisión humana (Constitución P4).
+  useEffect(() => {
+    if (!createdNote) return;
+    const t = window.setTimeout(() => {
+      navigate(
+        routes.ClinicalNoteRoute.build({ params: { noteId: createdNote.noteId } }),
+      );
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, [createdNote, navigate]);
+
+  useEffect(() => {
+    if (response?.actionType === "NOTE_CREATED") {
+      toast({
+        title: "Borrador creado por voz",
+        description: `Se guardó una nota para ${response.patientName} (${response.syntheticId}). Abriendo el editor para revisión…`,
+      });
+      setCreatedNote(response);
+    }
+  }, [response, toast]);
+
   if (!user?.isMedico || user.isAdmin) {
     return (
       <div className="mx-auto max-w-2xl">
@@ -125,6 +170,7 @@ export function ClinicalVoicePage() {
     clearTimers();
     setError(null);
     setResponse(null);
+    setCreatedNote(null);
     setTranscript("");
     setShowSparkline(false);
     setPhase("LISTENING");
@@ -166,13 +212,21 @@ export function ClinicalVoicePage() {
 
     setTranscript(text);
     try {
-      const res = await getVoiceAssistantResponse({ query: text });
-      if (res) {
+      // Se parsea en el cliente (función pura) para enrutar la acción servidor
+      // correcta: crear nota por voz (CREATE_NOTE) o consulta/resumen (RETRIEVE).
+      const parsed = parseVoiceCommand(text);
+      if (parsed.intent === "CREATE_NOTE") {
+        const res = await createNoteFromVoice({ query: text });
+        setCreatedNote(res as VoiceNoteCreatedResponse);
         setResponse(res);
-        setPhase("RESPONDING");
       } else {
-        throw new Error("Sin respuesta del asistente");
+        const res = await getVoiceAssistantResponse({ query: text });
+        if (!res) {
+          throw new Error("Sin respuesta del asistente");
+        }
+        setResponse(res);
       }
+      setPhase("RESPONDING");
     } catch (err: any) {
       setError(err?.message ?? "No se pudo completar la consulta");
       setPhase("IDLE");
@@ -233,6 +287,7 @@ export function ClinicalVoicePage() {
     clearTimers();
     setError(null);
     setResponse(null);
+    setCreatedNote(null);
     setTranscript("");
     setShowSparkline(false);
     setPhase("LISTENING");
@@ -332,6 +387,7 @@ export function ClinicalVoicePage() {
     setPhase("IDLE");
     setTranscript("");
     setResponse(null);
+    setCreatedNote(null);
     setError(null);
     setShowSparkline(false);
   };
@@ -342,12 +398,13 @@ export function ClinicalVoicePage() {
     beginListening(q);
   };
 
-  const TrendIcon =
-    response?.vitals.find((v) => v.trend === "down")
-      ? TrendingDown
-      : response?.vitals.find((v) => v.trend === "up")
-        ? TrendingUp
-        : Minus;
+  const vitals =
+    response?.actionType === "VOICE_RETRIEVED" ? response.vitals : [];
+  const TrendIcon = vitals.find((v) => v.trend === "down")
+    ? TrendingDown
+    : vitals.find((v) => v.trend === "up")
+      ? TrendingUp
+      : Minus;
 
   return (
     <div className="mt-6 px-6 pb-16">
@@ -454,7 +511,7 @@ export function ClinicalVoicePage() {
           >
             <Input
               aria-label="Consulta al asistente"
-              placeholder="Escribe o di: DoctorIA, dame el resumen de…"
+              placeholder="Escribe o di: DoctorIA, dame el resumen de… / anota en la historia de PAC-001 que…"
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               disabled={phase === "LISTENING" || phase === "PROCESSING"}
@@ -503,7 +560,29 @@ export function ClinicalVoicePage() {
         </div>
 
         {/* Respuesta */}
-        {response && phase === "RESPONDING" && (
+        {response?.actionType === "NOTE_CREATED" && phase === "RESPONDING" && (
+          <div className="mt-6">
+            <Card className="border-emerald-600/40">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-3">
+                  <FilePlus2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+                  <div className="text-sm">
+                    <p className="font-semibold text-foreground">Borrador creado por voz</p>
+                    <p className="mt-1 text-muted-foreground">
+                      Se registró la nota para <span className="font-medium">{response.patientName}</span>{" "}
+                      ({response.syntheticId}) como borrador manual pendiente de tu revisión.
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      Redirigiendo al editor para confirmar o editar el contenido… (1.5 s)
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {response?.actionType === "VOICE_RETRIEVED" && phase === "RESPONDING" && (
           <div className="mt-6 space-y-4">
             {/* Aviso de validación clínica */}
             <div
