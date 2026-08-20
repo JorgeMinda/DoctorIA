@@ -328,7 +328,7 @@ export const confirmClinicalNote: ConfirmClinicalNote<
       422,
       `Secciones obligatorias incompletas: ${labels.join(
         ", ",
-      )}. Complételas o márquelas como "No aplica" con justificación.`,
+      )}. Complételas o márquelas como "No aplica".`,
     );
   }
 
