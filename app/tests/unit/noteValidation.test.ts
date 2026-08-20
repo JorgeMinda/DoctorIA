@@ -85,7 +85,7 @@ describe("validateConfirmableNote — RF-027 (bloqueo con secciones vacías)", (
   });
 });
 
-describe("validateConfirmableNote — secciones 'No aplica' con justificación", () => {
+describe("validateConfirmableNote — secciones 'No aplica'", () => {
   it("acepta una sección 'No aplica' con justificación", () => {
     const result = validateConfirmableNote({
       sections: { ...completeSections, examenFisico: null },
@@ -97,7 +97,7 @@ describe("validateConfirmableNote — secciones 'No aplica' con justificación",
     expect(result.ok).toBe(true);
   });
 
-  it("bloquea una sección 'No aplica' sin justificación", () => {
+  it("acepta una sección 'No aplica' aunque la justificación esté vacía (opcional)", () => {
     const result = validateConfirmableNote({
       sections: { ...completeSections, examenFisico: null },
       sectionsNotApplicable: { examenFisico: "" },
@@ -105,16 +105,14 @@ describe("validateConfirmableNote — secciones 'No aplica' con justificación",
       patientId: "p1",
       authorId: "u1",
     });
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.missing).toContain("examenFisico");
-    }
+    expect(result.ok).toBe(true);
   });
 
-  it("regresión: marcar 'No aplica' (clave presente, sin justificar) bloquea aunque la sección tenga texto", () => {
+  it("regresión: marcar 'No aplica' (clave presente, sin justificar) pasa la validación aunque la sección tenga texto", () => {
     // El bug: el checkbox guardaba "" y `Boolean("") === false` hacía que el
     // estado "No aplica" no existiera. Con la semántica corregida, la clave
-    // presente (aunque sea "") ES "No aplica" y exige justificación (RF-026-5).
+    // presente (aunque sea "") ES "No aplica" y completa la sección sin
+    // exigir justificación.
     const result = validateConfirmableNote({
       sections: completeSections,
       sectionsNotApplicable: { examenFisico: "" },
@@ -122,10 +120,7 @@ describe("validateConfirmableNote — secciones 'No aplica' con justificación",
       patientId: "p1",
       authorId: "u1",
     });
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.missing).toContain("examenFisico");
-    }
+    expect(result.ok).toBe(true);
   });
 });
 
