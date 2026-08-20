@@ -15,15 +15,69 @@ type SummaryEpicrisis = {
   status: string;
 };
 
-function tile(className: string, value: number, label: string) {
+type SummaryCita = {
+  status: string;
+};
+
+function statusLabel(status: string): string {
+  if (status === "CONFIRMED") return "Confirmadas";
+  if (status === "REVIEWED") return "En revisión";
+  if (status.startsWith("DRAFT")) return "Borradores";
+  if (status === "PROGRAMADA") return "Programadas";
+  if (status === "COMPLETADA") return "Completadas";
+  if (status === "CANCELADA") return "Canceladas";
+  return status;
+}
+
+function breakdown(statuses: string[]) {
+  const order = [
+    "CONFIRMED",
+    "REVIEWED",
+    "DRAFT",
+    "PROGRAMADA",
+    "COMPLETADA",
+    "CANCELADA",
+  ];
+  const counts = new Map<string, number>();
+  for (const s of statuses) {
+    const key = s.startsWith("DRAFT") ? "DRAFT" : s;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return order
+    .filter((k) => counts.has(k))
+    .map((k) => ({ label: statusLabel(k), count: counts.get(k)! }));
+}
+
+function CategoryCard({
+  title,
+  total,
+  statuses,
+}: {
+  title: string;
+  total: number;
+  statuses: string[];
+}) {
+  const items = breakdown(statuses);
   return (
-    <div
-      className={`rounded-lg border border-outline-variant bg-surface px-3 py-2 text-center ${className}`}
-    >
-      <p className="text-lg font-semibold text-foreground">{value}</p>
-      <p className="mono-label text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
+    <div className="rounded-lg border border-outline-variant bg-surface p-3">
+      <p className="text-2xl font-semibold text-foreground">{total}</p>
+      <p className="mono-label mb-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+        {title}
       </p>
+      {items.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground">Sin registros</p>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {items.map((it) => (
+            <span
+              key={it.label}
+              className="rounded-full border border-outline-variant bg-surface-container px-2 py-0.5 text-[10px] font-medium text-foreground"
+            >
+              {it.count} {it.label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -31,23 +85,18 @@ function tile(className: string, value: number, label: string) {
 export function PatientClinicalSummary({
   notes,
   epicrises,
+  citas = [],
 }: {
   notes: SummaryNote[];
   epicrises: SummaryEpicrisis[];
+  citas?: SummaryCita[];
 }) {
-  const addendaCount = notes.reduce(
-    (acc, note) => acc + (note.childNotes?.length ?? 0),
-    0,
-  );
-  const allStatuses = [
-    ...notes,
-    ...notes.flatMap((n) => n.childNotes ?? []),
-    ...epicrises,
-  ].map((n) => n.status);
+  const addendaStatuses = notes.flatMap((n) => (n.childNotes ?? []).map((c) => c.status));
 
-  const confirmed = allStatuses.filter((s) => s === "CONFIRMED").length;
-  const reviewed = allStatuses.filter((s) => s === "REVIEWED").length;
-  const drafts = allStatuses.filter((s) => s.startsWith("DRAFT")).length;
+  const noteStatuses = [
+    ...notes.map((n) => n.status),
+    ...addendaStatuses,
+  ];
 
   return (
     <Card className="border-outline-variant">
@@ -56,13 +105,23 @@ export function PatientClinicalSummary({
           Resumen clínico
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-6">
-        {tile("", notes.length, "Atenciones")}
-        {tile("", addendaCount, "Adendas")}
-        {tile("", confirmed, "Confirmadas")}
-        {tile("", reviewed, "En revisión")}
-        {tile("", drafts, "Borradores")}
-        {tile("", epicrises.length, "Epicrisis")}
+      <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
+        <CategoryCard title="Notas clínicas" total={notes.length} statuses={noteStatuses} />
+        <CategoryCard
+          title="Adendas"
+          total={addendaStatuses.length}
+          statuses={addendaStatuses}
+        />
+        <CategoryCard
+          title="Epicrisis"
+          total={epicrises.length}
+          statuses={epicrises.map((e) => e.status)}
+        />
+        <CategoryCard
+          title="Citas"
+          total={citas.length}
+          statuses={citas.map((c) => c.status)}
+        />
       </CardContent>
     </Card>
   );
