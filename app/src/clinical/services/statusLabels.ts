@@ -33,6 +33,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   CREATE_ADDENDUM: "Creó adenda",
   VOICE_ASSISTANT_QUERY: "Consulta de asistente de voz",
   VOICE_NOTE_CREATE: "Creó nota por voz",
+  DELETE_NOTE: "Eliminó nota",
   ADMIN_MANAGE_USER: "Administró usuario",
   ADMIN_MANAGE_ROLE: "Administró rol",
   ADMIN_MANAGE_DATA: "Administró datos",

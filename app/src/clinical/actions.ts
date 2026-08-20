@@ -32,6 +32,7 @@ import type {
   ManageMedicoPatientAccess,
   UpdateCitaStatus,
   CreateNoteFromVoice,
+  DeleteClinicalNote,
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
@@ -1481,4 +1482,71 @@ export const createNoteFromVoice: CreateNoteFromVoice<
     patientName: `${qualified.firstName} ${qualified.lastName}`.trim(),
     syntheticId: qualified.syntheticId,
   };
+};
+
+// ---------------------------------------------------------------------------
+// deleteClinicalNote (Médico) - eliminar nota no confirmada
+// ---------------------------------------------------------------------------
+
+const deleteClinicalNoteInputSchema = z.object({
+  noteId: z.string().min(1),
+});
+
+type DeleteClinicalNoteInput = z.infer<typeof deleteClinicalNoteInputSchema>;
+
+// Solo se pueden eliminar NOTAS NO confirmadas (RF-028 conserva lo confirmado).
+// Verificaciones previas: autor (o acceso con contrato), sin adendas hijas.
+export const deleteClinicalNote: DeleteClinicalNote<
+  DeleteClinicalNoteInput,
+  { ok: true }
+> = async (rawArgs, context) => {
+  const user = ensureMedico(context.user);
+
+  const { noteId } = ensureArgsSchemaOrThrowHttpError(
+    deleteClinicalNoteInputSchema,
+    rawArgs,
+  );
+
+  const note = await context.entities.ClinicalNote.findUnique({
+    where: { id: noteId },
+    include: { childNotes: { select: { id: true } } },
+  });
+  if (!note) {
+    throw new HttpError(404, "Nota no encontrada");
+  }
+  if (note.authorId !== user.id) {
+    throw new HttpError(403, "Solo el autor puede eliminar esta nota");
+  }
+  await assertMedicoPatientAccess(user.id, note.patientId);
+
+  if (note.status === "CONFIRMED") {
+    throw new HttpError(
+      409,
+      "Registro confirmado: no se puede eliminar (RF-028). Solo se permite crear adenda.",
+    );
+  }
+  if (note.childNotes.length > 0) {
+    throw new HttpError(
+      409,
+      "La nota tiene adendas asociadas; no se puede eliminar.",
+    );
+  }
+
+  // Limpia la trazabilidad propia de la nota (borradores/ediciones) para no
+  // romper la FK, y deja un registro de la eliminación sin referencia a la nota.
+  await context.entities.AuditLog.deleteMany({
+    where: { clinicalNoteId: note.id },
+  });
+  await context.entities.ClinicalNote.delete({ where: { id: note.id } });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "DELETE_NOTE",
+    resourceType: "NOTE",
+    resourceId: note.id,
+    patientId: note.patientId,
+    metadata: { status: note.status, noteType: note.noteType },
+  });
+
+  return { ok: true };
 };
