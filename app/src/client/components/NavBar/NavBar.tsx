@@ -13,7 +13,7 @@ import {
 import { throttleWithTrailingInvocation } from "../../../shared/utils";
 import { UserDropdown } from "../../../user/UserDropdown";
 import { UserMenuItems } from "../../../user/UserMenuItems";
-import logo from "../../static/logo.svg";
+import logo from "../../static/logo.jpeg";
 import { cn } from "../../utils";
 import { DarkModeSwitcher } from "../DarkModeSwitcher";
 

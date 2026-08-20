@@ -1,7 +1,7 @@
 import { type App } from "@wasp.sh/spec";
 
 export const head: App["head"] = [
-  "<link rel='icon' href='/favicon.ico' />",
+  "<link rel='icon' href='/logo.jpeg' />",
 
   "<link rel='preconnect' href='https://fonts.googleapis.com' />",
   "<link rel='preconnect' href='https://fonts.gstatic.com' />",
