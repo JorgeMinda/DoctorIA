@@ -1309,13 +1309,30 @@ function AdminScheduleForm({
   });
   const [medicoId, setMedicoId] = useState("");
   const [patientId, setPatientId] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState("08:00");
   const [durationMinutes, setDurationMinutes] = useState("30");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const SLOTS: string[] = [];
+  for (let h = 8; h < 18; h++) {
+    for (const m of ["00", "30"]) {
+      SLOTS.push(`${String(h).padStart(2, "0")}:${m}`);
+    }
+  }
+
+  const buildScheduledAt = () => {
+    if (!date || !time) return null;
+    return new Date(`${date}T${time}:00`);
+  };
+
+  const isSlotPast = (slotTime: string) =>
+    new Date(`${date}T${slotTime}:00`).getTime() <= Date.now();
+
   const handleCreate = async () => {
-    if (!medicoId || !patientId || !scheduledAt) return;
+    const at = buildScheduledAt();
+    if (!medicoId || !patientId || !at) return;
     setBusy(true);
     try {
       await manageCitaFn({
@@ -1323,14 +1340,13 @@ function AdminScheduleForm({
         data: {
           medicoId,
           patientId,
-          scheduledAt: new Date(scheduledAt),
+          scheduledAt: at,
           durationMinutes: Number(durationMinutes) || 30,
           reason: reason || undefined,
         },
       });
       notice("Cita programada correctamente");
       setPatientId("");
-      setScheduledAt("");
       setReason("");
     } catch (err: any) {
       reportError(err?.message ?? "No se pudo programar la cita");
@@ -1377,10 +1393,39 @@ function AdminScheduleForm({
           </select>
           <Input
             className="border-outline-variant bg-surface"
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
+            type="date"
+            min={new Date().toISOString().slice(0, 10)}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
           />
+          <div>
+            <p className="mono-label mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+              Horario disponible
+            </p>
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+              {SLOTS.map((s) => {
+                const past = isSlotPast(s);
+                const selected = time === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={past}
+                    onClick={() => setTime(s)}
+                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                      selected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : past
+                          ? "cursor-not-allowed border-outline-variant/40 bg-surface text-muted-foreground/40"
+                          : "border-outline-variant bg-surface text-foreground hover:border-primary"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <Input
             className="border-outline-variant bg-surface"
             type="number"
@@ -1399,7 +1444,7 @@ function AdminScheduleForm({
         </div>
         <Button
           onClick={handleCreate}
-          disabled={busy || !medicoId || !patientId || !scheduledAt}
+          disabled={busy || !medicoId || !patientId || !time}
         >
           <Plus className="size-4" />
           Programar cita
