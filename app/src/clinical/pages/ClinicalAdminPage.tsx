@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useQuery, useAction } from "wasp/client/operations";
 import {
   adminCreateMedicoUser,
+  adminDeleteMedicoUser,
   adminGetPatients,
   adminUpdateMedicoUser,
   getAgenda,
@@ -801,6 +802,9 @@ function MedicosTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [patientsForId, setPatientsForId] = useState<string | null>(null);
   const [agendaForId, setAgendaForId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const deleteMedicoFn = useAction(adminDeleteMedicoUser);
 
   const { data, isLoading } = useQuery(getPaginatedUsers, {
     skipPages,
@@ -961,6 +965,45 @@ function MedicosTab({
                         <Pencil className="size-3.5" />
                         Editar
                       </Button>
+                      {deletingId === medico.id ? (
+                        <>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await deleteMedicoFn({ id: medico.id });
+                                setDeletingId(null);
+                                notice("Médico eliminado correctamente");
+                              } catch (err: any) {
+                                reportError(
+                                  err?.message ?? "No se pudo eliminar",
+                                );
+                                setDeletingId(null);
+                              }
+                            }}
+                          >
+                            Confirmar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingId(null)}
+                          >
+                            Cancelar
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-destructive"
+                          onClick={() => setDeletingId(medico.id)}
+                        >
+                          <Trash2 className="size-3.5" />
+                          Eliminar
+                        </Button>
+                      )}
                     </div>
                   </div>
                   {agendaForId === medico.id && (

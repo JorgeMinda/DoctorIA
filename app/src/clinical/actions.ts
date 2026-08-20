@@ -18,6 +18,7 @@ import {
 import type {
   AdminCreateMedicoUser,
   AdminUpdateMedicoUser,
+  AdminDeleteMedicoUser,
   CreateClinicalNote,
   UpdateClinicalNoteDraft,
   RequestAIStructuring,
@@ -1105,6 +1106,67 @@ export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
   });
 
   return updated;
+};
+
+// ---------------------------------------------------------------------------
+// adminDeleteMedicoUser (Admin) - eliminación de cuenta de médico
+// Limpia las referencias en cascada antes de borrar el User (FK restrict).
+// ---------------------------------------------------------------------------
+
+const adminDeleteMedicoUserInputSchema = z.object({
+  id: z.string().min(1),
+});
+
+type AdminDeleteMedicoUserInput = z.infer<
+  typeof adminDeleteMedicoUserInputSchema
+>;
+
+export const adminDeleteMedicoUser: AdminDeleteMedicoUser<
+  AdminDeleteMedicoUserInput,
+  { success: true }
+> = async (rawArgs, context) => {
+  const user = ensureAdmin(context.user);
+
+  const { id } = ensureArgsSchemaOrThrowHttpError(
+    adminDeleteMedicoUserInputSchema,
+    rawArgs,
+  );
+
+  if (id === user.id) {
+    throw new HttpError(400, "No puedes eliminar tu propia cuenta");
+  }
+
+  const target = await context.entities.User.findUnique({ where: { id } });
+  if (!target) {
+    throw new HttpError(404, "Usuario no encontrado");
+  }
+  if (!target.isMedico || target.isAdmin) {
+    throw new HttpError(
+      400,
+      "Solo se pueden eliminar cuentas con rol Médico",
+    );
+  }
+
+  // Limpieza de referencias (FK restrict por defecto en Prisma).
+  await context.entities.MedicoPatientAccess.deleteMany({
+    where: { medicoId: id },
+  });
+  await context.entities.Cita.deleteMany({ where: { medicoId: id } });
+  await context.entities.ClinicalNote.deleteMany({ where: { authorId: id } });
+  await context.entities.Epicrisis.deleteMany({ where: { authorId: id } });
+  await context.entities.AuditLog.deleteMany({ where: { userId: id } });
+
+  await context.entities.User.delete({ where: { id } });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "ADMIN_MANAGE_USER",
+    resourceType: "USER",
+    resourceId: id,
+    metadata: { adminAction: "DELETE_MEDICO", email: target.email ?? "" },
+  });
+
+  return { success: true };
 };
 
 // ---------------------------------------------------------------------------

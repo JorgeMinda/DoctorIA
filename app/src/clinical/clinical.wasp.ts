@@ -6,6 +6,7 @@ import { action, page, query, route, type Spec } from "@wasp.sh/spec";
 import {
   adminCreateMedicoUser,
   adminUpdateMedicoUser,
+  adminDeleteMedicoUser,
   createClinicalNote,
   createEpicrisisAddendum,
   createNoteAddendum,
@@ -136,6 +137,16 @@ export const clinicalSpec: Spec = [
   }),
   action(adminUpdateMedicoUser, {
     entities: ["User", "AuditLog"],
+  }),
+  action(adminDeleteMedicoUser, {
+    entities: [
+      "User",
+      "MedicoPatientAccess",
+      "ClinicalNote",
+      "Epicrisis",
+      "Cita",
+      "AuditLog",
+    ],
   }),
   action(manageCita, {
     entities: ["Cita", "User", "SyntheticPatient", "AuditLog"],
