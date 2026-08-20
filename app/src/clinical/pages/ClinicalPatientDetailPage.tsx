@@ -102,6 +102,7 @@ export function ClinicalPatientDetailPage() {
     try {
       const epicrisis = await generateEpicrisisFn({ patientId: patientId! });
       toast({ title: "Epicrisis generada correctamente" });
+      await refetchHistory();
       navigate(
         routes.ClinicalEpicrisisRoute.build({
           params: { epicrisisId: epicrisis.id },

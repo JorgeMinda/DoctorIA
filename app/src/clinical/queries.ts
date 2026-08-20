@@ -608,6 +608,7 @@ type AdminPatientOutput = SyntheticPatient & {
     fullName: string | null;
     username: string | null;
     email: string | null;
+    specialty: string | null;
   }[];
 };
 
@@ -654,7 +655,13 @@ export const adminGetPatients: AdminGetPatients<
         authorizedMedicos: {
           include: {
             medico: {
-              select: { id: true, fullName: true, username: true, email: true },
+              select: {
+                id: true,
+                fullName: true,
+                username: true,
+                email: true,
+                specialty: true,
+              },
             },
           },
         },

@@ -57,6 +57,7 @@ model SyntheticPatient {
   lastName    String
   birthDate   DateTime
   sex         String          // "M", "F", "O"
+  documento   String?  @db.VarChar(10) // cédula o pasaporte (máx. 10 caracteres)
   medicalHistory String?
   allergies      String?
 
