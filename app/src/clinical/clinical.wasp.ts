@@ -10,6 +10,7 @@ import {
   createEpicrisisAddendum,
   createNoteAddendum,
   createNoteFromVoice,
+  deleteClinicalNote,
   confirmClinicalNote,
   confirmEpicrisis,
   generateEpicrisisDraft,
@@ -150,6 +151,9 @@ export const clinicalSpec: Spec = [
       "MedicoPatientAccess",
       "AuditLog",
     ],
+  }),
+  action(deleteClinicalNote, {
+    entities: ["ClinicalNote", "MedicoPatientAccess", "AuditLog"],
   }),
 
   // Rutas / páginas clínicas

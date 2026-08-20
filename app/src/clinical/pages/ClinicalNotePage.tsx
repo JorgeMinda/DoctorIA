@@ -6,6 +6,7 @@ import { getClinicalNote } from "wasp/client/operations";
 import {
   confirmClinicalNote,
   createNoteAddendum,
+  deleteClinicalNote,
   requestAIStructuring,
   updateClinicalNoteDraft,
 } from "wasp/client/operations";
@@ -19,6 +20,7 @@ import {
   Save,
   ShieldCheck,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { Button } from "../../client/components/ui/button";
@@ -51,6 +53,7 @@ export function ClinicalNotePage() {
   const requestAIFn = useAction(requestAIStructuring);
   const confirmFn = useAction(confirmClinicalNote);
   const addendumFn = useAction(createNoteAddendum);
+  const deleteNoteFn = useAction(deleteClinicalNote);
 
   const [draft, setDraft] = useState<SectionDraft>({
     sections: {
@@ -64,6 +67,7 @@ export function ClinicalNotePage() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [addendumOpen, setAddendumOpen] = useState(false);
   const [addendumText, setAddendumText] = useState("");
   const [addendumReason, setAddendumReason] = useState("");
@@ -179,6 +183,38 @@ export function ClinicalNotePage() {
     }
   };
 
+  const handleDeleteNote = async () => {
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      window.setTimeout(() => setConfirmingDelete(false), 6000);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await deleteNoteFn({ noteId: note.id });
+      toast({ title: "Nota eliminada correctamente" });
+      navigate(
+        routes.ClinicalPatientDetailRoute.build({
+          params: { patientId: note.patientId },
+        }),
+      );
+    } catch (err: any) {
+      setError(err?.message ?? "No se pudo eliminar la nota");
+      setConfirmingDelete(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    navigate(
+      routes.ClinicalPatientDetailRoute.build({
+        params: { patientId: note.patientId },
+      }),
+    );
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <WaspRouterLink
@@ -261,7 +297,7 @@ export function ClinicalNotePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <SectionEditor draft={draft} onChange={setDraft} />
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {note.status === "DRAFT_MANUAL" && (
                 <Button
                   onClick={handleRequestAI}
@@ -278,12 +314,39 @@ export function ClinicalNotePage() {
                 disabled={saving}
               >
                 <Save className="size-4" />
-                Guardar cambios
+                Actualizar nota
               </Button>
               <Button onClick={handleConfirm} disabled={saving}>
                 <ShieldCheck className="size-4" />
                 Confirmar nota
               </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-outline-variant/60 pt-4">
+              <Button
+                variant="ghost"
+                onClick={handleCancel}
+                disabled={saving}
+                className="text-muted-foreground"
+              >
+                <ArrowLeft className="size-4" />
+                Cancelar
+              </Button>
+              {!isConfirmed && (
+                <Button
+                  variant={
+                    confirmingDelete
+                      ? "destructive"
+                      : "outline"
+                  }
+                  onClick={handleDeleteNote}
+                  disabled={saving}
+                >
+                  <Trash2 className="size-4" />
+                  {confirmingDelete
+                    ? "Pulsa de nuevo para confirmar"
+                    : "Eliminar nota"}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

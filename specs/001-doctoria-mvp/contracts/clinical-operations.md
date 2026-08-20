@@ -178,6 +178,20 @@ Creates a clinical note draft from a voice command (RF-031). Complements the voi
 | **Validations** | Ambiguous patient (multiple matches) → 409 requesting exact `syntheticId`; missing clinical dictation → 400; note CREATED always with status `DRAFT_MANUAL`, never auto-confirmed (RF-014, RF-031) |
 | **Note** | Voice dictation sets `originalText`; the note is opened in the editor for human review (Constitución P4) |
 
+### deleteClinicalNote
+
+Deletes a non-confirmed clinical note. Confirmed records are immutable (RF-028).
+
+| Property | Value |
+|:---|:---|
+| **Type** | Action |
+| **Entities** | `ClinicalNote`, `AuditLog`, `MedicoPatientAccess` |
+| **Auth** | `ensureMedico(context)`; must be note author + `assertMedicoPatientAccess` |
+| **Input** | `{ noteId: string }` |
+| **Output** | `{ ok: true }` |
+| **Audit** | Yes — `DELETE_NOTE` (entrada sin referencia FK a la nota; previos borradores/ediciones de la nota se limpian para preservar la FK) |
+| **Validations** | Note must exist; must not be `CONFIRMED` (409, RF-028); must not have child addendums (409); client requires explicit double-confirm before calling |
+
 ---
 
 ## 3. Epicrisis Operations
