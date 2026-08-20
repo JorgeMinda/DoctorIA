@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router";
 import { useAuth } from "wasp/client/auth";
-import logo from "../../static/logo.svg";
+import logo from "../../static/logo.jpeg";
 import { cn } from "../../utils";
 import {
   clinicalNavGroups,
