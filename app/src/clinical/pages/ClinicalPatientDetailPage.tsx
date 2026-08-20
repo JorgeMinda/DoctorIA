@@ -23,14 +23,13 @@ export function ClinicalPatientDetailPage() {
 
   const [newNoteText, setNewNoteText] = useState("");
   const [creating, setCreating] = useState(false);
+  const [generatingEpicrisis, setGeneratingEpicrisis] = useState(false);
 
   const { data: detail, isLoading: loadingDetail } = useQuery(getPatientById, {
     patientId: patientId ?? "",
   });
-  const { data: history, isLoading: loadingHistory } = useQuery(
-    getPatientHistory,
-    { patientId: patientId ?? "" },
-  );
+  const { data: history, isLoading: loadingHistory, refetch: refetchHistory } =
+    useQuery(getPatientHistory, { patientId: patientId ?? "" });
 
   const createNoteFn = useAction(createClinicalNote);
   const generateEpicrisisFn = useAction(generateEpicrisisDraft);
@@ -98,6 +97,8 @@ export function ClinicalPatientDetailPage() {
   };
 
   const handleGenerateEpicrisis = async () => {
+    if (generatingEpicrisis) return;
+    setGeneratingEpicrisis(true);
     try {
       const epicrisis = await generateEpicrisisFn({ patientId: patientId! });
       toast({ title: "Epicrisis generada correctamente" });
@@ -107,11 +108,43 @@ export function ClinicalPatientDetailPage() {
         }),
       );
     } catch (err: any) {
+      // El borrador pudo crearse server-side aunque el flujo síncrono falle
+      // (timeout de red / latencia de la IA free). Se detecta y se navega al
+      // borrador recién generado en lugar de mostrar un error confuso.
+      try {
+        const fresh = await refetchHistory();
+        const epicrises = fresh?.data?.epicrises ?? [];
+        const latest = epicrises.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )[0];
+        if (latest) {
+          toast({
+            title: "Epicrisis lista",
+            description:
+              "El borrador asistido por IA se generó; abriendo para revisión.",
+          });
+          navigate(
+            routes.ClinicalEpicrisisRoute.build({
+              params: { epicrisisId: latest.id },
+            }),
+          );
+          return;
+        }
+      } catch {
+        // Reintento de detección fallido; se muestra el error original.
+      }
+      const message = err?.message ?? "No se pudo generar la epicrisis";
+      const description = message.includes("confirmada")
+        ? "El paciente debe tener al menos una nota CONFIRMADA. Confirma una nota e inténtalo de nuevo."
+        : message;
       toast({
         title: "No se pudo generar la epicrisis",
-        description: err?.message,
+        description,
         variant: "destructive",
       });
+    } finally {
+      setGeneratingEpicrisis(false);
     }
   };
 
@@ -139,6 +172,7 @@ export function ClinicalPatientDetailPage() {
       <PatientQuickActions
         noteCount={detail.noteCount}
         creating={creating}
+        generatingEpicrisis={generatingEpicrisis}
         newNoteText={newNoteText}
         onNewNoteTextChange={setNewNoteText}
         onCreateNote={handleCreateNote}

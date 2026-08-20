@@ -1,4 +1,4 @@
-import { FileText, NotebookPen } from "lucide-react";
+import { FileText, Loader2, NotebookPen } from "lucide-react";
 import { Button } from "../../client/components/ui/button";
 import { Textarea } from "../../client/components/ui/textarea";
 import {
@@ -11,6 +11,7 @@ import {
 export function PatientQuickActions({
   noteCount,
   creating,
+  generatingEpicrisis,
   newNoteText,
   onNewNoteTextChange,
   onCreateNote,
@@ -18,6 +19,7 @@ export function PatientQuickActions({
 }: {
   noteCount: number;
   creating: boolean;
+  generatingEpicrisis: boolean;
   newNoteText: string;
   onNewNoteTextChange: (value: string) => void;
   onCreateNote: () => void;
@@ -50,10 +52,14 @@ export function PatientQuickActions({
           <Button
             variant="outline"
             onClick={onGenerateEpicrisis}
-            disabled={noteCount === 0}
+            disabled={noteCount === 0 || creating || generatingEpicrisis}
           >
-            <NotebookPen className="size-4" />
-            Generar epicrisis
+            {generatingEpicrisis ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <NotebookPen className="size-4" />
+            )}
+            {generatingEpicrisis ? "Generando epicrisis…" : "Generar epicrisis"}
           </Button>
         </div>
       </CardContent>
