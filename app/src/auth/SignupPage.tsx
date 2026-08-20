@@ -1,27 +1,19 @@
-import { SignupForm } from "wasp/client/auth";
-import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { AuthPageLayout } from "./AuthPageLayout";
-import { AUTH_APPEARANCE } from "./ambientAuthTheme";
 import { useRedirectIfLoggedIn } from "./hooks/useRedirectIfLoggedIn";
+import { SignupFormES } from "./AuthForms";
 
 export function SignupPage() {
   useRedirectIfLoggedIn();
 
   return (
     <AuthPageLayout>
-      <SignupForm appearance={AUTH_APPEARANCE} />
-      <br />
-      <span className="text-sm font-medium text-muted-foreground">
-        I already have an account (
-        <WaspRouterLink
-          to={routes.LoginRoute.to}
-          className="text-primary underline underline-offset-2"
-        >
-          go to login
-        </WaspRouterLink>
-        ).
-      </span>
-      <br />
+      <h2 className="mb-1 text-xl font-semibold text-foreground">
+        Crear cuenta
+      </h2>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Regístrate para usar DoctorIA.
+      </p>
+      <SignupFormES />
     </AuthPageLayout>
   );
 }

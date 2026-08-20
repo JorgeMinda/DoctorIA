@@ -1,11 +1,16 @@
-import { ForgotPasswordForm } from "wasp/client/auth";
 import { AuthPageLayout } from "../AuthPageLayout";
-import { AUTH_APPEARANCE } from "../ambientAuthTheme";
+import { RequestPasswordResetFormES } from "../AuthForms";
 
 export function RequestPasswordResetPage() {
   return (
     <AuthPageLayout>
-      <ForgotPasswordForm appearance={AUTH_APPEARANCE} />
+      <h2 className="mb-1 text-xl font-semibold text-foreground">
+        Recuperar contraseña
+      </h2>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Te enviaremos un enlace a tu correo.
+      </p>
+      <RequestPasswordResetFormES />
     </AuthPageLayout>
   );
 }
