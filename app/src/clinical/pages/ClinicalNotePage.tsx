@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useAction, useQuery } from "wasp/client/operations";
@@ -65,6 +65,7 @@ export function ClinicalNotePage() {
     },
     sectionsNotApplicable: {},
   });
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -86,6 +87,15 @@ export function ClinicalNotePage() {
       });
     }
   }, [note?.id]);
+
+  useEffect(
+    () => () => {
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current);
+      }
+    },
+    [],
+  );
 
   if (isLoading) {
     return (
@@ -113,19 +123,50 @@ export function ClinicalNotePage() {
 
   const isConfirmed = note.status === "CONFIRMED";
 
+  const persistDraft = (next: SectionDraft) => {
+    setDraft(next);
+    if (note.status === "CONFIRMED") {
+      return;
+    }
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+    }
+    autosaveTimer.current = setTimeout(() => {
+      void updateDraftFn({
+        noteId: note.id,
+        motivoConsulta: next.sections.motivoConsulta || undefined,
+        notaClinica: next.sections.notaClinica || undefined,
+        examenFisico: next.sections.examenFisico || undefined,
+        valoracionClinica: next.sections.valoracionClinica || undefined,
+        planIndicaciones: next.sections.planIndicaciones || undefined,
+        sectionsNotApplicable: next.sectionsNotApplicable,
+      }).catch((err: any) => {
+        setError(err?.message ?? "No se pudo guardar automáticamente");
+      });
+    }, 400);
+  };
+
+  const persistNow = async (next: SectionDraft = draft) => {
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    await updateDraftFn({
+      noteId: note.id,
+      motivoConsulta: next.sections.motivoConsulta || undefined,
+      notaClinica: next.sections.notaClinica || undefined,
+      examenFisico: next.sections.examenFisico || undefined,
+      valoracionClinica: next.sections.valoracionClinica || undefined,
+      planIndicaciones: next.sections.planIndicaciones || undefined,
+      sectionsNotApplicable: next.sectionsNotApplicable,
+    });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     try {
-      await updateDraftFn({
-        noteId: note.id,
-        motivoConsulta: draft.sections.motivoConsulta || undefined,
-        notaClinica: draft.sections.notaClinica || undefined,
-        examenFisico: draft.sections.examenFisico || undefined,
-        valoracionClinica: draft.sections.valoracionClinica || undefined,
-        planIndicaciones: draft.sections.planIndicaciones || undefined,
-        sectionsNotApplicable: draft.sectionsNotApplicable,
-      });
+      await persistNow();
       await refetch();
       toast({ title: "Nota clínica guardada correctamente" });
     } catch (err: any) {
@@ -153,6 +194,7 @@ export function ClinicalNotePage() {
     setSaving(true);
     setError(null);
     try {
+      await persistNow();
       await confirmFn({ noteId: note.id });
       await refetch();
       toast({ title: "Nota clínica confirmada" });
@@ -296,7 +338,7 @@ export function ClinicalNotePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <SectionEditor draft={draft} onChange={setDraft} />
+            <SectionEditor draft={draft} onChange={persistDraft} />
             <div className="flex flex-wrap items-center gap-2">
               {note.status === "DRAFT_MANUAL" && (
                 <Button
