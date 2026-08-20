@@ -115,6 +115,7 @@ function EditPatientForm({
     new Date(patient.birthDate).toISOString().slice(0, 10),
   );
   const [sex, setSex] = useState(patient.sex);
+  const [documento, setDocumento] = useState(patient.documento ?? "");
   const [medicalHistory, setMedicalHistory] = useState(
     patient.medicalHistory ?? "",
   );
@@ -144,6 +145,7 @@ function EditPatientForm({
           lastName,
           birthDate: new Date(birthDate),
           sex,
+          documento: documento || null,
           medicalHistory: medicalHistory || null,
           allergies: allergies || null,
           ...patientProfilePayload(profile),
@@ -174,11 +176,21 @@ function EditPatientForm({
           value={birthDate}
           onChange={(e) => setBirthDate(e.target.value)}
         />
-        <Input
-          className="border-outline-variant bg-surface"
-          placeholder="Sexo (M/F/O)"
+        <select
+          className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
           value={sex}
           onChange={(e) => setSex(e.target.value)}
+        >
+          <option value="M">Masculino (M)</option>
+          <option value="F">Femenino (F)</option>
+          <option value="O">Otro (O)</option>
+        </select>
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Cédula o pasaporte (máx. 10)"
+          maxLength={10}
+          value={documento}
+          onChange={(e) => setDocumento(e.target.value)}
         />
         <Textarea
           className="border-outline-variant bg-surface"
@@ -342,7 +354,8 @@ function CreatePatientForm({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [sex, setSex] = useState("M");
+  const [sex, setSex] = useState("");
+  const [documento, setDocumento] = useState("");
   const [medicalHistory, setMedicalHistory] = useState("");
   const [allergies, setAllergies] = useState("");
   const [profile, setProfile] = useState({
@@ -370,6 +383,7 @@ function CreatePatientForm({
           lastName,
           birthDate: new Date(birthDate),
           sex,
+          documento: documento || null,
           medicalHistory: medicalHistory || null,
           allergies: allergies || null,
           ...patientProfilePayload(profile),
@@ -388,11 +402,22 @@ function CreatePatientForm({
           value={synthId}
           onChange={(e) => setSynthId(e.target.value)}
         />
-        <Input
-          className="border-outline-variant bg-surface"
-          placeholder="Sexo (M/F/O)"
+        <select
+          className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
           value={sex}
           onChange={(e) => setSex(e.target.value)}
+        >
+          <option value="">Sexo (M/F/O)</option>
+          <option value="M">Masculino (M)</option>
+          <option value="F">Femenino (F)</option>
+          <option value="O">Otro (O)</option>
+        </select>
+        <Input
+          className="border-outline-variant bg-surface"
+          placeholder="Cédula o pasaporte (máx. 10)"
+          maxLength={10}
+          value={documento}
+          onChange={(e) => setDocumento(e.target.value)}
         />
         <Input
           className="border-outline-variant bg-surface"
@@ -638,6 +663,13 @@ function CreateMedicoForm({
   const [fullName, setFullName] = useState("");
   const [specialty, setSpecialty] = useState("");
 
+  const passwordRules = [
+    { label: "Mínimo 8 caracteres", ok: password.length >= 8 },
+    { label: "Al menos una mayúscula", ok: /[A-Z]/.test(password) },
+    { label: "Al menos un número", ok: /[0-9]/.test(password) },
+  ];
+  const passwordValid = passwordRules.every((r) => r.ok);
+
   const handleCreate = run(
     () =>
       createMedicoFn({
@@ -663,7 +695,7 @@ function CreateMedicoForm({
         <Input
           className="border-outline-variant bg-surface"
           type="password"
-          placeholder="Contraseña (mín. 8, mayúscula y número)"
+          placeholder="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -680,8 +712,23 @@ function CreateMedicoForm({
           onChange={(e) => setSpecialty(e.target.value)}
         />
       </div>
+      <ul className="mt-2 space-y-1">
+        {passwordRules.map((rule) => (
+          <li
+            key={rule.label}
+            className={`flex items-center gap-1.5 text-xs ${
+              rule.ok ? "text-emerald-500" : "text-muted-foreground"
+            }`}
+          >
+            {rule.ok ? "✓" : "○"} {rule.label}
+          </li>
+        ))}
+      </ul>
       <div className="mt-3">
-        <Button onClick={handleCreate} disabled={!email || !password}>
+        <Button
+          onClick={handleCreate}
+          disabled={!email || !passwordValid}
+        >
           <Stethoscope className="size-4" />
           Crear médico
         </Button>
@@ -1005,21 +1052,31 @@ function AssignmentsTab({
     skipPages: 0,
     filter: { isMedico: true },
   });
-  const { data: patientsData } = useQuery(adminGetPatients, {
-    page: 1,
-    pageSize: 50,
-  });
+  const { data: patientsData, refetch: refetchPatients } = useQuery(
+    adminGetPatients,
+    {
+      page: 1,
+      pageSize: 50,
+    },
+  );
 
-  const handleApply = run(
-    () =>
-      manageAccessFn({
+  const handleApply = async () => {
+    try {
+      await manageAccessFn({
         action: accessAction,
         medicoId,
         patientId: accessPatientId,
-      }),
-    notice,
-    reportError,
-  );
+      });
+      await refetchPatients();
+      notice(
+        accessAction === "REVOKE"
+          ? "Acceso revocado correctamente"
+          : "Acceso otorgado correctamente",
+      );
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo aplicar el acceso");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -1041,6 +1098,7 @@ function AssignmentsTab({
               {medicos?.users.map((m: any) => (
                 <option key={m.id} value={m.id}>
                   {m.fullName ?? m.username ?? m.email}
+                  {m.specialty ? ` · ${m.specialty}` : ""}
                 </option>
               ))}
             </select>
@@ -1119,12 +1177,13 @@ function AssignmentsTab({
                           key={m.id}
                           className="inline-flex items-center gap-1 rounded-md border border-outline-variant/60 bg-surface px-2 py-0.5"
                         >
-                          <Badge
-                            variant="secondary"
-                            className="border-0 bg-transparent p-0"
-                          >
-                            {m.fullName ?? m.username ?? m.email}
-                          </Badge>
+                           <Badge
+                             variant="secondary"
+                             className="border-0 bg-transparent p-0"
+                           >
+                             {m.fullName ?? m.username ?? m.email}
+                             {m.specialty ? ` · ${m.specialty}` : ""}
+                           </Badge>
                           <button
                             type="button"
                             aria-label={`Revocar acceso a ${

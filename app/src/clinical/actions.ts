@@ -749,6 +749,7 @@ const manageSyntheticPatientsInputSchema = z.object({
     lastName: z.string().optional(),
     birthDate: z.coerce.date().optional(),
     sex: z.string().optional(),
+    documento: z.string().max(10, "Máximo 10 caracteres").nullable().optional(),
     medicalHistory: z.string().nullable().optional(),
     allergies: z.string().nullable().optional(),
     nationality: z.string().nullable().optional(),
@@ -807,6 +808,7 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
         lastName: data.lastName,
         birthDate: data.birthDate,
         sex: data.sex,
+        documento: data.documento ?? undefined,
         medicalHistory: data.medicalHistory ?? undefined,
         allergies: data.allergies ?? undefined,
         nationality: data.nationality ?? undefined,
@@ -844,6 +846,7 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
         lastName: data.lastName ?? undefined,
         birthDate: data.birthDate ?? undefined,
         sex: data.sex ?? undefined,
+        documento: data.documento ?? undefined,
         medicalHistory: data.medicalHistory ?? undefined,
         allergies: data.allergies ?? undefined,
         nationality: data.nationality ?? undefined,
@@ -1172,6 +1175,12 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
         "medicoId, patientId y scheduledAt son obligatorios",
       );
     }
+    if (data.scheduledAt.getTime() <= Date.now()) {
+      throw new HttpError(
+        400,
+        "La fecha y hora de la cita no puede ser en el pasado",
+      );
+    }
     const status = data.status ?? "SCHEDULED";
     if (!isCitaStatusValid(status)) {
       throw new HttpError(400, "Estado de cita inválido");
@@ -1210,6 +1219,15 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
   }
 
   if (action === "UPDATE") {
+    if (
+      data?.scheduledAt &&
+      data.scheduledAt.getTime() <= Date.now()
+    ) {
+      throw new HttpError(
+        400,
+        "La fecha y hora de la cita no puede ser en el pasado",
+      );
+    }
     const targetStatus = data?.status ?? existing.status;
     if (!isCitaStatusValid(targetStatus)) {
       throw new HttpError(400, "Estado de cita inválido");
