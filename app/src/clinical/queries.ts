@@ -115,9 +115,17 @@ type GetPatientByIdOutput = {
       fullName: string | null;
       username: string | null;
       email: string | null;
-    } | null;
-  }[];
+  } | null;
   epicrisisCount: number;
+  citaCount: number;
+  latestCitas: {
+    id: string;
+    status: string;
+    scheduledAt: Date;
+    durationMinutes: number | null;
+    reason: string | null;
+    createdAt: Date;
+  }[];
 };
 
 export const getPatientById: GetPatientById<
@@ -143,24 +151,39 @@ export const getPatientById: GetPatientById<
 
   const authorSelect = { fullName: true, username: true, email: true };
 
-  const [noteCount, latestNotes, epicrisisCount] = await Promise.all([
-    context.entities.ClinicalNote.count({ where: { patientId } }),
-    context.entities.ClinicalNote.findMany({
-      where: { patientId, noteType: "ORIGINAL" },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      select: {
-        id: true,
-        status: true,
-        noteType: true,
-        createdAt: true,
-        originalText: true,
-        author: { select: authorSelect },
-        confirmedBy: { select: authorSelect },
-      },
-    }),
-    context.entities.Epicrisis.count({ where: { patientId } }),
-  ]);
+  const [noteCount, latestNotes, epicrisisCount, citaCount, latestCitas] =
+    await Promise.all([
+      context.entities.ClinicalNote.count({ where: { patientId } }),
+      context.entities.ClinicalNote.findMany({
+        where: { patientId, noteType: "ORIGINAL" },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          status: true,
+          noteType: true,
+          createdAt: true,
+          originalText: true,
+          author: { select: authorSelect },
+          confirmedBy: { select: authorSelect },
+        },
+      }),
+      context.entities.Epicrisis.count({ where: { patientId } }),
+      context.entities.Cita.count({ where: { patientId } }),
+      context.entities.Cita.findMany({
+        where: { patientId },
+        orderBy: { scheduledAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          status: true,
+          scheduledAt: true,
+          durationMinutes: true,
+          reason: true,
+          createdAt: true,
+        },
+      }),
+    ]);
 
   // Audit VIEW_PATIENT (contracts §1)
   await createAuditEntry({
@@ -171,7 +194,7 @@ export const getPatientById: GetPatientById<
     patientId,
   });
 
-  return { patient, noteCount, latestNotes, epicrisisCount };
+  return { patient, noteCount, latestNotes, epicrisisCount, citaCount, latestCitas };
 };
 
 // ---------------------------------------------------------------------------

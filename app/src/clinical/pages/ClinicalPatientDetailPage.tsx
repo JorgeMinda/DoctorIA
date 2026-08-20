@@ -168,6 +168,7 @@ export function ClinicalPatientDetailPage() {
       <PatientClinicalSummary
         notes={history?.notes ?? []}
         epicrises={history?.epicrises ?? []}
+        citas={detail?.latestCitas ?? []}
       />
 
       <PatientQuickActions
