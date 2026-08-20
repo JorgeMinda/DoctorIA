@@ -110,6 +110,23 @@ describe("validateConfirmableNote — secciones 'No aplica' con justificación",
       expect(result.missing).toContain("examenFisico");
     }
   });
+
+  it("regresión: marcar 'No aplica' (clave presente, sin justificar) bloquea aunque la sección tenga texto", () => {
+    // El bug: el checkbox guardaba "" y `Boolean("") === false` hacía que el
+    // estado "No aplica" no existiera. Con la semántica corregida, la clave
+    // presente (aunque sea "") ES "No aplica" y exige justificación (RF-026-5).
+    const result = validateConfirmableNote({
+      sections: completeSections,
+      sectionsNotApplicable: { examenFisico: "" },
+      originalText: "texto",
+      patientId: "p1",
+      authorId: "u1",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.missing).toContain("examenFisico");
+    }
+  });
 });
 
 describe("constantes de secciones", () => {

@@ -58,7 +58,9 @@ export function validateConfirmableNote({
 
   for (const key of REQUIRED_SECTIONS) {
     const value = sections[key];
-    const isNa = Boolean(notApplicable[key]);
+    // La sección se considera "No aplica" cuando la clave existe en
+    // sectionsNotApplicable (aunque la justificación aún esté vacía).
+    const isNa = notApplicable[key] !== undefined;
     if (isNa) {
       // RF-026 (5): "No aplica" requiere justificación breve
       const justification = notApplicable[key];
