@@ -26,7 +26,7 @@ export function SectionEditor({ draft, onChange }: SectionEditorProps) {
   return (
     <div className="space-y-4">
       {REQUIRED_SECTIONS.map((key) => {
-        const isNa = Boolean(sectionsNotApplicable[key]);
+        const isNa = sectionsNotApplicable[key] !== undefined;
         return (
           <div key={key}>
             <div className="mb-1 flex items-center justify-between">
