@@ -399,7 +399,7 @@ function CreatePatientForm({
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Input
           className="border-outline-variant bg-surface"
-          placeholder="ID sintético (PAC-xxx)"
+          placeholder="ID sintético (opcional, se autogenera PAC-NNN)"
           value={synthId}
           onChange={(e) => setSynthId(e.target.value)}
         />
@@ -1121,6 +1121,24 @@ function AssignmentsTab({
     }
   };
 
+  const handleRevoke = async (
+    medicoIdValue: string,
+    patientIdValue: string,
+    label: string,
+  ) => {
+    try {
+      await manageAccessFn({
+        action: "REVOKE",
+        medicoId: medicoIdValue,
+        patientId: patientIdValue,
+      });
+      await refetchPatients();
+      notice("Acceso revocado de " + label + " correctamente");
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo revocar el acceso");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden border-outline-variant">
@@ -1233,15 +1251,13 @@ function AssignmentsTab({
                               m.fullName ?? m.email
                             }`}
                             className="text-destructive transition-opacity hover:opacity-70"
-                            onClick={() => {
-                              const p = patient;
-                              setMedicoId(m.id);
-                              setAccessPatientId(p.id);
-                              setAccessAction("REVOKE");
-                              notice(
-                                "Seleccione Aplicar para confirmar la revocación",
-                              );
-                            }}
+                            onClick={() =>
+                              handleRevoke(
+                                m.id,
+                                patient.id,
+                                m.fullName ?? m.email ?? "el médico",
+                              )
+                            }
                           >
                             ×
                           </button>
