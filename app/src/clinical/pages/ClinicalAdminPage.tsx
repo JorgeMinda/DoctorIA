@@ -1430,15 +1430,23 @@ function AdminScheduleForm({
               })}
             </div>
           </div>
-          <Input
-            className="border-outline-variant bg-surface"
-            type="number"
-            min={5}
-            max={240}
-            placeholder="Duración (min)"
-            value={durationMinutes}
-            onChange={(e) => setDurationMinutes(e.target.value)}
-          />
+          <div>
+            <p className="mono-label mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+              Duración de la cita
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                className="border-outline-variant bg-surface"
+                type="number"
+                min={5}
+                max={240}
+                placeholder="30"
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(e.target.value)}
+              />
+              <span className="text-sm text-muted-foreground">min</span>
+            </div>
+          </div>
           <Input
             className="border-outline-variant bg-surface sm:col-span-2"
             placeholder="Motivo de la cita (opcional)"
