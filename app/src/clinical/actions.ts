@@ -784,27 +784,43 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
   const { action, data, patientId } = args;
 
   if (action === "CREATE") {
-    if (
-      !data.syntheticId ||
-      !data.firstName ||
-      !data.lastName ||
-      !data.birthDate ||
-      !data.sex
-    ) {
+    if (!data.firstName || !data.lastName || !data.birthDate || !data.sex) {
       throw new HttpError(400, "Campos obligatorios incompletos");
     }
-    const existing = await context.entities.SyntheticPatient.findUnique({
-      where: { syntheticId: data.syntheticId },
-    });
-    if (existing) {
-      throw new HttpError(
-        409,
-        "Ya existe un paciente con ese identificador sintético",
-      );
+
+    let syntheticId = data.syntheticId?.trim();
+    if (syntheticId) {
+      if (!/^PAC-\d{1,6}$/.test(syntheticId)) {
+        throw new HttpError(
+          400,
+          "El identificador sintético debe tener el formato PAC-NNN",
+        );
+      }
+      const existing = await context.entities.SyntheticPatient.findUnique({
+        where: { syntheticId },
+      });
+      if (existing) {
+        throw new HttpError(
+          409,
+          "Ya existe un paciente con ese identificador sintético",
+        );
+      }
+    } else {
+      const existing = await context.entities.SyntheticPatient.findMany({
+        where: { syntheticId: { startsWith: "PAC-" } },
+        select: { syntheticId: true },
+      });
+      const nums = existing.map((e: { syntheticId: string }) => {
+        const m = /^PAC-(\d+)$/.exec(e.syntheticId);
+        return m ? parseInt(m[1], 10) : 0;
+      });
+      const nextNum = (nums.length ? Math.max(...nums) : 0) + 1;
+      syntheticId = "PAC-" + String(nextNum).padStart(3, "0");
     }
+
     const patient = await context.entities.SyntheticPatient.create({
       data: {
-        syntheticId: data.syntheticId,
+        syntheticId,
         firstName: data.firstName,
         lastName: data.lastName,
         birthDate: data.birthDate,
