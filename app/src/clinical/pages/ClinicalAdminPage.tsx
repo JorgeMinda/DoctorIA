@@ -1178,18 +1178,6 @@ function AssignmentsTab({
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
-              onClick={() => setAccessAction("GRANT")}
-              variant={accessAction === "GRANT" ? "default" : "outline"}
-            >
-              Otorgar acceso
-            </Button>
-            <Button
-              onClick={() => setAccessAction("REVOKE")}
-              variant={accessAction === "REVOKE" ? "destructive" : "outline"}
-            >
-              Revocar acceso
-            </Button>
-            <Button
               onClick={handleApply}
               disabled={!medicoId || !accessPatientId}
             >
