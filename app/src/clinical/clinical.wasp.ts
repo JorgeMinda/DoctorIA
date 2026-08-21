@@ -55,7 +55,6 @@ export const clinicalSpec: Spec = [
       "SyntheticPatient",
       "ClinicalNote",
       "Epicrisis",
-      "Cita",
       "MedicoPatientAccess",
     ],
   }),

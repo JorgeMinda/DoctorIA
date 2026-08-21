@@ -97,35 +97,32 @@ const getPatientByIdInputSchema = z.object({
 
 type GetPatientByIdInput = z.infer<typeof getPatientByIdInputSchema>;
 
+type PatientNoteSummary = {
+  id: string;
+  status: string;
+  noteType: string;
+  createdAt: Date;
+  originalText: string;
+  author: PersonSummary;
+  confirmedBy: PersonSummary | null;
+};
+
+type PatientCitaSummary = {
+  id: string;
+  status: string;
+  scheduledAt: Date;
+  durationMinutes: number | null;
+  reason: string | null;
+  createdAt: Date;
+};
+
 type GetPatientByIdOutput = {
   patient: SyntheticPatient;
   noteCount: number;
-  latestNotes: {
-    id: string;
-    status: string;
-    noteType: string;
-    createdAt: Date;
-    originalText: string;
-    author: {
-      fullName: string | null;
-      username: string | null;
-      email: string | null;
-    };
-    confirmedBy: {
-      fullName: string | null;
-      username: string | null;
-      email: string | null;
-  } | null;
+  latestNotes: PatientNoteSummary[];
   epicrisisCount: number;
   citaCount: number;
-  latestCitas: {
-    id: string;
-    status: string;
-    scheduledAt: Date;
-    durationMinutes: number | null;
-    reason: string | null;
-    createdAt: Date;
-  }[];
+  latestCitas: PatientCitaSummary[];
 };
 
 export const getPatientById: GetPatientById<
@@ -169,8 +166,8 @@ export const getPatientById: GetPatientById<
         },
       }),
       context.entities.Epicrisis.count({ where: { patientId } }),
-      context.entities.Cita.count({ where: { patientId } }),
-      context.entities.Cita.findMany({
+      prisma.cita.count({ where: { patientId } }),
+      prisma.cita.findMany({
         where: { patientId },
         orderBy: { scheduledAt: "desc" },
         take: 5,

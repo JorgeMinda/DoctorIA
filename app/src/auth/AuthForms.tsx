@@ -124,7 +124,12 @@ export function SignupFormES() {
     setSuccess(null);
     setLoading(true);
     try {
-      const res = await signup({ email, password });
+      const res = await signup({
+        email,
+        password,
+        username: email,
+        isAdmin: false,
+      });
       if (res.success) {
         setSuccess(
           "Cuenta creada. Revisa tu correo para verificarla (si aplica) e inicia sesión.",
