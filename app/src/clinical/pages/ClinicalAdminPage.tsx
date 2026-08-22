@@ -507,7 +507,7 @@ function PatientsTab({
       return;
     }
     try {
-      await managePatientsFn({ action: "DELETE", patientId: id });
+      await managePatientsFn({ action: "DELETE", patientId: id, data: {} });
       notice("Paciente eliminado correctamente");
       await refetch();
     } catch (err: any) {
@@ -1361,6 +1361,9 @@ function AdminScheduleForm({
     page: 1,
     pageSize: 100,
   });
+  const [medicoId, setMedicoId] = useState("");
+  const [patientId, setPatientId] = useState("");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const agendaArgs =
     medicoId && date
       ? {
@@ -1370,9 +1373,6 @@ function AdminScheduleForm({
         }
       : undefined;
   const { data: agendaData } = useQuery(getAgenda, agendaArgs);
-  const [medicoId, setMedicoId] = useState("");
-  const [patientId, setPatientId] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [time, setTime] = useState("08:00");
   const [durationMinutes, setDurationMinutes] = useState("30");
   const [reason, setReason] = useState("");
