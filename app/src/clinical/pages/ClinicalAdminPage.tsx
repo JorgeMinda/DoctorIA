@@ -1455,6 +1455,7 @@ function AdminScheduleForm({
             {medicos?.users.map((m: any) => (
               <option key={m.id} value={m.id}>
                 {m.fullName ?? m.username ?? m.email}
+                {m.specialty ? ` · ${m.specialty}` : ""}
               </option>
             ))}
           </select>
