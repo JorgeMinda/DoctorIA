@@ -129,6 +129,7 @@ function EditPatientForm({
     bloodType: patient.bloodType ?? "",
     address: patient.address ?? "",
     phone: patient.phone ?? "",
+    emergencyName: patient.emergencyName ?? "",
     emergencyPhone: patient.emergencyPhone ?? "",
     insurance: patient.insurance ?? "",
   });
@@ -235,6 +236,7 @@ function patientProfilePayload(data: {
   bloodType: string;
   address: string;
   phone: string;
+  emergencyName: string;
   emergencyPhone: string;
   insurance: string;
 }) {
@@ -246,6 +248,9 @@ function patientProfilePayload(data: {
     bloodType: data.bloodType || null,
     address: data.address.trim() ? data.address.trim() : null,
     phone: data.phone.trim() ? data.phone.trim() : null,
+    emergencyName: data.emergencyName.trim()
+      ? data.emergencyName.trim()
+      : null,
     emergencyPhone: data.emergencyPhone.trim()
       ? data.emergencyPhone.trim()
       : null,
@@ -265,6 +270,7 @@ function ProfileFields({
     bloodType: string;
     address: string;
     phone: string;
+    emergencyName: string;
     emergencyPhone: string;
     insurance: string;
   };
@@ -335,6 +341,12 @@ function ProfileFields({
       />
       <Input
         className="border-outline-variant bg-surface"
+        placeholder="Nombre del contacto de emergencia"
+        value={values.emergencyName}
+        onChange={(e) => onChange("emergencyName", e.target.value)}
+      />
+      <Input
+        className="border-outline-variant bg-surface"
         placeholder="Teléfono de emergencia"
         value={values.emergencyPhone}
         onChange={(e) => onChange("emergencyPhone", e.target.value)}
@@ -346,12 +358,13 @@ function ProfileFields({
 function CreatePatientForm({
   notice,
   reportError,
+  onCreated,
 }: {
   notice: Notice;
   reportError: ReportError;
+  onCreated?: () => void;
 }) {
   const managePatientsFn = useAction(manageSyntheticPatients);
-  const [synthId, setSynthId] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -367,6 +380,7 @@ function CreatePatientForm({
     bloodType: "",
     address: "",
     phone: "",
+    emergencyName: "",
     emergencyPhone: "",
     insurance: "",
   });
@@ -374,12 +388,12 @@ function CreatePatientForm({
   const setProfileField = (field: keyof typeof profile, value: string) =>
     setProfile((p) => ({ ...p, [field]: value }));
 
-  const handleCreate = run(
-    () =>
-      managePatientsFn({
+  const handleCreate = async () => {
+    if (!firstName || !lastName || !birthDate) return;
+    try {
+      await managePatientsFn({
         action: "CREATE",
         data: {
-          syntheticId: synthId,
           firstName,
           lastName,
           birthDate: new Date(birthDate),
@@ -389,20 +403,17 @@ function CreatePatientForm({
           allergies: allergies || null,
           ...patientProfilePayload(profile),
         },
-      }),
-    notice,
-    reportError,
-  );
+      });
+      notice("Paciente creado correctamente");
+      onCreated?.();
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo crear el paciente");
+    }
+  };
 
   return (
     <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Input
-          className="border-outline-variant bg-surface"
-          placeholder="ID sintético (opcional, se autogenera PAC-NNN)"
-          value={synthId}
-          onChange={(e) => setSynthId(e.target.value)}
-        />
         <select
           className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
           value={sex}
@@ -456,10 +467,10 @@ function CreatePatientForm({
         <ProfileFields values={profile} onChange={setProfileField} />
       </div>
       <div className="mt-3">
-        <Button
-          onClick={handleCreate}
-          disabled={!synthId || !firstName || !lastName || !birthDate}
-        >
+          <Button
+            onClick={handleCreate}
+            disabled={!firstName || !lastName || !birthDate}
+          >
           <UserPlus className="size-4" />
           Crear paciente
         </Button>
@@ -480,11 +491,29 @@ function PatientsTab({
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery(adminGetPatients, {
+  const { data, isLoading, error, refetch } = useQuery(adminGetPatients, {
     search: search || undefined,
     page,
     pageSize: 20,
   });
+  const managePatientsFn = useAction(manageSyntheticPatients);
+
+  const handleDelete = async (id: string, label: string) => {
+    if (
+      !window.confirm(
+        `¿Eliminar a ${label}? Esta acción no se puede deshacer.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await managePatientsFn({ action: "DELETE", patientId: id });
+      notice("Paciente eliminado correctamente");
+      await refetch();
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo eliminar el paciente");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -508,7 +537,14 @@ function PatientsTab({
       </div>
 
       {creating && (
-        <CreatePatientForm notice={notice} reportError={reportError} />
+        <CreatePatientForm
+          notice={notice}
+          reportError={reportError}
+          onCreated={() => {
+            setCreating(false);
+            refetch();
+          }}
+        />
       )}
 
       {error && (
@@ -604,6 +640,20 @@ function PatientsTab({
                     >
                       <Pencil className="size-3.5" />
                       Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-destructive hover:bg-destructive/10"
+                      onClick={() =>
+                        handleDelete(
+                          patient.id,
+                          `${patient.firstName} ${patient.lastName}`,
+                        )
+                      }
+                    >
+                      <Trash2 className="size-3.5" />
+                      Eliminar
                     </Button>
                   </div>
                 </div>
@@ -1311,6 +1361,15 @@ function AdminScheduleForm({
     page: 1,
     pageSize: 100,
   });
+  const agendaArgs =
+    medicoId && date
+      ? {
+          medicoId,
+          from: new Date(`${date}T00:00:00`),
+          to: new Date(`${date}T23:59:59`),
+        }
+      : undefined;
+  const { data: agendaData } = useQuery(getAgenda, agendaArgs);
   const [medicoId, setMedicoId] = useState("");
   const [patientId, setPatientId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -1337,6 +1396,22 @@ function AdminScheduleForm({
   const handleCreate = async () => {
     const at = buildScheduledAt();
     if (!medicoId || !patientId || !at) return;
+    const startMs = at.getTime();
+    const durMin = Number(durationMinutes) || 30;
+    const endMs = startMs + durMin * 60_000;
+    const conflicto = (agendaData?.citas ?? [])
+      .filter((c) => c.status !== "CANCELLED")
+      .some((c) => {
+        const cStart = new Date(c.scheduledAt).getTime();
+        const cEnd = cStart + c.durationMinutes * 60_000;
+        return cStart < endMs && cEnd > startMs;
+      });
+    if (conflicto) {
+      reportError(
+        "El horario seleccionado no está disponible para este médico. Elige otro horario.",
+      );
+      return;
+    }
     setBusy(true);
     try {
       await manageCitaFn({
@@ -1345,7 +1420,7 @@ function AdminScheduleForm({
           medicoId,
           patientId,
           scheduledAt: at,
-          durationMinutes: Number(durationMinutes) || 30,
+          durationMinutes: durMin,
           reason: reason || undefined,
         },
       });
