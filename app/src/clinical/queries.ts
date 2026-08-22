@@ -77,7 +77,7 @@ export const getPatients: GetPatients<
   const [patients, total] = await Promise.all([
     context.entities.SyntheticPatient.findMany({
       where,
-      orderBy: { syntheticId: "asc" },
+      orderBy: { firstName: "asc", lastName: "asc" },
       skip,
       take: pageSize,
     }),
@@ -668,7 +668,7 @@ export const adminGetPatients: AdminGetPatients<
   const [patients, total] = await Promise.all([
     context.entities.SyntheticPatient.findMany({
       where,
-      orderBy: { syntheticId: "asc" },
+      orderBy: { firstName: "asc", lastName: "asc" },
       skip,
       take: pageSize,
       include: {

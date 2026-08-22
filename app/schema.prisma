@@ -69,6 +69,7 @@ model SyntheticPatient {
   bloodType       String?  // A+, A-, B+, B-, AB+, AB-, O+, O-
   address         String?
   phone           String?
+  emergencyName   String?   // nombre del contacto de emergencia
   emergencyPhone  String?
   insurance       String?  // tipo de seguro / entidad
 

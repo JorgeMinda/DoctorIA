@@ -760,6 +760,7 @@ const manageSyntheticPatientsInputSchema = z.object({
     bloodType: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
     phone: z.string().nullable().optional(),
+    emergencyName: z.string().max(200).nullable().optional(),
     emergencyPhone: z.string().nullable().optional(),
     insurance: z.string().nullable().optional(),
   }),
@@ -835,6 +836,7 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
         bloodType: data.bloodType ?? undefined,
         address: data.address ?? undefined,
         phone: data.phone ?? undefined,
+        emergencyName: data.emergencyName ?? undefined,
         emergencyPhone: data.emergencyPhone ?? undefined,
         insurance: data.insurance ?? undefined,
       },
@@ -873,6 +875,7 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
         bloodType: data.bloodType ?? undefined,
         address: data.address ?? undefined,
         phone: data.phone ?? undefined,
+        emergencyName: data.emergencyName ?? undefined,
         emergencyPhone: data.emergencyPhone ?? undefined,
         insurance: data.insurance ?? undefined,
       },
@@ -901,8 +904,10 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
   await context.entities.MedicoPatientAccess.deleteMany({
     where: { patientId },
   });
+  await context.entities.Cita.deleteMany({ where: { patientId } });
   await context.entities.ClinicalNote.deleteMany({ where: { patientId } });
   await context.entities.Epicrisis.deleteMany({ where: { patientId } });
+  await context.entities.AuditLog.deleteMany({ where: { patientId } });
   const deleted = await context.entities.SyntheticPatient.delete({
     where: { id: patientId },
   });
@@ -1262,6 +1267,29 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     const status = data.status ?? "SCHEDULED";
     if (!isCitaStatusValid(status)) {
       throw new HttpError(400, "Estado de cita inválido");
+    }
+    const startMs = data.scheduledAt.getTime();
+    const durMin = data.durationMinutes ?? 30;
+    const endMs = startMs + durMin * 60_000;
+    const overlapWindowStart = new Date(startMs - 240 * 60_000);
+    const overlapping = await context.entities.Cita.findMany({
+      where: {
+        medicoId: data.medicoId,
+        status: { not: "CANCELLED" },
+        scheduledAt: { gte: overlapWindowStart, lt: new Date(endMs) },
+      },
+      select: { scheduledAt: true, durationMinutes: true },
+    });
+    const conflicto = overlapping.some((c) => {
+      const cStart = c.scheduledAt.getTime();
+      const cEnd = cStart + c.durationMinutes * 60_000;
+      return cStart < endMs && cEnd > startMs;
+    });
+    if (conflicto) {
+      throw new HttpError(
+        409,
+        "El horario seleccionado no está disponible para este médico",
+      );
     }
     const cita = await context.entities.Cita.create({
       data: {
