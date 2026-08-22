@@ -665,41 +665,37 @@ export const adminGetPatients: AdminGetPatients<
     ...(medicoId ? { authorizedMedicos: { some: { medicoId } } } : {}),
   };
 
-  try {
-    const [patients, total] = await Promise.all([
-      context.entities.SyntheticPatient.findMany({
-        where,
-        orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-        skip,
-        take: pageSize,
-        include: {
-          authorizedMedicos: {
-            include: {
-              medico: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  username: true,
-                  email: true,
-                  specialty: true,
-                },
+  const [patients, total] = await Promise.all([
+    context.entities.SyntheticPatient.findMany({
+      where,
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      skip,
+      take: pageSize,
+      include: {
+        authorizedMedicos: {
+          include: {
+            medico: {
+              select: {
+                id: true,
+                fullName: true,
+                username: true,
+                email: true,
+                specialty: true,
               },
             },
           },
         },
-      }),
-      context.entities.SyntheticPatient.count({ where }),
-    ]);
+      },
+    }),
+    context.entities.SyntheticPatient.count({ where }),
+  ]);
 
-    const adminPatients: AdminPatientOutput[] = patients.map((p: any) => ({
-      ...p,
-      authorizedMedicos: p.authorizedMedicos.map((a: any) => a.medico),
-    }));
+  const adminPatients: AdminPatientOutput[] = patients.map((p: any) => ({
+    ...p,
+    authorizedMedicos: p.authorizedMedicos.map((a: any) => a.medico),
+  }));
 
-    return { patients: adminPatients, totalPages: Math.ceil(total / pageSize) };
-  } catch (e: any) {
-    throw new HttpError(500, `ADMIN_PATIENTS_DEBUG: ${e?.message ?? String(e)}`);
-  }
+  return { patients: adminPatients, totalPages: Math.ceil(total / pageSize) };
 };
 
 // ---------------------------------------------------------------------------
