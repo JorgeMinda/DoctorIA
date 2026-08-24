@@ -8,12 +8,15 @@ import {
   createEpicrisisAddendum,
   updateEpicrisisDraft,
 } from "wasp/client/operations";
+import { recordEpicrisisExport } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
+import { pdf } from "@react-pdf/renderer";
 import {
   AlertCircle,
   ArrowLeft,
   CalendarDays,
   FilePlus2,
+  FileText,
   NotebookPen,
   Save,
   ShieldCheck,
@@ -30,6 +33,10 @@ import {
 } from "../../client/components/ui/card";
 import { Badge } from "../../client/components/ui/badge";
 import { StatusBadge } from "../components/StatusBadge";
+import {
+  EpicrisisPDFDocument,
+  type EpicrisisPDFData,
+} from "../components/EpicrisisPDFDocument";
 import { toast } from "../../client/hooks/use-toast";
 
 type EpicrisisFieldKey =
@@ -65,8 +72,10 @@ export function ClinicalEpicrisisPage() {
   const updateDraftFn = useAction(updateEpicrisisDraft);
   const confirmFn = useAction(confirmEpicrisis);
   const addendumFn = useAction(createEpicrisisAddendum);
+  const exportAuditFn = useAction(recordEpicrisisExport);
 
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addendumOpen, setAddendumOpen] = useState(false);
   const [addendumReason, setAddendumReason] = useState("");
@@ -99,6 +108,46 @@ export function ClinicalEpicrisisPage() {
   }
 
   const isConfirmed = epicrisis.status === "CONFIRMED";
+
+  const handleExportPdf = async () => {
+    setExporting(true);
+    setError(null);
+    try {
+      // 1. Auditoría primero (RF-019): el servidor valida acceso y registra
+      //    EXPORT_EPICRISIS_PDF sin contenido clínico (RNF-002).
+      await exportAuditFn({ epicrisisId: epicrisis.id });
+
+      // 2. Generación 100% client-side (@react-pdf/renderer).
+      const blob = await pdf(
+        <EpicrisisPDFDocument epicrisis={epicrisis as EpicrisisPDFData} />,
+      ).toBlob();
+
+      // 3. Descarga con nombre Epicrisis_PAC-XXX_Fecha.pdf.
+      const d = new Date(epicrisis.dateTime ?? epicrisis.createdAt);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const fecha = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+        d.getDate(),
+      )}`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Epicrisis_${epicrisis.patient.syntheticId}_${fecha}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      toast({ title: "Epicrisis exportada a PDF" });
+    } catch (err: any) {
+      toast({
+        title:
+          err?.message ?? "No se pudo generar el PDF de la epicrisis",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -207,6 +256,16 @@ export function ClinicalEpicrisisPage() {
             <CalendarDays className="size-3.5" />
             {new Date(epicrisis.createdAt).toLocaleString()}
           </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleExportPdf}
+            disabled={exporting}
+          >
+            <FileText className="size-3.5" />
+            {exporting ? "Generando…" : "Exportar a PDF"}
+          </Button>
         </div>
       </div>
 

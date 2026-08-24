@@ -30,6 +30,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   GENERATE_EPICRISIS: "Generó epicrisis",
   REVIEW_EPICRISIS: "Revisó epicrisis",
   CONFIRM_EPICRISIS: "Confirmó epicrisis",
+  EXPORT_EPICRISIS_PDF: "Exportó epicrisis a PDF",
   CREATE_ADDENDUM: "Creó adenda",
   VOICE_ASSISTANT_QUERY: "Consulta de asistente de voz",
   VOICE_NOTE_CREATE: "Creó nota por voz",
