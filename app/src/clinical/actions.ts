@@ -34,6 +34,7 @@ import type {
   UpdateCitaStatus,
   CreateNoteFromVoice,
   DeleteClinicalNote,
+  RecordEpicrisisExport,
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
@@ -1670,6 +1671,54 @@ export const deleteClinicalNote: DeleteClinicalNote<
     resourceId: note.id,
     patientId: note.patientId,
     metadata: { status: note.status, noteType: note.noteType },
+  });
+
+  return { ok: true };
+};
+
+// ---------------------------------------------------------------------------
+// recordEpicrisisExport (solo auditoría: EXPORT_EPICRISIS_PDF, RF-019)
+// El PDF se genera íntegramente en el cliente (@react-pdf/renderer); el
+// servidor únicamente registra la acción y verifica acceso (R-10).
+// ---------------------------------------------------------------------------
+
+const recordEpicrisisExportInputSchema = z.object({
+  epicrisisId: z.string().min(1),
+});
+
+type RecordEpicrisisExportInput = z.infer<
+  typeof recordEpicrisisExportInputSchema
+>;
+
+export const recordEpicrisisExport: RecordEpicrisisExport<
+  RecordEpicrisisExportInput,
+  { ok: boolean }
+> = async (rawArgs, context) => {
+  const user = ensureMedico(context.user);
+
+  const { epicrisisId } = ensureArgsSchemaOrThrowHttpError(
+    recordEpicrisisExportInputSchema,
+    rawArgs,
+  );
+
+  const epicrisis = await context.entities.Epicrisis.findUnique({
+    where: { id: epicrisisId },
+    select: { id: true, patientId: true, status: true },
+  });
+  if (!epicrisis) {
+    throw new HttpError(404, "Epicrisis no encontrada");
+  }
+  await assertMedicoPatientAccess(user.id, epicrisis.patientId);
+
+  // Auditoría sin contenido clínico (RNF-002): solo referencia y estado.
+  await createAuditEntry({
+    userId: user.id,
+    action: "EXPORT_EPICRISIS_PDF",
+    resourceType: "EPICRISIS",
+    resourceId: epicrisis.id,
+    patientId: epicrisis.patientId,
+    epicrisisId: epicrisis.id,
+    metadata: { status: epicrisis.status },
   });
 
   return { ok: true };

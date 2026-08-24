@@ -18,6 +18,7 @@ import {
   manageCita,
   manageMedicoPatientAccess,
   manageSyntheticPatients,
+  recordEpicrisisExport,
   requestAIStructuring,
   updateClinicalNoteDraft,
   updateCitaStatus,
@@ -115,6 +116,9 @@ export const clinicalSpec: Spec = [
     entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],
   }),
   action(confirmEpicrisis, {
+    entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],
+  }),
+  action(recordEpicrisisExport, {
     entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],
   }),
   action(createEpicrisisAddendum, {
