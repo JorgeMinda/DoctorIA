@@ -10,5 +10,7 @@ export const serverEnvValidationSchema = defineEnvValidationSchema(
   z.object({
     ...authEnvSchema.shape,
     OPENROUTER_API_KEY: z.string(),
+    // Modelo de IA configurable (default: tier gratuito de OpenRouter).
+    OPENROUTER_MODEL: z.string().default("openai/gpt-oss-20b:free"),
   }),
 );
