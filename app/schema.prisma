@@ -24,6 +24,16 @@ model User {
   // DoctorIA: habilitación explícita de profesional médico (research R-02).
   // `isAdmin=true` + `isMedico=true` es INVÁLIDO — bloqueado por guards.
   isMedico Boolean  @default(false)
+
+  // Secretaria clínica: gestiona pacientes/citas/signos vitales; SIN acceso
+  // al contenido de notas clínicas (R1). Mutuamente excluyente con los otros
+  // roles — bloqueado por guards.
+  isSecretaria Boolean @default(false)
+
+  // Soft delete (R4): usuarios con historial nunca se borran físicamente;
+  // se desactivan. Autentican, pero los guards clínicos los rechazan (R2).
+  isActive Boolean @default(true)
+
   fullName String?
   specialty String?
 
@@ -44,6 +54,7 @@ model User {
   authorizedPatients   MedicoPatientAccess[] @relation("MedicoAccess")
   grantedAccesses      MedicoPatientAccess[] @relation("AccessGranter")
   citasAsMedico        Cita[]         @relation("MedicoCitas")
+  recordedVitalSigns   VitalSign[]    @relation("VitalSignRecorder")
 }
 
 // ─────────────── PACIENTES SINTÉTICOS (solo datos ficticios, P5) ───────────────
@@ -73,11 +84,16 @@ model SyntheticPatient {
   emergencyPhone  String?
   insurance       String?  // tipo de seguro / entidad
 
+  // Soft delete (R4): con historial clínico/citas el paciente se desactiva
+  // (isActive=false) en lugar de eliminarse físicamente.
+  isActive Boolean @default(true)
+
   clinicalNotes     ClinicalNote[]
   epicrises         Epicrisis[]
   authorizedMedicos MedicoPatientAccess[]
   citas             Cita[]
   auditLogs         AuditLog[]
+  vitalSigns        VitalSign[]
 
   @@index([syntheticId])
   @@index([lastName, firstName])
@@ -100,6 +116,18 @@ model MedicoPatientAccess {
 }
 
 // ─────────────── AGENDA / CITAS (Semana 5 - historial y disponibilidad del médico) ───────────────
+
+enum CitaStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  // Cita vencida que nunca se inició (transición explícita; la agenda la
+  // muestra como estado derivado para citas SCHEDULED en el pasado).
+  NOT_STARTED
+}
+
 model Cita {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
@@ -113,15 +141,42 @@ model Cita {
   scheduledAt     DateTime // comienzo de la cita (UTC)
   durationMinutes Int      @default(30)
 
-  // SCHEDULED | IN_PROGRESS | COMPLETED | CANCELLED | NO_SHOW
-  status String @default("SCHEDULED")
+  status CitaStatus @default(SCHEDULED)
 
   reason String? // motivo de la cita (no clínico estructurado)
 
   auditLogs AuditLog[]
+  vitalSigns VitalSign[]
 
   @@index([medicoId, scheduledAt])
   @@index([patientId, scheduledAt])
+}
+
+// ─────────────── SIGNOS VITALES (toma por Secretaria/Médico, sin contenido narrativo) ───────────────
+model VitalSign {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  patientId String
+  patient   SyntheticPatient @relation(fields: [patientId], references: [id])
+
+  citaId String?
+  cita   Cita?   @relation(fields: [citaId], references: [id])
+
+  recordedById String
+  recordedBy   User     @relation("VitalSignRecorder", fields: [recordedById], references: [id])
+
+  // Valores validados contra rangos plausibles en la action/service.
+  systolicBP       Int // mmHg
+  diastolicBP      Int // mmHg
+  heartRate        Int // lpm
+  temperature      Float // °C
+  respiratoryRate  Int // rpm
+  oxygenSaturation Int // %
+  weight           Float // kg
+  height           Float // cm
+
+  @@index([patientId, createdAt])
 }
 
 // ─────────────── NOTA CLÍNICA (estados + adendas, RF-005..RF-029) ───────────────

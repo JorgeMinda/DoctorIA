@@ -38,6 +38,7 @@ import type {
   RecordEpicrisisExport,
 } from "wasp/server/operations";
 import * as z from "zod";
+import type { CitaStatus } from "@prisma/client";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
 import { ensureMedico, ensureAdmin } from "./services/guards";
 import { assertMedicoPatientAccess } from "./services/patientAccess";
@@ -1401,6 +1402,7 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     if (!isCitaStatusValid(status)) {
       throw new HttpError(400, "Estado de cita inválido");
     }
+    const citaStatus = status as CitaStatus;
     const startMs = data.scheduledAt.getTime();
     const durMin = data.durationMinutes ?? 30;
     const endMs = startMs + durMin * 60_000;
@@ -1430,7 +1432,7 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
         patientId: data.patientId,
         scheduledAt: data.scheduledAt,
         durationMinutes: data.durationMinutes ?? 30,
-        status,
+        status: citaStatus,
         reason: data.reason ?? undefined,
       },
     });
@@ -1480,6 +1482,16 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
         `Transición no permitida: ${existing.status} → ${targetStatus}`,
       );
     }
+    // B1: el enum exige validación explícita también en UPDATE administrativo.
+    const nextStatus =
+      data?.status === undefined
+        ? undefined
+        : isCitaStatusValid(data.status)
+          ? (data.status as CitaStatus)
+          : undefined;
+    if (data?.status !== undefined && nextStatus === undefined) {
+      throw new HttpError(400, "Estado de cita inválido");
+    }
     const updated = await context.entities.Cita.update({
       where: { id: citaId },
       data: {
@@ -1487,7 +1499,7 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
         patientId: data?.patientId ?? undefined,
         scheduledAt: data?.scheduledAt ?? undefined,
         durationMinutes: data?.durationMinutes ?? undefined,
-        status: data?.status ?? undefined,
+        status: nextStatus,
         reason: data?.reason ?? undefined,
       },
     });
@@ -1585,7 +1597,7 @@ export const updateCitaStatus: UpdateCitaStatus<
 
   const updated = await context.entities.Cita.update({
     where: { id: citaId },
-    data: { status },
+    data: { status: status as CitaStatus },
   });
 
   await createAuditEntry({
