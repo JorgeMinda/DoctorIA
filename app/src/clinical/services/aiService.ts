@@ -1,9 +1,16 @@
 // AI service — provider-agnostic typed contract (research R-03, clinical-operations.md §6).
 // Implemented via OpenRouter (OpenAI-compatible) using a free model with structured JSON output (PD-01).
-// NOTE: OpenRouter removed its free DeepSeek tier; we use openai/gpt-oss-20b:free (free, capable, OpenAI-compatible).
 // The AI is EXCLUSIVELY assistive: it organizes text, never decides (Constitution P4).
+//
+// FASE 2 (refactor conservador):
+// - Llamada centralizada `callOpenRouter(messages)` con timeout 30s (RNF-011) y
+//   reintentos 429/5xx respetando Retry-After (ya existentes, se mantienen).
+// - Modelo configurable vía OPENROUTER_MODEL (validado en src/env.ts).
+// - Validación Zod de la estructura de respuesta: si falla lanza
+//   AIInvalidResponseError (code: "AI_INVALID_RESPONSE_ERROR").
 
 import { env } from "wasp/server";
+import { z } from "zod";
 
 export type AIMode = "NOTE" | "EPICRISIS";
 
@@ -38,22 +45,121 @@ export interface AIEpicrisisOutput {
   unclassifiedContent: string | null;
 }
 
+export interface AIAddendumOutput {
+  sections: AIStructuringOutput["sections"];
+  unclassifiedContent: string | null;
+}
+
+// Interfaz unificada del servicio de IA (Fase 2). Los métodos delegan en las
+// funciones exportadas existentes para mantener compatibilidad con actions y tests.
+export interface AIService {
+  structureClinicalText(input: AIStructuringInput): Promise<AIStructuringOutput>;
+  generateEpicrisisDraft(patientHistory: string[]): Promise<AIEpicrisisOutput>;
+  generateAddendumDraft(
+    originalDoc: string,
+    instruction: string,
+  ): Promise<AIAddendumOutput>;
+}
+
 const AI_TIMEOUT_MS = 30_000; // RNF-011
-const OPENROUTER_MODEL = "openai/gpt-oss-20b:free";
 
 // Maps empty/null/"null" strings to a real TypeScript null (RNF-004: original preserved as-is).
-function cleanResponseString(val: any): string | null {
+function cleanResponseString(val: unknown): string | null {
   if (val === null || val === undefined) return null;
   const s = String(val).trim();
   if (s === "" || s.toLowerCase() === "null" || s.toLowerCase() === "n/a") return null;
   return s;
 }
 
-// Llama a OpenRouter (compatible con OpenAI) y devuelve el JSON estructurado del modelo.
+// ───────────────────────────── VALIDACIÓN ZOD ─────────────────────────────
+// Estricta en la FORMA (debe existir `sections`/`elements` como objeto con sus
+// claves conocidas), tolerante en valores individuales (clave ausente → null)
+// para robustez ante variaciones del modelo en vivo.
+
+const flexibleText = z.unknown().transform((v) => cleanResponseString(v));
+
+const noteSectionsSchema = z.object({
+  motivoConsulta: flexibleText,
+  notaClinica: flexibleText,
+  examenFisico: flexibleText,
+  valoracionClinica: flexibleText,
+  planIndicaciones: flexibleText,
+});
+
+const structuredNoteResponseSchema = z.object({
+  sections: noteSectionsSchema,
+  unclassifiedContent: flexibleText.optional(),
+  confidence: z.number().min(0).max(1).optional(),
+});
+
+const epicrisisElementsSchema = z.object({
+  reasonForAdmission: flexibleText,
+  relevantHistory: flexibleText,
+  evolutionSummary: flexibleText,
+  proceduresResults: flexibleText,
+  validatedDiagnoses: flexibleText,
+  conditionAtDischarge: flexibleText,
+  followUpInstructions: flexibleText,
+});
+
+const epicrisisResponseSchema = z.object({
+  elements: epicrisisElementsSchema,
+  unclassifiedContent: flexibleText.optional(),
+});
+
+// Error controlado cuando la IA no devuelve la estructura esperada.
+// La UI distingue este código del 409 de race condition sin parsear mensajes.
+export class AIInvalidResponseError extends Error {
+  readonly code = "AI_INVALID_RESPONSE_ERROR";
+  constructor(detail?: string) {
+    super(
+      detail ??
+        "La respuesta del asistente de IA no tuvo la estructura esperada.",
+    );
+    this.name = "AIInvalidResponseError";
+  }
+}
+
+// Valida la respuesta cruda; registra solo rutas técnicas del fallo (sin PII).
+function parseAIResponse<T>(schema: z.ZodType<T>, raw: unknown): T {
+  const result = schema.safeParse(raw);
+  if (!result.success) {
+    const paths = result.error.issues
+      .map((i) => i.path.join("."))
+      .filter(Boolean)
+      .slice(0, 10);
+    console.error(
+      `[aiService] AI_INVALID_RESPONSE_ERROR — campos fuera de estructura: ${
+        paths.length > 0 ? paths.join(", ") : "(estructura raíz inválida)"
+      }`,
+    );
+    throw new AIInvalidResponseError();
+  }
+  return result.data;
+}
+
+// ─────────────────────────── TRANSPORTE OpenRouter ───────────────────────────
+
+const SYSTEM_PROMPT =
+  "Eres un asistente clínico de alta precisión que estructura registros médicos en JSON. " +
+  "Nunca inventes información clínica. Responde SOLO con un objeto JSON válido, sin texto adicional.";
+
+interface ChatMessage {
+  role: "system" | "user";
+  content: string;
+}
+
+function buildMessages(userPrompt: string): ChatMessage[] {
+  return [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: userPrompt },
+  ];
+}
+
 // Reintenta ante 429/5xx con backoff respetando Retry-After (resiliencia en producción).
 const AI_MAX_RETRIES = 2;
 
-async function callOpenRouterOnce(prompt: string): Promise<any> {
+async function callOpenRouterOnce(messages: ChatMessage[]): Promise<any> {
   const apiKey = env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY no está configurada.");
@@ -62,16 +168,8 @@ async function callOpenRouterOnce(prompt: string): Promise<any> {
   const url = "https://openrouter.ai/api/v1/chat/completions";
 
   const body = {
-    model: OPENROUTER_MODEL,
-    messages: [
-      {
-        role: "system",
-        content:
-          "Eres un asistente clínico de alta precisión que estructura registros médicos en JSON. " +
-          "Nunca inventes información clínica. Responde SOLO con un objeto JSON válido, sin texto adicional.",
-      },
-      { role: "user", content: prompt },
-    ],
+    model: env.OPENROUTER_MODEL || "openai/gpt-oss-20b:free",
+    messages,
     response_format: { type: "json_object" },
     temperature: 0,
   };
@@ -125,11 +223,11 @@ async function callOpenRouterOnce(prompt: string): Promise<any> {
   }
 }
 
-async function callOpenRouter(prompt: string): Promise<any> {
+async function callOpenRouter(messages: ChatMessage[]): Promise<any> {
   let lastError: any;
   for (let attempt = 0; attempt <= AI_MAX_RETRIES; attempt++) {
     try {
-      return await callOpenRouterOnce(prompt);
+      return await callOpenRouterOnce(messages);
     } catch (error: any) {
       lastError = error;
       if (error?.retryable && attempt < AI_MAX_RETRIES) {
@@ -143,6 +241,8 @@ async function callOpenRouter(prompt: string): Promise<any> {
   }
   throw lastError;
 }
+
+// ───────────────────────────── OPERACIONES DE IA ─────────────────────────────
 
 // Structures free clinical text into the 5 clinical sections.
 export async function structureClinicalText(
@@ -172,31 +272,25 @@ Reglas estrictas:
 Texto libre clínico a estructurar:
 "${input.text}"`;
 
-  const raw = await callOpenRouter(prompt);
-  const rawSections = raw.sections ?? {};
+  const raw = await callOpenRouter(buildMessages(prompt));
+  const parsed = parseAIResponse(structuredNoteResponseSchema, raw);
 
-  const sections = {
-    motivoConsulta: cleanResponseString(rawSections.motivoConsulta),
-    notaClinica: cleanResponseString(rawSections.notaClinica),
-    examenFisico: cleanResponseString(rawSections.examenFisico),
-    valoracionClinica: cleanResponseString(rawSections.valoracionClinica),
-    planIndicaciones: cleanResponseString(rawSections.planIndicaciones),
-  };
-  const unclassifiedContent = cleanResponseString(raw.unclassifiedContent);
+  const sections = parsed.sections;
 
   // RNF-004: la IA puede descartar texto sin señal clínica; si no clasificó NADA,
   // preservamos el texto original íntegro en notaClinica (nunca se pierde contenido).
   const nothingClassified =
-    Object.values(sections).every((v) => v === null) && unclassifiedContent === null;
+    Object.values(sections).every((v) => v === null) &&
+    parsed.unclassifiedContent === null;
   if (nothingClassified) {
     sections.notaClinica = input.text;
   }
 
   return {
     sections,
-    unclassifiedContent,
+    unclassifiedContent: parsed.unclassifiedContent ?? null,
     originalTextPreserved: true,
-    confidence: typeof raw.confidence === "number" ? raw.confidence : 0.8,
+    confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.8,
   };
 }
 
@@ -229,18 +323,62 @@ Reglas estrictas:
 Historial de notas del paciente:
 ${notesSummary}`;
 
-  const raw = await callOpenRouter(prompt);
+  const raw = await callOpenRouter(buildMessages(prompt));
+  const parsed = parseAIResponse(epicrisisResponseSchema, raw);
 
   return {
-    elements: {
-      reasonForAdmission: cleanResponseString(raw.elements?.reasonForAdmission),
-      relevantHistory: cleanResponseString(raw.elements?.relevantHistory),
-      evolutionSummary: cleanResponseString(raw.elements?.evolutionSummary),
-      proceduresResults: cleanResponseString(raw.elements?.proceduresResults),
-      validatedDiagnoses: cleanResponseString(raw.elements?.validatedDiagnoses),
-      conditionAtDischarge: cleanResponseString(raw.elements?.conditionAtDischarge),
-      followUpInstructions: cleanResponseString(raw.elements?.followUpInstructions),
-    },
-    unclassifiedContent: cleanResponseString(raw.unclassifiedContent),
+    elements: parsed.elements,
+    unclassifiedContent: parsed.unclassifiedContent ?? null,
   };
 }
+
+// Alias unificado (Fase 2): mismo comportamiento, nombre alineado a AIService.
+export const generateEpicrisisDraft = generateEpicrisisFromHistory;
+
+// Genera un borrador de ADENDA de nota a partir del documento confirmado y la
+// instrucción del profesional. Exclusivamente asistivo: no inventa contenido.
+export async function generateAddendumDraft(
+  originalDoc: string,
+  instruction: string,
+): Promise<AIAddendumOutput> {
+  const prompt = `Redacta un BORRADOR de adenda (corrección/ampliación) de una nota clínica ya confirmada.
+Debes basarte ÚNICAMENTE en el documento original y en la instrucción del profesional.
+Devuelve EXACTAMENTE este objeto JSON (sin texto adicional):
+{
+  "sections": {
+    "motivoConsulta": "",
+    "notaClinica": "",
+    "examenFisico": "",
+    "valoracionClinica": "",
+    "planIndicaciones": ""
+  },
+  "unclassifiedContent": null
+}
+Reglas estrictas:
+1. Refleja SOLO los puntos que la instrucción pide corregir o ampliar; deja como "" las secciones que no aplican.
+2. No inventes información clínica, diagnósticos ni prescripciones.
+3. El texto de la adenda debe ser coherente con el documento original.
+
+Documento original (confirmado):
+"""
+${originalDoc}
+"""
+
+Instrucción del profesional:
+"${instruction}"`;
+
+  const raw = await callOpenRouter(buildMessages(prompt));
+  const parsed = parseAIResponse(structuredNoteResponseSchema, raw);
+
+  return {
+    sections: parsed.sections,
+    unclassifiedContent: parsed.unclassifiedContent ?? null,
+  };
+}
+
+// Instancia unificada (inyección simple en actions/tests).
+export const aiService: AIService = {
+  structureClinicalText,
+  generateEpicrisisDraft,
+  generateAddendumDraft,
+};
