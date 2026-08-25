@@ -1455,23 +1455,22 @@ export const adminDeleteMedicoUser: AdminDeleteMedicoUser<
     );
   }
 
-  // Limpieza de referencias (FK restrict por defecto en Prisma).
-  await context.entities.MedicoPatientAccess.deleteMany({
-    where: { medicoId: id },
+  // R4 (soft delete): NUNCA se eliminan notas, epicrises, citas ni auditoría
+  // del médico — se preserva la historia clínica y la trazabilidad.
+  const deactivated = await context.entities.User.update({
+    where: { id },
+    data: { isActive: false },
   });
-  await context.entities.Cita.deleteMany({ where: { medicoId: id } });
-  await context.entities.ClinicalNote.deleteMany({ where: { authorId: id } });
-  await context.entities.Epicrisis.deleteMany({ where: { authorId: id } });
-  await context.entities.AuditLog.deleteMany({ where: { userId: id } });
-
-  await context.entities.User.delete({ where: { id } });
 
   await createAuditEntry({
     userId: user.id,
     action: "ADMIN_MANAGE_USER",
     resourceType: "USER",
     resourceId: id,
-    metadata: { adminAction: "DELETE_MEDICO", email: target.email ?? "" },
+    metadata: {
+      adminAction: "DEACTIVATE_MEDICO",
+      email: deactivated.email ?? "",
+    },
   });
 
   return { success: true };
