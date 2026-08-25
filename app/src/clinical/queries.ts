@@ -319,6 +319,7 @@ type GetClinicalNoteInput = z.infer<typeof getClinicalNoteInputSchema>;
 type ClinicalNoteDetail = {
   id: string;
   patientId: string;
+  updatedAt: Date;
   status: string;
   noteType: string;
   originalText: string;

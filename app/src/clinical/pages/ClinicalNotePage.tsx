@@ -180,7 +180,11 @@ export function ClinicalNotePage() {
     setSaving(true);
     setError(null);
     try {
-      await requestAIFn({ noteId: note.id });
+      // Token CAS: versión de la nota vista por el cliente (Fase 7).
+      await requestAIFn({
+        noteId: note.id,
+        expectedUpdatedAt: new Date(note.updatedAt).toISOString(),
+      });
       await refetch();
       toast({ title: "Nota estructurada con IA" });
     } catch (err: any) {
