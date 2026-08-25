@@ -27,9 +27,9 @@ export function FAQ({ faqs }: { faqs: FAQ[] }) {
           <AccordionItem
             key={faq.id}
             value={`faq-${faq.id}`}
-            className="border-border/60 hover:border-cyan-400/20 hover:bg-cyan-400/5 rounded-xl border px-6 py-2 transition-all duration-200"
+            className="border-border/60 hover:border-primary/20 hover:bg-primary/5 rounded-xl border px-6 py-2 transition-all duration-200"
           >
-            <AccordionTrigger className="text-foreground hover:text-cyan-300 text-left text-base font-semibold leading-7 transition-colors duration-200">
+            <AccordionTrigger className="text-foreground hover:text-primary text-left text-base font-semibold leading-7 transition-colors duration-200">
               {faq.question}
             </AccordionTrigger>
             <AccordionContent className="text-muted-foreground">
@@ -40,7 +40,7 @@ export function FAQ({ faqs }: { faqs: FAQ[] }) {
                 {faq.href && (
                   <a
                     href={faq.href}
-                    className="text-cyan-300 hover:text-cyan-200 shrink-0 whitespace-nowrap text-base font-medium leading-7 transition-colors duration-200"
+                    className="text-primary hover:text-primary/80 shrink-0 whitespace-nowrap text-base font-medium leading-7 transition-colors duration-200"
                   >
                     Saber más →
                   </a>

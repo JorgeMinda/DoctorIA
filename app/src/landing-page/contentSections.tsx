@@ -25,7 +25,7 @@ export const features: GridFeature[] = [
     description: "Convierte el texto libre del médico en una nota clínica estructurada y validada.",
     icon: <Sparkles className="size-5" />,
     href: "#features",
-    size: "small",
+    size: "medium",
   },
   {
     name: "Epicrisis asistida",

@@ -12,17 +12,17 @@ export function FinalCTA() {
         {/* Glow ambiental */}
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 -top-24 h-48 bg-linear-to-tr from-cyan-400/20 via-blue-400/10 to-violet-400/20 blur-3xl"
+          className="absolute inset-x-0 -top-24 h-48 bg-linear-to-tr from-primary/20 via-secondary/10 to-secondary/20 blur-3xl"
         />
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-cyan-400/40 to-transparent"
+          className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent"
         />
 
         <div className="relative">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/5 px-4 py-1.5">
-            <span className="ambient-pulse-dot size-1.5 rounded-full bg-cyan-400" />
-            <span className="text-cyan-300 text-xs font-semibold tracking-[0.22em]">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
+            <span className="ambient-pulse-dot size-1.5 rounded-full bg-primary" />
+            <span className="text-primary text-xs font-semibold tracking-[0.22em]">
               DOCTORIA
             </span>
           </div>
@@ -42,7 +42,7 @@ export function FinalCTA() {
             <Button
               size="lg"
               variant="default"
-              className="bg-cyan-400 text-slate-950 shadow-[0_0_24px_rgba(54,199,244,0.35)] transition-all duration-300 hover:bg-cyan-300 hover:shadow-[0_0_36px_rgba(54,199,244,0.55)]"
+              className="bg-primary text-primary-foreground shadow-[0_0_24px_hsl(var(--primary)/0.35)] transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_36px_hsl(var(--primary)/0.55)]"
               asChild
             >
               <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
@@ -52,7 +52,7 @@ export function FinalCTA() {
             <Button
               size="lg"
               variant="outline"
-              className="border-border/60 text-foreground hover:border-cyan-400/30 hover:bg-cyan-400/5"
+              className="border-border/60 text-foreground hover:border-primary/30 hover:bg-primary/5"
               asChild
             >
               <WaspRouterLink to={routes.LoginRoute.to}>
