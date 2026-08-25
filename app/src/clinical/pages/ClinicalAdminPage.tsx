@@ -1378,8 +1378,9 @@ function AdminScheduleForm({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Horario de atención 24h: slots cada 30 minutos, 00:00 a 23:30.
   const SLOTS: string[] = [];
-  for (let h = 8; h < 18; h++) {
+  for (let h = 0; h < 24; h++) {
     for (const m of ["00", "30"]) {
       SLOTS.push(`${String(h).padStart(2, "0")}:${m}`);
     }
