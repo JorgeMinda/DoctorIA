@@ -1,6 +1,6 @@
-﻿// Tests unitarios del servicio de IA (hermÃ©ticos: mockean fetch de OpenRouter).
-// FASE 2: se conservan las aserciones originales y se aÃ±aden pruebas de
-// validaciÃ³n Zod (AI_INVALID_RESPONSE_ERROR), timeout y reintentos.
+﻿// Tests unitarios del servicio de IA (herméticos: mockean fetch de OpenRouter).
+// FASE 2/10: aserciones originales conservadas + validación Zod
+// (AI_INVALID_RESPONSE_ERROR), timeout, reintentos e interfaz AIService.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -29,7 +29,7 @@ function stubFetchOnce(impl: () => Promise<unknown>) {
 
 const VALID_NOTE_RESPONSE = {
   sections: {
-    motivoConsulta: "El paciente refiere dolor abdominal de 3 dÃ­as",
+    motivoConsulta: "El paciente refiere dolor abdominal de 3 días",
     notaClinica: "Cuadro leve, sin signos de alarma",
     examenFisico: "TA 120/80, abdomen blando",
     valoracionClinica: "cuadro leve",
@@ -44,14 +44,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("aiService mock â€” structureClinicalText", () => {
-  it("clasifica texto con seÃ±ales en las secciones correspondientes", async () => {
+describe("aiService mock — structureClinicalText", () => {
+  it("clasifica texto con señales en las secciones correspondientes", async () => {
     stubFetchOnce(async () => openRouterJsonResponse(VALID_NOTE_RESPONSE));
 
     const input = [
-      "Motivo: dolor abdominal de 3 dÃ­as",
+      "Motivo: dolor abdominal de 3 días",
       "Examen: TA 120/80, abdomen blando",
-      "ValoraciÃ³n: cuadro leve",
+      "Valoración: cuadro leve",
       "Plan: paracetamol 500mg cada 8h",
     ].join("\n\n");
 
@@ -83,7 +83,7 @@ describe("aiService mock â€” structureClinicalText", () => {
     expect(JSON.stringify(result)).toContain("dolor de cabeza");
   });
 
-  it("coloca texto sin seÃ±ales en notaClinica sin perder contenido", async () => {
+  it("coloca texto sin señales en notaClinica sin perder contenido", async () => {
     stubFetchOnce(async () =>
       openRouterJsonResponse({
         sections: {
@@ -97,15 +97,15 @@ describe("aiService mock â€” structureClinicalText", () => {
       }),
     );
 
-    const text = "Texto libre sin marcadores de secciÃ³n";
+    const text = "Texto libre sin marcadores de sección";
     const result = await structureClinicalText({ text, mode: "NOTE" });
 
-    // RNF-004: si no clasificÃ³ nada, el texto original se preserva Ã­ntegro.
+    // RNF-004: si no clasificó nada, el texto original se preserva íntegro.
     expect(result.sections.notaClinica).toBe(text);
     expect(result.unclassifiedContent).toBeNull();
   });
 
-  it("retorna confidence numÃ©rico entre 0 y 1", async () => {
+  it("retorna confidence numérico entre 0 y 1", async () => {
     stubFetchOnce(async () => openRouterJsonResponse(VALID_NOTE_RESPONSE));
 
     const result = await structureClinicalText({ text: "nota", mode: "NOTE" });
@@ -114,7 +114,19 @@ describe("aiService mock â€” structureClinicalText", () => {
   });
 });
 
-describe("aiService â€” validaciÃ³n Zod de respuesta", () => {
+describe("aiService — interfaz unificada (Fase 2)", () => {
+  it("expone los tres métodos de AIService", () => {
+    expect(typeof aiService.structureClinicalText).toBe("function");
+    expect(typeof aiService.generateEpicrisisDraft).toBe("function");
+    expect(typeof aiService.generateAddendumDraft).toBe("function");
+  });
+
+  it("generateEpicrisisDraft es alias del generador desde historial", () => {
+    expect(aiService.generateEpicrisisDraft).toBe(generateEpicrisisFromHistory);
+  });
+});
+
+describe("aiService — validación Zod de respuesta", () => {
   it("lanza AI_INVALID_RESPONSE_ERROR si falta la estructura de secciones", async () => {
     stubFetchOnce(async () =>
       openRouterJsonResponse({ foo: "respuesta sin sections" }),
@@ -154,7 +166,7 @@ describe("aiService â€” validaciÃ³n Zod de respuesta", () => {
     );
 
     const result = await aiService.generateAddendumDraft(
-      "Nota original confirmadaâ€¦",
+      "Nota original confirmada…",
       "Aclarar el plan de analgesia",
     );
     expect(result.sections.notaClinica).toContain("analgesia");
@@ -164,7 +176,7 @@ describe("aiService â€” validaciÃ³n Zod de respuesta", () => {
   });
 });
 
-describe("aiService â€” transporte (timeout y reintentos)", () => {
+describe("aiService — transporte (timeout y reintentos)", () => {
   it("mapea AbortError a mensaje de timeout controlado", async () => {
     stubFetchOnce(async () => {
       const abortError = new Error("The operation was aborted");
@@ -172,12 +184,12 @@ describe("aiService â€” transporte (timeout y reintentos)", () => {
       throw abortError;
     });
 
-    await expect(structureClinicalText({ text: "t", mode: "NOTE" })).rejects.toThrow(
-      /Timeout al llamar al asistente de IA/,
-    );
+    await expect(
+      structureClinicalText({ text: "t", mode: "NOTE" }),
+    ).rejects.toThrow(/Timeout al llamar al asistente de IA/);
   });
 
-  it("reintenta ante 429 y tiene Ã©xito en el segundo intento", async () => {
+  it("reintenta ante 429 y tiene éxito en el segundo intento", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -196,14 +208,14 @@ describe("aiService â€” transporte (timeout y reintentos)", () => {
   });
 });
 
-describe("aiService mock â€” generateEpicrisisFromHistory", () => {
+describe("aiService mock — generateEpicrisisFromHistory", () => {
   it("sintetiza epicrisis desde el historial", async () => {
     stubFetchOnce(async () =>
       openRouterJsonResponse({
         elements: {
           reasonForAdmission: "Control de diabetes tipo 2",
           relevantHistory: "Diabetes tipo 2 en seguimiento",
-          evolutionSummary: "Ãšltima revisiÃ³n con HbA1c 7.2%",
+          evolutionSummary: "Última revisión con HbA1c 7.2%",
           proceduresResults: "",
           validatedDiagnoses: "",
           conditionAtDischarge: "",
@@ -215,7 +227,7 @@ describe("aiService mock â€” generateEpicrisisFromHistory", () => {
 
     const result = await generateEpicrisisFromHistory([
       "Paciente con diabetes tipo 2 en control",
-      "Ãšltima revisiÃ³n: HbA1c 7.2%",
+      "Última revisión: HbA1c 7.2%",
     ]);
 
     expect(result.elements.reasonForAdmission).toBeTruthy();
@@ -223,7 +235,7 @@ describe("aiService mock â€” generateEpicrisisFromHistory", () => {
     expect(result.elements.evolutionSummary).toBeTruthy();
   });
 
-  it("detecta diagnÃ³stico mencionado en el historial", async () => {
+  it("detecta diagnóstico mencionado en el historial", async () => {
     stubFetchOnce(async () =>
       openRouterJsonResponse({
         elements: {
@@ -231,7 +243,7 @@ describe("aiService mock â€” generateEpicrisisFromHistory", () => {
           relevantHistory: "",
           evolutionSummary: "",
           proceduresResults: "",
-          validatedDiagnoses: "HipertensiÃ³n arterial en tratamiento",
+          validatedDiagnoses: "Hipertensión arterial en tratamiento",
           conditionAtDischarge: "",
           followUpInstructions: "",
         },
@@ -240,7 +252,7 @@ describe("aiService mock â€” generateEpicrisisFromHistory", () => {
     );
 
     const result = await generateEpicrisisFromHistory([
-      "diagnÃ³stico: hipertensiÃ³n arterial en tratamiento",
+      "diagnóstico: hipertensión arterial en tratamiento",
     ]);
     expect(result.elements.validatedDiagnoses).toMatch(/hipertensi|diagn/i);
   });
