@@ -14,10 +14,16 @@ import type {
   GetEpicrisis,
   GetAuditLog,
   GetVoiceAssistantResponse,
+  GetVitalSigns,
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
-import { ensureMedico, ensureAdmin } from "./services/guards";
+import {
+  ensureMedico,
+  ensureAdmin,
+  ensureRole,
+  getActiveClinicalRole,
+} from "./services/guards";
 import { assertMedicoPatientAccess } from "./services/patientAccess";
 import { createAuditEntry } from "./services/audit";
 import {
@@ -62,6 +68,7 @@ export const getPatients: GetPatients<
   const skip = (page - 1) * pageSize;
 
   const where = {
+    isActive: true,
     authorizedMedicos: { some: { medicoId } },
     ...(search
       ? {
@@ -619,6 +626,8 @@ const adminGetPatientsInputSchema = z.object({
   page: z.number().int().nonnegative().optional(),
   pageSize: z.number().int().positive().max(100).optional(),
   medicoId: z.string().optional(),
+  // Solo admin: ver también pacientes desactivados (R4/R3).
+  includeInactive: z.boolean().optional(),
 });
 
 type AdminGetPatientsInput = z.infer<typeof adminGetPatientsInputSchema>;
@@ -642,18 +651,23 @@ export const adminGetPatients: AdminGetPatients<
   AdminGetPatientsInput,
   AdminGetPatientsOutput
 > = async (rawArgs, context) => {
-  ensureAdmin(context.user);
+  // Secretaria consulta el padron para gestionar agenda/citas (R1: sin notas).
+  const viewer = ensureRole(context.user, "admin", "secretaria");
+  const isAdminViewer = getActiveClinicalRole(viewer) === "admin";
 
   const {
     search,
     page = 1,
     pageSize = 20,
     medicoId,
+    includeInactive = false,
   } = ensureArgsSchemaOrThrowHttpError(adminGetPatientsInputSchema, rawArgs);
 
   const skip = (page - 1) * pageSize;
 
   const where = {
+    // R4: por defecto solo pacientes activos; admin puede incluir inactivos.
+    ...(isAdminViewer && includeInactive ? {} : { isActive: true }),
     ...(search
       ? {
           OR: [
@@ -747,14 +761,9 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
   rawArgs,
   context,
 ) => {
-  if (!context.user) {
-    throw new HttpError(401, "Debe iniciar sesión");
-  }
-  const authUser = context.user;
-  const isMedico = authUser.isMedico && !authUser.isAdmin;
-  if (!isMedico && !(authUser.isAdmin && !authUser.isMedico)) {
-    throw new HttpError(403, "Rol inválido");
-  }
+  // Secretaria consulta la agenda global junto a admin/médico (R2 activo).
+  const authUser = ensureRole(context.user, "admin", "medico", "secretaria");
+  const isMedico = getActiveClinicalRole(authUser) === "medico";
 
   const { medicoId, from, to } = ensureArgsSchemaOrThrowHttpError(
     getAgendaInputSchema,
@@ -1011,3 +1020,80 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
 
   return { medicos: rows };
 };
+
+// ---------------------------------------------------------------------------
+// getVitalSigns (Médico autorizado, Secretaria o Admin) - historial de signos vitales
+// ---------------------------------------------------------------------------
+
+const getVitalSignsInputSchema = z.object({
+  patientId: z.string().min(1),
+  page: z.number().int().nonnegative().optional(),
+  pageSize: z.number().int().positive().max(100).optional(),
+});
+
+type GetVitalSignsInput = z.infer<typeof getVitalSignsInputSchema>;
+
+type VitalSignEntry = {
+  id: string;
+  createdAt: Date;
+  citaId: string | null;
+  recordedById: string;
+  systolicBP: number;
+  diastolicBP: number;
+  heartRate: number;
+  temperature: number;
+  respiratoryRate: number;
+  oxygenSaturation: number;
+  weight: number;
+  height: number;
+  recordedBy: { fullName: string | null; username: string | null; email: string | null };
+};
+
+type GetVitalSignsOutput = {
+  entries: VitalSignEntry[];
+  totalPages: number;
+};
+
+export const getVitalSigns: GetVitalSigns<
+  GetVitalSignsInput,
+  GetVitalSignsOutput
+> = async (rawArgs, context) => {
+  // R2: solo cuentas activas; médico exige acceso al paciente (R-10).
+  const viewer = ensureRole(context.user, "admin", "medico", "secretaria");
+
+  const { patientId, page = 1, pageSize = 20 } =
+    ensureArgsSchemaOrThrowHttpError(getVitalSignsInputSchema, rawArgs);
+
+  const skip = (page - 1) * pageSize;
+
+  const patient = await context.entities.SyntheticPatient.findUnique({
+    where: { id: patientId },
+    select: { id: true },
+  });
+  if (!patient) {
+    throw new HttpError(404, "Paciente no encontrado");
+  }
+
+  if (getActiveClinicalRole(viewer) === "medico") {
+    await assertMedicoPatientAccess(viewer.id, patientId);
+  }
+
+  const [entries, total] = await Promise.all([
+    context.entities.VitalSign.findMany({
+      where: { patientId },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+      include: {
+        recordedBy: { select: { fullName: true, username: true, email: true } },
+      },
+    }),
+    context.entities.VitalSign.count({ where: { patientId } }),
+  ]);
+
+  return {
+    entries: entries as unknown as VitalSignEntry[],
+    totalPages: Math.ceil(total / pageSize),
+  };
+};
+

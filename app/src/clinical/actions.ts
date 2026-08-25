@@ -1,5 +1,5 @@
-// Acciones (Actions) del módulo clínico.
-// contracts/clinical-operations.md §2, §3, §5.
+﻿// Acciones (Actions) del mÃ³dulo clÃ­nico.
+// contracts/clinical-operations.md Â§2, Â§3, Â§5.
 
 import { HttpError, prisma } from "wasp/server";
 import {
@@ -14,6 +14,7 @@ import {
   type MedicoPatientAccess,
   type SyntheticPatient,
   type User,
+  type VitalSign,
 } from "wasp/entities";
 import type {
   AdminCreateMedicoUser,
@@ -36,13 +37,22 @@ import type {
   CreateNoteFromVoice,
   DeleteClinicalNote,
   RecordEpicrisisExport,
+  CreateVitalSign,
 } from "wasp/server/operations";
 import * as z from "zod";
 import type { CitaStatus } from "@prisma/client";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
-import { ensureMedico, ensureAdmin } from "./services/guards";
+import {
+  ensureMedico,
+  ensureAdmin,
+  ensureRole,
+  ensureClinicalStaff,
+  getActiveClinicalRole,
+} from "./services/guards";
 import { assertMedicoPatientAccess } from "./services/patientAccess";
-import { createAuditEntry } from "./services/audit";
+import { createAuditEntry, type AuditAction } from "./services/audit";
+import { vitalSignInputSchema } from "./services/vitalSigns";
+import { BLOCKING_CITA_STATUSES, hasConflict, type Interval } from "./services/appointmentAvailability";
 import {
   structureClinicalText,
   generateEpicrisisFromHistory,
@@ -164,7 +174,7 @@ export const updateClinicalNoteDraft: UpdateClinicalNoteDraft<
     );
   }
 
-  // originalText NUNCA se modifica vía esta operación (RNF-004)
+  // originalText NUNCA se modifica vÃ­a esta operaciÃ³n (RNF-004)
   const newStatus =
     note.status === "DRAFT_AI_ASSISTED" ? "REVIEWED" : note.status;
 
@@ -209,20 +219,20 @@ type RequestAIStructuringInput = z.infer<
 >;
 
 // Mapea errores del servicio de IA a HttpError controlados (FASE 8):
-// - AIInvalidResponseError -> 502 (respuesta estructuralmente inválida, nada se guardó)
+// - AIInvalidResponseError -> 502 (respuesta estructuralmente invÃ¡lida, nada se guardÃ³)
 // - resto (timeout/red/429) -> 504 (servicio no disponible)
 function mapAIServiceError(err: unknown): never {
   if (err instanceof AIInvalidResponseError) {
     throw new HttpError(
       502,
-      "El asistente de IA devolvió una respuesta no válida. No se modificó el documento; intenta nuevamente.",
+      "El asistente de IA devolviÃ³ una respuesta no vÃ¡lida. No se modificÃ³ el documento; intenta nuevamente.",
     );
   }
   throw new HttpError(
     504,
     err instanceof Error && err.message
       ? err.message
-      : "El servicio de IA no está disponible",
+      : "El servicio de IA no estÃ¡ disponible",
   );
 }
 
@@ -255,7 +265,7 @@ export const requestAIStructuring: RequestAIStructuring<
     );
   }
 
-  // Fail-fast: si el cliente vio una versión vieja, no gastamos la llamada IA.
+  // Fail-fast: si el cliente vio una versiÃ³n vieja, no gastamos la llamada IA.
   if (note.updatedAt.getTime() !== new Date(expectedUpdatedAt).getTime()) {
     throw new HttpError(
       409,
@@ -274,7 +284,7 @@ export const requestAIStructuring: RequestAIStructuring<
     mapAIServiceError(err);
   }
 
-  // CAS update (Fase 7): si nadie tocó la nota durante la generación,
+  // CAS update (Fase 7): si nadie tocÃ³ la nota durante la generaciÃ³n,
   // updatedAt coincide y el write aplica; si no, Prisma lanza P2025.
   let updated: ClinicalNote;
   try {
@@ -344,10 +354,10 @@ export const confirmClinicalNote: ConfirmClinicalNote<
   await assertMedicoPatientAccess(user.id, note.patientId);
 
   if (note.status === "CONFIRMED") {
-    throw new HttpError(409, "La nota ya está confirmada");
+    throw new HttpError(409, "La nota ya estÃ¡ confirmada");
   }
 
-  // RF-026: verificación acumulativa
+  // RF-026: verificaciÃ³n acumulativa
   const validation = validateConfirmableNote({
     sections: {
       motivoConsulta: note.motivoConsulta,
@@ -371,7 +381,7 @@ export const confirmClinicalNote: ConfirmClinicalNote<
       422,
       `Secciones obligatorias incompletas: ${labels.join(
         ", ",
-      )}. Complételas o márquelas como "No aplica".`,
+      )}. ComplÃ©telas o mÃ¡rquelas como "No aplica".`,
     );
   }
 
@@ -459,7 +469,7 @@ export const createNoteAddendum: CreateNoteAddendum<
 
 // ---------------------------------------------------------------------------
 // generateAddendumDraft (IA asistiva, Fase 3): borrador de adenda de nota
-// a partir del documento confirmado + instrucción del profesional.
+// a partir del documento confirmado + instrucciÃ³n del profesional.
 // Exclusivamente asistivo: crea SIEMPRE un DRAFT_AI_ASSISTED editable.
 // ---------------------------------------------------------------------------
 
@@ -497,7 +507,7 @@ export const generateAddendumDraftAction: GenerateAddendumDraftAction<
   }
   await assertMedicoPatientAccess(user.id, parent.patientId);
 
-  // Fail-fast si el padre cambió desde que el cliente lo consultó.
+  // Fail-fast si el padre cambiÃ³ desde que el cliente lo consultÃ³.
   if (parent.updatedAt.getTime() !== new Date(expectedUpdatedAt).getTime()) {
     throw new HttpError(
       409,
@@ -516,7 +526,7 @@ export const generateAddendumDraftAction: GenerateAddendumDraftAction<
     data: {
       patientId: parent.patientId,
       authorId: user.id,
-      // RNF-004: se preserva la instrucción del profesional como texto fuente
+      // RNF-004: se preserva la instrucciÃ³n del profesional como texto fuente
       // inmutable de la adenda; las secciones IA quedan como borrador editable.
       originalText: instruction,
       status: "DRAFT_AI_ASSISTED",
@@ -576,7 +586,7 @@ export const generateEpicrisisDraft: GenerateEpicrisisDraft<
 
   await assertMedicoPatientAccess(user.id, patientId);
 
-  // Validación: el paciente debe tener al menos una nota CONFIRMED
+  // ValidaciÃ³n: el paciente debe tener al menos una nota CONFIRMED
   const confirmedNotes = await context.entities.ClinicalNote.findMany({
     where: { patientId, status: "CONFIRMED" },
     orderBy: { createdAt: "desc" },
@@ -745,19 +755,19 @@ export const confirmEpicrisis: ConfirmEpicrisis<
   await assertMedicoPatientAccess(user.id, epicrisis.patientId);
 
   if (epicrisis.status === "CONFIRMED") {
-    throw new HttpError(409, "La epicrisis ya está confirmada");
+    throw new HttpError(409, "La epicrisis ya estÃ¡ confirmada");
   }
   if (
     epicrisis.status !== "DRAFT_AI_ASSISTED" &&
     epicrisis.status !== "REVIEWED"
   ) {
-    throw new HttpError(409, "Estado inválido para confirmar");
+    throw new HttpError(409, "Estado invÃ¡lido para confirmar");
   }
 
-  // Validación RF-018: elementos obligatorios
+  // ValidaciÃ³n RF-018: elementos obligatorios
   const missing: string[] = [];
   if (!epicrisis.patientIdentification)
-    missing.push("Identificación del paciente");
+    missing.push("IdentificaciÃ³n del paciente");
   if (!epicrisis.responsibleProfessional)
     missing.push("Profesional responsable");
   if (!epicrisis.dateTime) missing.push("Fecha y hora");
@@ -877,14 +887,14 @@ export const createEpicrisisAddendum: CreateEpicrisisAddendum<
 // ---------------------------------------------------------------------------
 
 const manageSyntheticPatientsInputSchema = z.object({
-  action: z.enum(["CREATE", "UPDATE", "DELETE"]),
+  action: z.enum(["CREATE", "UPDATE", "DELETE", "SET_ACTIVE"]),
   data: z.object({
     syntheticId: z.string().optional(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     birthDate: z.coerce.date().optional(),
     sex: z.string().optional(),
-    documento: z.string().max(10, "Máximo 10 caracteres").nullable().optional(),
+    documento: z.string().max(10, "MÃ¡ximo 10 caracteres").nullable().optional(),
     medicalHistory: z.string().nullable().optional(),
     allergies: z.string().nullable().optional(),
     nationality: z.string().nullable().optional(),
@@ -899,6 +909,8 @@ const manageSyntheticPatientsInputSchema = z.object({
     insurance: z.string().nullable().optional(),
   }),
   patientId: z.string().optional(),
+  // Solo para SET_ACTIVE (R3: reactivar/desactivar es exclusivo de admin).
+  isActive: z.boolean().optional(),
 });
 
 type ManageSyntheticPatientsInput = z.infer<
@@ -909,14 +921,40 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
   ManageSyntheticPatientsInput,
   SyntheticPatient | { success: true }
 > = async (rawArgs, context) => {
-  const user = ensureAdmin(context.user);
+  // Secretaria puede crear/editar/desactivar pacientes; SET_ACTIVE (reactivar)
+  // es exclusivo de admin (R3).
+  const user = ensureRole(context.user, "admin", "secretaria");
 
   const args = ensureArgsSchemaOrThrowHttpError(
     manageSyntheticPatientsInputSchema,
     rawArgs,
   );
 
-  const { action, data, patientId } = args;
+  const { action, data, patientId, isActive } = args;
+
+  if (action === "SET_ACTIVE") {
+    if (getActiveClinicalRole(user) !== "admin") {
+      throw new HttpError(403, "Solo un administrador puede reactivar pacientes");
+    }
+    if (!patientId || typeof isActive !== "boolean") {
+      throw new HttpError(400, "patientId e isActive son requeridos");
+    }
+    const updated = await context.entities.SyntheticPatient.update({
+      where: { id: patientId },
+      data: { isActive },
+    });
+    await createAuditEntry({
+      userId: user.id,
+      action: "ADMIN_MANAGE_DATA",
+      resourceType: "PATIENT",
+      resourceId: updated.id,
+      patientId: updated.id,
+      metadata: {
+        adminAction: isActive ? "ACTIVATE_PATIENT" : "DEACTIVATE_PATIENT",
+      },
+    });
+    return updated;
+  }
 
   if (action === "CREATE") {
     if (!data.firstName || !data.lastName || !data.birthDate || !data.sex) {
@@ -928,7 +966,7 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
       if (!/^PAC-\d{1,6}$/.test(syntheticId)) {
         throw new HttpError(
           400,
-          "El identificador sintético debe tener el formato PAC-NNN",
+          "El identificador sintÃ©tico debe tener el formato PAC-NNN",
         );
       }
       const existing = await context.entities.SyntheticPatient.findUnique({
@@ -937,7 +975,7 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
       if (existing) {
         throw new HttpError(
           409,
-          "Ya existe un paciente con ese identificador sintético",
+          "Ya existe un paciente con ese identificador sintÃ©tico",
         );
       }
     } else {
@@ -1025,22 +1063,41 @@ export const manageSyntheticPatients: ManageSyntheticPatients<
     return patient;
   }
 
-  // DELETE: no borrar pacientes con notas confirmadas
-  const confirmedCount = await context.entities.ClinicalNote.count({
-    where: { patientId, status: "CONFIRMED" },
-  });
-  if (confirmedCount > 0) {
-    throw new HttpError(
-      409,
-      "No se puede eliminar un paciente con notas confirmadas",
-    );
+  // DELETE hÃ­brido (R4): con historial clÃ­nico/citas el paciente se
+  // DESACTIVA (isActive=false) preservando su historia; sin historial se
+  // elimina fÃ­sicamente junto a sus referencias.
+  const [notesCount, epicrisesCount, citasCount] = await Promise.all([
+    context.entities.ClinicalNote.count({ where: { patientId } }),
+    context.entities.Epicrisis.count({ where: { patientId } }),
+    context.entities.Cita.count({ where: { patientId } }),
+  ]);
+  const hasHistory = notesCount + epicrisesCount + citasCount > 0;
+
+  if (hasHistory) {
+    const deactivated = await context.entities.SyntheticPatient.update({
+      where: { id: patientId },
+      data: { isActive: false },
+    });
+    await createAuditEntry({
+      userId: user.id,
+      action: "ADMIN_MANAGE_DATA",
+      resourceType: "PATIENT",
+      resourceId: patientId,
+      patientId,
+      metadata: {
+        adminAction: "DEACTIVATE_PATIENT",
+        softDeleted: "true",
+        notas: String(notesCount),
+        epicrises: String(epicrisesCount),
+        citas: String(citasCount),
+      },
+    });
+    return deactivated;
   }
+
   await context.entities.MedicoPatientAccess.deleteMany({
     where: { patientId },
   });
-  await context.entities.Cita.deleteMany({ where: { patientId } });
-  await context.entities.ClinicalNote.deleteMany({ where: { patientId } });
-  await context.entities.Epicrisis.deleteMany({ where: { patientId } });
   await context.entities.AuditLog.deleteMany({ where: { patientId } });
   const deleted = await context.entities.SyntheticPatient.delete({
     where: { id: patientId },
@@ -1074,7 +1131,8 @@ export const manageMedicoPatientAccess: ManageMedicoPatientAccess<
   ManageMedicoPatientAccessInput,
   MedicoPatientAccess | { success: true }
 > = async (rawArgs, context) => {
-  const user = ensureAdmin(context.user);
+  // Secretaria gestiona asignaciones como parte de la administraciÃ³n de agenda.
+  const user = ensureRole(context.user, "admin", "secretaria");
 
   const { action, medicoId, patientId } = ensureArgsSchemaOrThrowHttpError(
     manageMedicoPatientAccessInputSchema,
@@ -1084,10 +1142,14 @@ export const manageMedicoPatientAccess: ManageMedicoPatientAccess<
   const medico = await context.entities.User.findUnique({
     where: { id: medicoId },
   });
-  if (!medico || !medico.isMedico || medico.isAdmin) {
+  if (
+    !medico ||
+    getActiveClinicalRole(medico as any) !== "medico" ||
+    medico.isActive === false
+  ) {
     throw new HttpError(
       400,
-      "medicoId debe referenciar un usuario con isMedico=true",
+      "medicoId debe referenciar un mÃ©dico activo habilitado",
     );
   }
 
@@ -1103,14 +1165,14 @@ export const manageMedicoPatientAccess: ManageMedicoPatientAccess<
       where: { medicoId_patientId: { medicoId, patientId } },
     });
     if (existing) {
-      throw new HttpError(409, "El médico ya tiene acceso a este paciente");
+      throw new HttpError(409, "El mÃ©dico ya tiene acceso a este paciente");
     }
     const access = await context.entities.MedicoPatientAccess.create({
       data: { medicoId, patientId, grantedById: user.id },
     });
     await createAuditEntry({
       userId: user.id,
-      action: "ADMIN_MANAGE_DATA",
+      action: "ASSIGN_PATIENT_TO_MEDICO",
       resourceType: "PATIENT",
       resourceId: patientId,
       patientId,
@@ -1124,14 +1186,14 @@ export const manageMedicoPatientAccess: ManageMedicoPatientAccess<
     where: { medicoId_patientId: { medicoId, patientId } },
   });
   if (!existing) {
-    throw new HttpError(409, "El médico no tiene acceso a este paciente");
+    throw new HttpError(409, "El mÃ©dico no tiene acceso a este paciente");
   }
   await context.entities.MedicoPatientAccess.delete({
     where: { id: existing.id },
   });
   await createAuditEntry({
     userId: user.id,
-    action: "ADMIN_MANAGE_DATA",
+    action: "ASSIGN_PATIENT_TO_MEDICO",
     resourceType: "PATIENT",
     resourceId: patientId,
     patientId,
@@ -1141,19 +1203,21 @@ export const manageMedicoPatientAccess: ManageMedicoPatientAccess<
 };
 
 // ---------------------------------------------------------------------------
-// adminCreateMedicoUser (Admin) - alta de usuario con rol Médico
+// adminCreateMedicoUser (Admin) - alta de usuario con rol MÃ©dico
 // ---------------------------------------------------------------------------
 
 const adminCreateMedicoUserInputSchema = z.object({
   email: z.string().email(),
   password: z
     .string()
-    .min(8, "La contraseña debe tener al menos 8 caracteres")
-    .regex(/[A-Z]/, "La contraseña debe incluir al menos una mayúscula")
-    .regex(/[0-9]/, "La contraseña debe incluir al menos un número"),
+    .min(8, "La contraseÃ±a debe tener al menos 8 caracteres")
+    .regex(/[A-Z]/, "La contraseÃ±a debe incluir al menos una mayÃºscula")
+    .regex(/[0-9]/, "La contraseÃ±a debe incluir al menos un nÃºmero"),
   fullName: z.string().min(1).optional(),
   specialty: z.string().min(1).optional(),
   username: z.string().min(1).optional(),
+  // B3: el admin puede crear también personal de secretaría.
+  role: z.enum(["medico", "secretaria"]).default("medico"),
 });
 
 type AdminCreateMedicoUserInput = z.infer<
@@ -1166,7 +1230,7 @@ export const adminCreateMedicoUser: AdminCreateMedicoUser<
 > = async (rawArgs, context) => {
   const user = ensureAdmin(context.user);
 
-  const { email, password, fullName, specialty, username } =
+  const { email, password, fullName, specialty, username, role } =
     ensureArgsSchemaOrThrowHttpError(adminCreateMedicoUserInputSchema, rawArgs);
 
   const existingUser = await context.entities.User.findUnique({
@@ -1191,9 +1255,11 @@ export const adminCreateMedicoUser: AdminCreateMedicoUser<
       email,
       username: username ?? email.split("@")[0].toLowerCase(),
       fullName: fullName ?? null,
-      specialty: specialty ?? null,
-      isMedico: true,
+      specialty: role === "medico" ? specialty ?? null : null,
+      isMedico: role === "medico",
       isAdmin: false,
+      isSecretaria: role === "secretaria",
+      isActive: true,
     },
   );
 
@@ -1202,14 +1268,101 @@ export const adminCreateMedicoUser: AdminCreateMedicoUser<
     action: "ADMIN_MANAGE_USER",
     resourceType: "USER",
     resourceId: created.id,
-    metadata: { adminAction: "CREATE_MEDICO", email },
+    metadata: {
+      adminAction: `CREATE_${role.toUpperCase()}`,
+      email,
+    },
   });
 
   return created;
 };
 
 // ---------------------------------------------------------------------------
-// adminUpdateMedicoUser (Admin) - edición de campos permitidos del perfil médico
+// createVitalSign (Secretaría o Médico) - registro de signos vitales (Fase B3)
+// Sin contenido narrativo; los valores NUNCA van al AuditLog.
+// ---------------------------------------------------------------------------
+
+const createVitalSignInputSchema = vitalSignInputSchema;
+
+type CreateVitalSignInput = z.infer<typeof createVitalSignInputSchema>;
+
+export const createVitalSignAction: CreateVitalSign<
+  CreateVitalSignInput,
+  VitalSign
+> = async (rawArgs, context) => {
+  // Médico o secretaria (kickoff Semana 6). Admin NO registra signos.
+  const user = ensureClinicalStaff(context.user);
+
+  const args = ensureArgsSchemaOrThrowHttpError(
+    createVitalSignInputSchema,
+    rawArgs,
+  );
+  const { patientId, citaId } = args;
+
+  const patient = await context.entities.SyntheticPatient.findUnique({
+    where: { id: patientId },
+    select: { id: true, isActive: true },
+  });
+  if (!patient) {
+    throw new HttpError(404, "Paciente no encontrado");
+  }
+  if (patient.isActive === false) {
+    throw new HttpError(409, "El paciente está inactivo");
+  }
+
+  // El médico solo registra sobre pacientes autorizados; la secretaría
+  // gestiona toda la agenda (R1 restringe notas clínicas, no vitales).
+  const role = getActiveClinicalRole(user);
+  if (role === "medico") {
+    await assertMedicoPatientAccess(user.id, patientId);
+  }
+
+  if (citaId) {
+    const cita = await context.entities.Cita.findUnique({
+      where: { id: citaId },
+      select: { id: true, patientId: true },
+    });
+    if (!cita) {
+      throw new HttpError(404, "Cita no encontrada");
+    }
+    if (cita.patientId !== patientId) {
+      throw new HttpError(
+        400,
+        "La cita indicada no pertenece a este paciente",
+      );
+    }
+  }
+
+  const created = await context.entities.vitalSign.create({
+    data: {
+      patientId,
+      citaId: citaId ?? undefined,
+      recordedById: user.id,
+      systolicBP: args.systolicBP,
+      diastolicBP: args.diastolicBP,
+      heartRate: args.heartRate,
+      temperature: args.temperature,
+      respiratoryRate: args.respiratoryRate,
+      oxygenSaturation: args.oxygenSaturation,
+      weight: args.weight,
+      height: args.height,
+    },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "REGISTER_VITAL_SIGNS",
+    resourceType: "PATIENT",
+    resourceId: created.id,
+    patientId,
+    metadata: { registeredByRole: role ?? "" , ...(citaId ? { citaId } : {}) },
+  });
+
+  return created;
+};
+
+// ---------------------------------------------------------------------------
+// adminUpdateMedicoUser (Admin) - ediciÃ³n de campos permitidos del perfil mÃ©dico
 // ---------------------------------------------------------------------------
 
 const adminUpdateMedicoUserInputSchema = z.object({
@@ -1240,7 +1393,7 @@ export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
   if (!target.isMedico || target.isAdmin) {
     throw new HttpError(
       400,
-      "Solo se pueden editar perfiles de usuarios con rol Médico",
+      "Solo se pueden editar perfiles de usuarios con rol MÃ©dico",
     );
   }
 
@@ -1264,7 +1417,7 @@ export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
 };
 
 // ---------------------------------------------------------------------------
-// adminDeleteMedicoUser (Admin) - eliminación de cuenta de médico
+// adminDeleteMedicoUser (Admin) - eliminaciÃ³n de cuenta de mÃ©dico
 // Limpia las referencias en cascada antes de borrar el User (FK restrict).
 // ---------------------------------------------------------------------------
 
@@ -1298,7 +1451,7 @@ export const adminDeleteMedicoUser: AdminDeleteMedicoUser<
   if (!target.isMedico || target.isAdmin) {
     throw new HttpError(
       400,
-      "Solo se pueden eliminar cuentas con rol Médico",
+      "Solo se pueden eliminar cuentas con rol MÃ©dico",
     );
   }
 
@@ -1357,7 +1510,8 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
   rawArgs,
   context,
 ) => {
-  const user = ensureAdmin(context.user);
+  // Secretaria administra la agenda junto al admin (crear/reprogramar/cancelar).
+  const user = ensureRole(context.user, "admin", "secretaria");
 
   const { action, citaId, data } = ensureArgsSchemaOrThrowHttpError(
     manageCitaInputSchema,
@@ -1400,30 +1554,30 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     }
     const status = data.status ?? "SCHEDULED";
     if (!isCitaStatusValid(status)) {
-      throw new HttpError(400, "Estado de cita inválido");
+      throw new HttpError(400, "Estado de cita invÃ¡lido");
     }
     const citaStatus = status as CitaStatus;
     const startMs = data.scheduledAt.getTime();
     const durMin = data.durationMinutes ?? 30;
     const endMs = startMs + durMin * 60_000;
     const overlapWindowStart = new Date(startMs - 240 * 60_000);
-    const overlapping = await context.entities.Cita.findMany({
+    // Disponibilidad centralizada (Fase B3): solo SCHEDULED/IN_PROGRESS bloquean.
+    const blocking = await context.entities.Cita.findMany({
       where: {
         medicoId: data.medicoId,
-        status: { not: "CANCELLED" },
+        status: { in: Array.from(BLOCKING_CITA_STATUSES) as CitaStatus[] },
         scheduledAt: { gte: overlapWindowStart, lt: new Date(endMs) },
       },
       select: { scheduledAt: true, durationMinutes: true },
     });
-    const conflicto = overlapping.some((c) => {
-      const cStart = c.scheduledAt.getTime();
-      const cEnd = cStart + c.durationMinutes * 60_000;
-      return cStart < endMs && cEnd > startMs;
-    });
-    if (conflicto) {
+    const busy: Interval[] = blocking.map((c) => ({
+      startMs: c.scheduledAt.getTime(),
+      endMs: c.scheduledAt.getTime() + c.durationMinutes * 60_000,
+    }));
+    if (hasConflict(busy, startMs, endMs)) {
       throw new HttpError(
         409,
-        "El horario seleccionado no está disponible para este médico",
+        "El horario seleccionado no estÃ¡ disponible para este mÃ©dico",
       );
     }
     const cita = await context.entities.Cita.create({
@@ -1471,7 +1625,7 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     }
     const targetStatus = data?.status ?? existing.status;
     if (!isCitaStatusValid(targetStatus)) {
-      throw new HttpError(400, "Estado de cita inválido");
+      throw new HttpError(400, "Estado de cita invÃ¡lido");
     }
     if (
       targetStatus !== existing.status &&
@@ -1479,10 +1633,10 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     ) {
       throw new HttpError(
         409,
-        `Transición no permitida: ${existing.status} → ${targetStatus}`,
+        `TransiciÃ³n no permitida: ${existing.status} â†’ ${targetStatus}`,
       );
     }
-    // B1: el enum exige validación explícita también en UPDATE administrativo.
+    // B1: el enum exige validaciÃ³n explÃ­cita tambiÃ©n en UPDATE administrativo.
     const nextStatus =
       data?.status === undefined
         ? undefined
@@ -1490,7 +1644,7 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
           ? (data.status as CitaStatus)
           : undefined;
     if (data?.status !== undefined && nextStatus === undefined) {
-      throw new HttpError(400, "Estado de cita inválido");
+      throw new HttpError(400, "Estado de cita invÃ¡lido");
     }
     const updated = await context.entities.Cita.update({
       where: { id: citaId },
@@ -1537,7 +1691,7 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
 };
 
 // ---------------------------------------------------------------------------
-// updateCitaStatus (Médico de la cita o Admin) - transición de estado
+// updateCitaStatus (MÃ©dico de la cita o Admin) - transiciÃ³n de estado
 // ---------------------------------------------------------------------------
 
 const updateCitaStatusInputSchema = z.object({
@@ -1551,13 +1705,17 @@ export const updateCitaStatus: UpdateCitaStatus<
   UpdateCitaStatusInput,
   Cita
 > = async (rawArgs, context) => {
+  // R2: getActiveClinicalRole + chequeo manual de inactividad (roles con
+  // permisos diferenciados por estado destino, no un ensureRole simple).
   const authUser = context.user;
   if (!authUser) {
     throw new HttpError(401, "Debe iniciar sesión");
   }
-  const isAdmin = authUser.isAdmin && !authUser.isMedico;
-  const isMedico = authUser.isMedico && !authUser.isAdmin;
-  if (!isMedico && !isAdmin) {
+  if ((authUser as any).isActive === false) {
+    throw new HttpError(403, "Usuario inactivo. Contacte al administrador.");
+  }
+  const role = getActiveClinicalRole(authUser);
+  if (!role) {
     throw new HttpError(403, "Rol inválido");
   }
 
@@ -1577,8 +1735,22 @@ export const updateCitaStatus: UpdateCitaStatus<
     throw new HttpError(404, "Cita no encontrada");
   }
 
-  if (isMedico && cita.medicoId !== authUser.id) {
+  const isOwnerMedico =
+    role === "medico" && cita.medicoId === authUser.id;
+  if (!isOwnerMedico && role === "medico") {
     throw new HttpError(403, "Solo puede operar sobre sus propias citas");
+  }
+
+  // Matriz por rol: la secretaria solo maneja estados administrativos.
+  const SECRETARIA_TARGETS = ["CANCELLED", "NO_SHOW", "NOT_STARTED"];
+  if (
+    role === "secretaria" &&
+    !SECRETARIA_TARGETS.includes(status)
+  ) {
+    throw new HttpError(
+      403,
+      "La secretaría solo puede cancelar citas o marcar NO_SHOW / NO iniciadas",
+    );
   }
 
   if (status !== cita.status && !canTransitionCita(cita.status, status)) {
@@ -1588,9 +1760,23 @@ export const updateCitaStatus: UpdateCitaStatus<
     );
   }
 
+  // Validaciones temporales (kickoff Semana 6)
+  const nowMs = Date.now();
+  if (status === "NO_SHOW" && cita.scheduledAt.getTime() > nowMs) {
+    throw new HttpError(
+      400,
+      "No se puede marcar NO_SHOW antes de la hora de la cita",
+    );
+  }
+  if (status === "NOT_STARTED" && cita.scheduledAt.getTime() > nowMs) {
+    throw new HttpError(
+      400,
+      "Solo una cita vencida puede marcarse como no iniciada",
+    );
+  }
   if (
     status === "IN_PROGRESS" &&
-    cita.scheduledAt.getTime() > Date.now() + 5 * 60_000
+    cita.scheduledAt.getTime() > nowMs + 5 * 60_000
   ) {
     throw new HttpError(409, "La cita aún no comienza");
   }
@@ -1600,16 +1786,22 @@ export const updateCitaStatus: UpdateCitaStatus<
     data: { status: status as CitaStatus },
   });
 
+  // Auditoría semántica por transición
+  const auditActionByStatus: Record<string, AuditAction> = {
+    IN_PROGRESS: "START_APPOINTMENT",
+    CANCELLED: "CANCEL_APPOINTMENT",
+    NO_SHOW: "MARK_NO_SHOW",
+  };
   await createAuditEntry({
     userId: authUser.id,
-    action: "MANAGE_CITA",
+    action: auditActionByStatus[updated.status] ?? "MANAGE_CITA",
     resourceType: "CITA",
     resourceId: updated.id,
     patientId: updated.patientId,
     citaId: updated.id,
     metadata: {
       action: "STATUS",
-      phase: isAdmin ? "ADMIN" : "MEDICO",
+      phase: role.toUpperCase(),
       status: updated.status,
       previousStatus: cita.status,
     },
@@ -1619,7 +1811,7 @@ export const updateCitaStatus: UpdateCitaStatus<
 };
 
 // ---------------------------------------------------------------------------
-// createNoteFromVoice (Médico) - creación de notas por voz
+// createNoteFromVoice (MÃ©dico) - creaciÃ³n de notas por voz
 // ---------------------------------------------------------------------------
 
 const createNoteFromVoiceInputSchema = z.object({
@@ -1662,7 +1854,7 @@ export const createNoteFromVoice: CreateNoteFromVoice<
 
   const command = parseVoiceCommand(query);
 
-  // Solo pacientes autorizados para este médico.
+  // Solo pacientes autorizados para este mÃ©dico.
   const authorizedPatients = await context.entities.SyntheticPatient.findMany({
     where: { authorizedMedicos: { some: { medicoId: user.id } } },
   });
@@ -1694,13 +1886,13 @@ export const createNoteFromVoice: CreateNoteFromVoice<
   if (!command.patientQuery) {
     throw new HttpError(
       400,
-      "No detecté a qué paciente corresponde la nota. Repite indicando el syntheticId o el nombre completo (ej. \u201cagrega una nota a PAC-001 que presenta fiebre\u201d).",
+      "No detectÃ© a quÃ© paciente corresponde la nota. Repite indicando el syntheticId o el nombre completo (ej. \u201cagrega una nota a PAC-001 que presenta fiebre\u201d).",
     );
   }
 
   const matches = resolvePatientMatches(patients, command.patientQuery);
   if (matches.length === 0) {
-    throw new HttpError(404, "No encontré ningún paciente autorizado con ese nombre o ID.");
+    throw new HttpError(404, "No encontrÃ© ningÃºn paciente autorizado con ese nombre o ID.");
   }
   if (matches.length > 1) {
     const names = matches
@@ -1708,7 +1900,7 @@ export const createNoteFromVoice: CreateNoteFromVoice<
       .join(", ");
     throw new HttpError(
       409,
-      `Encontré ${matches.length} pacientes con ese nombre: ${names}. Repite indicando el syntheticId exacto para no equivocarme de paciente.`,
+      `EncontrÃ© ${matches.length} pacientes con ese nombre: ${names}. Repite indicando el syntheticId exacto para no equivocarme de paciente.`,
     );
   }
 
@@ -1722,7 +1914,7 @@ export const createNoteFromVoice: CreateNoteFromVoice<
   if (!command.clinicalText) {
     throw new HttpError(
       400,
-      "No detecté el texto clínico de la nota. Repite indicando el contenido del dictado (ej. \u201canota en la historia de PAC-001 que presenta fiebre de 38 grados\u201d).",
+      "No detectÃ© el texto clÃ­nico de la nota. Repite indicando el contenido del dictado (ej. \u201canota en la historia de PAC-001 que presenta fiebre de 38 grados\u201d).",
     );
   }
 
@@ -1754,7 +1946,7 @@ export const createNoteFromVoice: CreateNoteFromVoice<
 };
 
 // ---------------------------------------------------------------------------
-// deleteClinicalNote (Médico) - eliminar nota no confirmada
+// deleteClinicalNote (MÃ©dico) - eliminar nota no confirmada
 // ---------------------------------------------------------------------------
 
 const deleteClinicalNoteInputSchema = z.object({
@@ -1802,7 +1994,7 @@ export const deleteClinicalNote: DeleteClinicalNote<
   }
 
   // Limpia la trazabilidad propia de la nota (borradores/ediciones) para no
-  // romper la FK, y deja un registro de la eliminación sin referencia a la nota.
+  // romper la FK, y deja un registro de la eliminaciÃ³n sin referencia a la nota.
   await context.entities.AuditLog.deleteMany({
     where: { clinicalNoteId: note.id },
   });
@@ -1821,9 +2013,9 @@ export const deleteClinicalNote: DeleteClinicalNote<
 };
 
 // ---------------------------------------------------------------------------
-// recordEpicrisisExport (solo auditoría: EXPORT_EPICRISIS_PDF, RF-019)
-// El PDF se genera íntegramente en el cliente (@react-pdf/renderer); el
-// servidor únicamente registra la acción y verifica acceso (R-10).
+// recordEpicrisisExport (solo auditorÃ­a: EXPORT_EPICRISIS_PDF, RF-019)
+// El PDF se genera Ã­ntegramente en el cliente (@react-pdf/renderer); el
+// servidor Ãºnicamente registra la acciÃ³n y verifica acceso (R-10).
 // ---------------------------------------------------------------------------
 
 const recordEpicrisisExportInputSchema = z.object({
@@ -1854,7 +2046,7 @@ export const recordEpicrisisExport: RecordEpicrisisExport<
   }
   await assertMedicoPatientAccess(user.id, epicrisis.patientId);
 
-  // Auditoría sin contenido clínico (RNF-002): solo referencia y estado.
+  // AuditorÃ­a sin contenido clÃ­nico (RNF-002): solo referencia y estado.
   await createAuditEntry({
     userId: user.id,
     action: "EXPORT_EPICRISIS_PDF",

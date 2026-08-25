@@ -50,6 +50,12 @@ const DEMO_MEDICOS = [
   { email: "medico2@doctoria.com", fullName: "Dr. Carlos Vega", specialty: "Cardiología" },
 ];
 
+// Secretaria demo (Semana 6): gestiona pacientes/citas/signos vitales.
+const DEMO_SECRETARIA = {
+  email: "secretaria@doctoria.com",
+  fullName: "Karla Ramírez",
+};
+
 // Datos ficticios (sintéticos, P5). Cualquier parecido con la realidad es coincidencia.
 const SYNTHETIC_PATIENTS = [
   {
@@ -142,6 +148,33 @@ export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
     medicos.push({ id: medico.id });
     await ensureAuthLogin(prismaClient, medico.id, m.email, DEMO_PASSWORD);
   }
+
+  // 2b. Secretaria demo (rol exclusivo, cuenta activa)
+  const secretaria = await prismaClient.user.upsert({
+    where: { email: DEMO_SECRETARIA.email },
+    update: {
+      isSecretaria: true,
+      isAdmin: false,
+      isMedico: false,
+      isActive: true,
+      fullName: DEMO_SECRETARIA.fullName,
+    },
+    create: {
+      email: DEMO_SECRETARIA.email,
+      username: "secretaria",
+      isSecretaria: true,
+      isAdmin: false,
+      isMedico: false,
+      isActive: true,
+      fullName: DEMO_SECRETARIA.fullName,
+    },
+  });
+  await ensureAuthLogin(
+    prismaClient,
+    secretaria.id,
+    DEMO_SECRETARIA.email,
+    DEMO_PASSWORD,
+  );
 
   // 3. Pacientes sintéticos + accesos (ambos médicos acceden a todos)
   const patients: { id: string }[] = [];

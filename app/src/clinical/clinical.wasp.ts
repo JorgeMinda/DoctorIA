@@ -20,6 +20,7 @@ import {
   manageMedicoPatientAccess,
   manageSyntheticPatients,
   recordEpicrisisExport,
+  createVitalSignAction,
   requestAIStructuring,
   updateClinicalNoteDraft,
   updateCitaStatus,
@@ -36,6 +37,7 @@ import {
   getPatientHistory,
   getPatients,
   getVoiceAssistantResponse,
+  getVitalSigns,
 } from "./queries" with { type: "ref" };
 
 import { ClinicalAdminPage } from "./pages/ClinicalAdminPage" with { type: "ref" };
@@ -72,6 +74,9 @@ export const clinicalSpec: Spec = [
   query(getAuditLog, { entities: ["AuditLog", "User"] }),
   query(getVoiceAssistantResponse, {
     entities: ["SyntheticPatient", "MedicoPatientAccess", "AuditLog"],
+  }),
+  query(getVitalSigns, {
+    entities: ["VitalSign", "SyntheticPatient", "MedicoPatientAccess"],
   }),
   query(adminGetPatients, {
     entities: ["SyntheticPatient", "MedicoPatientAccess", "User"],
@@ -124,6 +129,9 @@ export const clinicalSpec: Spec = [
   }),
   action(recordEpicrisisExport, {
     entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],
+  }),
+  action(createVitalSignAction, {
+    entities: ["VitalSign", "SyntheticPatient", "Cita", "MedicoPatientAccess", "AuditLog"],
   }),
   action(createEpicrisisAddendum, {
     entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],
