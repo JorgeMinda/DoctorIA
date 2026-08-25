@@ -1,5 +1,6 @@
 // Agenda de citas: máquina de estados y utilidades de disponibilidad.
-// Estados: SCHEDULED → IN_PROGRESS → COMPLETED (compleción), ramas CANCELLED / NO_SHOW.
+// Estados: SCHEDULED → IN_PROGRESS → COMPLETED (compleción); ramas
+// CANCELLED / NO_SHOW / NOT_STARTED (cita vencida que nunca se inició).
 // "En cita" = `now` dentro de la ventana [scheduledAt, scheduledAt + duration) de una cita activa.
 
 export const CITA_STATES = {
@@ -8,6 +9,7 @@ export const CITA_STATES = {
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
   NO_SHOW: "NO_SHOW",
+  NOT_STARTED: "NOT_STARTED",
 } as const;
 
 export type CitaStatus = (typeof CITA_STATES)[keyof typeof CITA_STATES];
@@ -22,8 +24,11 @@ const CITA_TRANSITIONS: Record<CitaStatus, CitaStatus[]> = {
     CITA_STATES.IN_PROGRESS,
     CITA_STATES.CANCELLED,
     CITA_STATES.NO_SHOW,
+    CITA_STATES.NOT_STARTED,
   ],
   IN_PROGRESS: [CITA_STATES.COMPLETED, CITA_STATES.CANCELLED],
+  // El profesional puede atenderla tarde (IN_PROGRESS) o cancelarla.
+  NOT_STARTED: [CITA_STATES.IN_PROGRESS, CITA_STATES.CANCELLED],
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: [],
@@ -45,6 +50,7 @@ export function isCitaTerminal(status: string): boolean {
     status === CITA_STATES.CANCELLED ||
     status === CITA_STATES.NO_SHOW
   );
+  // NOT_STARTED NO es terminal: puede reactivarse a IN_PROGRESS o CANCELLED.
 }
 
 // Venta de la cita: inicio incluido, fin excluido.
