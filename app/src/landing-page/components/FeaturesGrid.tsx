@@ -80,20 +80,20 @@ function FeaturesGridItem({
     <Card
       className={cn(
         "group relative h-full min-h-[140px] cursor-pointer overflow-hidden rounded-2xl border-border/60 bg-card transition-all duration-300",
-        "hover:border-cyan-400/25 hover:bg-card-accent hover:shadow-[0_0_30px_rgba(54,199,244,0.12)]",
+        "hover:border-primary/25 hover:bg-card-accent hover:shadow-[0_0_30px_hsl(var(--primary)/0.12)]",
         gridFeatureSizeToClasses[size],
       )}
     >
       {/* Línea superior con gradiente sutil en hover */}
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-cyan-400/0 to-transparent transition-all duration-300 group-hover:via-cyan-400/50"
+        className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/0 to-transparent transition-all duration-300 group-hover:via-primary/50"
       />
       <CardContent className="flex h-full flex-col items-center justify-center p-4">
         {fullWidthIcon && (icon || emoji) ? (
           <div className="mb-4 flex w-full items-center justify-center">
             {icon ? (
-              <span className="flex size-12 items-center justify-center rounded-xl border border-cyan-400/15 bg-cyan-400/5 text-cyan-300 transition-all duration-300 group-hover:border-cyan-400/30 group-hover:bg-cyan-400/10 group-hover:shadow-[0_0_20px_rgba(54,199,244,0.25)]">
+              <span className="flex size-12 items-center justify-center rounded-xl border border-primary/15 bg-primary/5 text-primary transition-all duration-300 group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.25)]">
                 {icon}
               </span>
             ) : emoji ? (

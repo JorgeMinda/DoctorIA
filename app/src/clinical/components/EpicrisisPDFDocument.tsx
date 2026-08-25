@@ -11,9 +11,9 @@ import {
   View,
 } from "@react-pdf/renderer";
 
-// Cian de marca DoctorIA (--primary: hsl(186 91% 45%) oscurecido para impresión).
-const BRAND_CYAN = "#0E7490";
-const BRAND_CYAN_LIGHT = "#E6F7FA";
+// Azul de marca DoctorIA (--primary: hsl(221 83% 48%) oscurecido para impresión).
+const BRAND_CYAN = "#1554C8";
+const BRAND_CYAN_LIGHT = "#E8EEFB";
 const INK = "#1F2937";
 const INK_SOFT = "#4B5563";
 const DRAFT_RED = "#B91C1C";

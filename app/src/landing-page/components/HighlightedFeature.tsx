@@ -33,9 +33,9 @@ export function HighlightedFeature({
       )}
     >
       <div className="flex-1 flex-col text-center md:text-left">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/5 px-3 py-1">
-          <Bot className="size-3.5 text-violet-300" />
-          <span className="text-violet-300 text-[11px] font-semibold tracking-[0.2em] uppercase">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-secondary/20 bg-secondary/5 px-3 py-1">
+          <Bot className="size-3.5 text-secondary" />
+          <span className="text-secondary text-[11px] font-semibold tracking-[0.2em] uppercase">
             Asistencia clínica
           </span>
         </div>

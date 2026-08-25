@@ -30,7 +30,7 @@ export function Footer({
                 <li key={item.name}>
                   <a
                     href={item.href}
-                    className="text-muted-foreground hover:text-cyan-300 text-sm leading-6 transition-colors duration-200"
+                    className="text-muted-foreground hover:text-primary text-sm leading-6 transition-colors duration-200"
                   >
                     {item.name}
                   </a>
@@ -47,7 +47,7 @@ export function Footer({
                 <li key={item.name}>
                   <a
                     href={item.href}
-                    className="text-muted-foreground hover:text-cyan-300 text-sm leading-6 transition-colors duration-200"
+                    className="text-muted-foreground hover:text-primary text-sm leading-6 transition-colors duration-200"
                   >
                     {item.name}
                   </a>

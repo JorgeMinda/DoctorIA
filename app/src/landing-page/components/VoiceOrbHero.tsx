@@ -12,20 +12,20 @@ interface VoiceOrbHeroProps {
   className?: string;
 }
 
-// Glow ambiental por estado.
+// Glow ambiental por estado (usa tokens del design system).
 const STATE_GLOW: Record<AmbientState, string> = {
-  IDLE: "radial-gradient(circle, rgba(54,199,244,0.18) 0%, rgba(93,140,255,0.08) 45%, transparent 70%)",
-  LISTENING: "radial-gradient(circle, rgba(54,199,244,0.38) 0%, rgba(93,140,255,0.16) 45%, transparent 70%)",
-  PROCESSING: "radial-gradient(circle, rgba(139,124,255,0.42) 0%, rgba(93,140,255,0.2) 45%, transparent 70%)",
-  RESPONDING: "radial-gradient(circle, rgba(53,214,165,0.38) 0%, rgba(54,199,244,0.16) 45%, transparent 70%)",
+  IDLE: "radial-gradient(circle, hsl(var(--primary) / 0.18) 0%, hsl(var(--secondary) / 0.08) 45%, transparent 70%)",
+  LISTENING: "radial-gradient(circle, hsl(var(--primary) / 0.38) 0%, hsl(var(--secondary) / 0.16) 45%, transparent 70%)",
+  PROCESSING: "radial-gradient(circle, hsl(var(--secondary) / 0.42) 0%, hsl(var(--secondary) / 0.2) 45%, transparent 70%)",
+  RESPONDING: "radial-gradient(circle, hsl(var(--success) / 0.38) 0%, hsl(var(--primary) / 0.16) 45%, transparent 70%)",
 };
 
-// Anillo conic por estado.
+// Anillo conic por estado (usa tokens del design system).
 const STATE_RING: Record<AmbientState, string> = {
-  IDLE: "conic-gradient(from 0deg, #36C7F4, #5D8CFF, #8B7CFF, #35D6A5, #36C7F4)",
-  LISTENING: "conic-gradient(from 0deg, #36C7F4, #5D8CFF, #8B7CFF, #36C7F4, #36C7F4)",
-  PROCESSING: "conic-gradient(from 0deg, #8B7CFF, #5D8CFF, #36C7F4, #8B7CFF, #8B7CFF)",
-  RESPONDING: "conic-gradient(from 0deg, #35D6A5, #36C7F4, #9be9cf, #35D6A5, #35D6A5)",
+  IDLE: "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--success)), hsl(var(--primary)))",
+  LISTENING: "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--primary)), hsl(var(--primary)))",
+  PROCESSING: "conic-gradient(from 0deg, hsl(var(--secondary)), hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--secondary)))",
+  RESPONDING: "conic-gradient(from 0deg, hsl(var(--success)), hsl(var(--primary)), hsl(var(--success) / 0.6), hsl(var(--success)), hsl(var(--success)))",
 };
 
 const STATE_RING_DURATION: Record<AmbientState, string> = {
@@ -48,12 +48,12 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
   const isBusy = state === "PROCESSING";
   const waveColor =
     state === "LISTENING"
-      ? "#36C7F4"
+      ? "hsl(var(--primary))"
       : state === "PROCESSING"
-        ? "#8B7CFF"
+        ? "hsl(var(--secondary))"
         : state === "RESPONDING"
-          ? "#35D6A5"
-          : "rgba(54,199,244,0.35)";
+          ? "hsl(var(--success))"
+          : "hsl(var(--primary) / 0.35)";
 
   return (
     <div
@@ -89,7 +89,7 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
         }
         className={cn(
           "group relative flex size-52 items-center justify-center rounded-full outline-none sm:size-60 md:size-68",
-          "focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           !isBusy && !disabled && "cursor-pointer",
         )}
       >
@@ -113,7 +113,7 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
         />
         <div
           aria-hidden="true"
-          className="absolute inset-[10px] rounded-full border border-cyan-300/15"
+          className="absolute inset-[10px] rounded-full border border-primary/15"
         />
 
         {/* Núcleo oscuro */}
@@ -126,12 +126,12 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
           style={{
             boxShadow: `inset 0 0 50px rgba(0,0,0,0.85), inset 0 0 16px ${
               state === "IDLE"
-                ? "rgba(54,199,244,0.15)"
+                ? "hsl(var(--primary) / 0.15)"
                 : state === "PROCESSING"
-                  ? "rgba(139,124,255,0.4)"
+                  ? "hsl(var(--secondary) / 0.4)"
                   : state === "RESPONDING"
-                    ? "rgba(53,214,165,0.4)"
-                    : "rgba(54,199,244,0.4)"
+                    ? "hsl(var(--success) / 0.4)"
+                    : "hsl(var(--primary) / 0.4)"
             }`,
           }}
         >
@@ -142,18 +142,18 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
             style={{
               background:
                 state === "IDLE"
-                  ? "#36C7F4"
+                  ? "hsl(var(--primary))"
                   : state === "LISTENING"
-                    ? "#5D8CFF"
+                    ? "hsl(var(--primary))"
                     : state === "PROCESSING"
-                      ? "#8B7CFF"
-                      : "#35D6A5",
+                      ? "hsl(var(--secondary))"
+                      : "hsl(var(--success))",
               boxShadow:
                 state === "IDLE"
-                  ? "0 0 16px rgba(54,199,244,0.9)"
+                  ? "0 0 16px hsl(var(--primary) / 0.9)"
                   : state === "PROCESSING"
-                    ? "0 0 24px rgba(139,124,255,0.9)"
-                    : "0 0 24px rgba(53,214,165,0.9)",
+                    ? "0 0 24px hsl(var(--secondary) / 0.9)"
+                    : "0 0 24px hsl(var(--success) / 0.9)",
             }}
           />
         </div>
@@ -164,8 +164,8 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
           className={cn(
             "absolute -bottom-1 right-1 flex size-12 items-center justify-center rounded-full transition-all duration-300",
             "bg-background/90 shadow-lg ring-1 ring-border backdrop-blur",
-            state === "IDLE" && "group-hover:bg-cyan-400 group-hover:text-slate-950",
-            state === "IDLE" && "text-cyan-400",
+            state === "IDLE" && "group-hover:bg-primary group-hover:text-primary-foreground",
+            state === "IDLE" && "text-primary",
             isBusy && "animate-pulse",
           )}
         >
@@ -184,9 +184,9 @@ export function VoiceOrbHero({ state, onActivate, disabled, className }: VoiceOr
             aria-hidden="true"
             className={cn(
               "ambient-pulse-dot size-2 rounded-full",
-              state === "RESPONDING" && "bg-emerald-400",
-              state === "PROCESSING" && "bg-violet-400",
-              state !== "RESPONDING" && state !== "PROCESSING" && "bg-cyan-400",
+              state === "RESPONDING" && "bg-success",
+              state === "PROCESSING" && "bg-secondary",
+              state !== "RESPONDING" && state !== "PROCESSING" && "bg-primary",
             )}
           />
           <span className="text-foreground text-xs font-semibold tracking-[0.25em]">

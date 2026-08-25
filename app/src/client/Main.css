@@ -188,33 +188,35 @@
 }
 
 @utility text-gradient-primary {
-  /* Text gradient utilities */
+  /* Text gradient utilities — blue → azure */
   background: linear-gradient(
-    to right,
-    hsl(var(--secondary-muted)),
+    135deg,
+    hsl(var(--primary)),
     hsl(var(--secondary))
   );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: transparent;
 }
 
 @utility text-gradient-primary-diagonal {
   background: linear-gradient(
     135deg,
-    hsl(var(--secondary-muted)),
+    hsl(var(--primary-bright)),
     hsl(var(--secondary))
   );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: transparent;
 }
 
 @utility border-gradient-primary {
-  /* Border gradient utilities */
+  /* Border gradient utilities — blue → azure */
   background: linear-gradient(
-    to right,
-    hsl(var(--secondary-muted)),
+    135deg,
+    hsl(var(--primary)),
     hsl(var(--secondary))
   );
   padding: 1px;
@@ -226,87 +228,87 @@
 
 @layer base {
   :root {
-    --background: 220 33% 97%;
-    --foreground: 216 40% 14%;
+    --background: 210 30% 98%;
+    --foreground: 216 45% 13%;
     --card: 0 0% 100%;
-    --card-foreground: 216 40% 14%;
-    --card-accent: 220 30% 95%;
-    --card-accent-foreground: 216 40% 14%;
-    --card-subtle: 220 25% 93%;
-    --card-subtle-foreground: 216 40% 18%;
+    --card-foreground: 216 45% 13%;
+    --card-accent: 210 30% 96%;
+    --card-accent-foreground: 216 45% 13%;
+    --card-subtle: 210 25% 94%;
+    --card-subtle-foreground: 216 45% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 216 40% 14%;
-    --primary: 186 91% 45%;
-    --primary-foreground: 220 17% 6%;
-    --secondary: 220 88% 47%;
+    --popover-foreground: 216 45% 13%;
+    --primary: 221 83% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 205 90% 50%;
     --secondary-foreground: 0 0% 100%;
-    --secondary-muted: 254 100% 92%;
-    --secondary-muted-foreground: 254 40% 20%;
-    --muted: 220 25% 93%;
-    --muted-foreground: 210 12% 42%;
-    --accent: 220 30% 91%;
-    --accent-foreground: 216 40% 14%;
-    --destructive: 0 84% 60%;
+    --secondary-muted: 205 70% 94%;
+    --secondary-muted-foreground: 210 60% 24%;
+    --muted: 210 25% 94%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 220 45% 94%;
+    --accent-foreground: 220 85% 30%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --success: 142 58% 42%;
+    --success: 145 63% 38%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 48%;
+    --warning: 38 92% 45%;
     --warning-foreground: 0 0% 100%;
-    --border: 210 20% 84%;
-    --input: 210 20% 84%;
-    --ring: 186 91% 45%;
+    --border: 210 20% 85%;
+    --input: 210 20% 85%;
+    --ring: 221 83% 48%;
     --radius: 0.75rem;
 
     /* Clinical Intelligence — extended tokens (light) */
     --surface: 0 0% 100%;
-    --surface-container: 220 28% 96%;
-    --surface-high: 220 24% 90%;
-    --surface-highest: 220 22% 85%;
-    --outline: 210 14% 45%;
-    --outline-variant: 210 18% 82%;
-    --primary-bright: 187 100% 48%;
+    --surface-container: 210 28% 97%;
+    --surface-high: 210 22% 94%;
+    --surface-highest: 210 18% 90%;
+    --outline: 210 16% 46%;
+    --outline-variant: 210 18% 80%;
+    --primary-bright: 221 85% 54%;
   }
 
   .dark {
-    --background: 220 17% 8%;
-    --foreground: 240 12% 90%;
-    --card: 220 10% 11%;
-    --card-foreground: 240 12% 90%;
-    --card-accent: 220 9% 13%;
-    --card-accent-foreground: 240 12% 90%;
-    --card-subtle: 220 7% 17%;
-    --card-subtle-foreground: 240 12% 90%;
-    --popover: 220 9% 13%;
-    --popover-foreground: 240 12% 90%;
-    --primary: 186 91% 48%;
-    --primary-foreground: 220 17% 6%;
-    --secondary: 220 88% 47%;
-    --secondary-foreground: 0 0% 100%;
-    --secondary-muted: 254 100% 89%;
-    --secondary-muted-foreground: 254 30% 12%;
-    --muted: 220 9% 13%;
-    --muted-foreground: 190 15% 77%;
-    --accent: 220 7% 17%;
-    --accent-foreground: 240 12% 90%;
-    --destructive: 0 84% 60%;
+    --background: 220 22% 7%;
+    --foreground: 210 25% 94%;
+    --card: 220 15% 10%;
+    --card-foreground: 210 25% 94%;
+    --card-accent: 220 14% 12%;
+    --card-accent-foreground: 210 25% 94%;
+    --card-subtle: 220 12% 15%;
+    --card-subtle-foreground: 210 25% 94%;
+    --popover: 220 14% 11%;
+    --popover-foreground: 210 25% 94%;
+    --primary: 220 90% 60%;
+    --primary-foreground: 220 22% 7%;
+    --secondary: 205 92% 62%;
+    --secondary-foreground: 220 22% 7%;
+    --secondary-muted: 215 35% 20%;
+    --secondary-muted-foreground: 205 40% 80%;
+    --muted: 220 14% 14%;
+    --muted-foreground: 195 15% 72%;
+    --accent: 220 35% 16%;
+    --accent-foreground: 220 70% 72%;
+    --destructive: 0 72% 62%;
     --destructive-foreground: 0 0% 100%;
-    --success: 142 58% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --border: 191 5% 26%;
-    --input: 191 5% 26%;
-    --ring: 187 100% 50%;
+    --success: 145 63% 48%;
+    --success-foreground: 220 22% 7%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 220 22% 7%;
+    --border: 195 10% 25%;
+    --input: 195 10% 25%;
+    --ring: 220 90% 60%;
     --radius: 0.75rem;
 
     /* Clinical Intelligence — extended tokens (dark) */
-    --surface: 220 10% 11%;
-    --surface-container: 220 9% 13%;
-    --surface-high: 220 7% 17%;
-    --surface-highest: 220 6% 21%;
-    --outline: 190 8% 55%;
-    --outline-variant: 191 5% 26%;
-    --primary-bright: 187 100% 50%;
+    --surface: 220 15% 10%;
+    --surface-container: 220 14% 12%;
+    --surface-high: 220 12% 16%;
+    --surface-highest: 220 10% 20%;
+    --outline: 195 12% 54%;
+    --outline-variant: 195 10% 28%;
+    --primary-bright: 205 95% 66%;
   }
 }
 
@@ -453,11 +455,11 @@
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(54, 199, 244, 0.5);
+    box-shadow: 0 0 0 0 rgba(56, 178, 255, 0.5);
   }
   50% {
     opacity: 0.85;
-    box-shadow: 0 0 0 6px rgba(54, 199, 244, 0);
+    box-shadow: 0 0 0 6px rgba(56, 178, 255, 0);
   }
 }
 
