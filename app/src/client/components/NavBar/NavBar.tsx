@@ -115,8 +115,8 @@ function NavBarDesktopUserDropdown({ isScrolled }: { isScrolled: boolean }) {
         <WaspRouterLink
           to={routes.LoginRoute.to}
           className={cn(
-            "rounded-lg border border-cyan-400/25 bg-cyan-400/5 px-4 py-2 font-semibold leading-6 text-cyan-300 transition-all duration-300",
-            "hover:border-cyan-400/50 hover:bg-cyan-400/10 hover:shadow-[0_0_16px_rgba(54,199,244,0.2)]",
+            "rounded-lg border border-primary/25 bg-primary/5 px-4 py-2 font-semibold leading-6 text-primary transition-all duration-300",
+            "hover:border-primary/50 hover:bg-primary/10 hover:shadow-[0_0_16px_rgba(82,97,238,0.2)]",
             {
               "text-sm": !isScrolled,
               "text-xs": isScrolled,
