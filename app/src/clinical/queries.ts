@@ -761,37 +761,6 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
     rawArgs,
   );
 
-  // DEBUG temporal: exponer el error real de la rama admin (quitar tras diagnÃ³stico).
-  try {
-    const result = await getAgendaInner(rawArgs, context);
-    // Serializa dentro del try: si algo rompe superjson, aparece como AGENDA_DEBUG.
-    const safe = JSON.parse(JSON.stringify(result));
-    (safe as any)._debug = "agenda-wrapper-v2";
-    return safe;
-  } catch (e: any) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(
-      500,
-      `AGENDA_DEBUG: ${e?.message ?? String(e)} :: ${e?.stack?.split("\n")[1] ?? ""}`,
-    );
-  }
-}
-
-async function getAgendaInner(rawArgs: any, context: any) {
-  if (!context.user) {
-    throw new HttpError(401, "Debe iniciar sesiÃ³n");
-  }
-  const authUser = context.user;
-  const isMedico = authUser.isMedico && !authUser.isAdmin;
-  if (!isMedico && !(authUser.isAdmin && !authUser.isMedico)) {
-    throw new HttpError(403, "Rol invÃ¡lido");
-  }
-
-  const { medicoId, from, to } = ensureArgsSchemaOrThrowHttpError(
-    getAgendaInputSchema,
-    rawArgs,
-  );
-
   const isAdmin = authUser.isAdmin && !authUser.isMedico;
   const scopeMedicoId = isAdmin ? medicoId : authUser.id;
 
@@ -899,7 +868,9 @@ async function getAgendaInner(rawArgs: any, context: any) {
     atencionesHoy = notesToday + epicrisisToday + citasCompletadasHoy;
   }
 
-  return {
+  // Los valores se devuelven como JSON plano (fechas en ISO): evita fallos de
+  // serializacion superjson observados en produccion con filas reales.
+  return JSON.parse(JSON.stringify({
     citas: citas as AgendaCita[],
     currentStatus,
     metrics: {
@@ -908,7 +879,7 @@ async function getAgendaInner(rawArgs: any, context: any) {
       citasHoy,
       citasCompletadasHoy,
     },
-  };
+  })) as GetAgendaOutput;
 };
 
 // ---------------------------------------------------------------------------
