@@ -1,4 +1,4 @@
-﻿// Operaciones de consulta (Queries) del mÃ³dulo clÃ­nico.
+﻿// Operaciones de consulta (Queries) del módulo clínico.
 // contracts/clinical-operations.md Â§1, Â§4.
 
 import { HttpError, prisma } from "wasp/server";
@@ -495,7 +495,7 @@ export const getAuditLog: GetAuditLog<
   GetAuditLogOutput
 > = async (rawArgs, context) => {
   if (!context.user) {
-    throw new HttpError(401, "Debe iniciar sesiÃ³n");
+    throw new HttpError(401, "Debe iniciar sesión");
   }
 
   const {
@@ -519,7 +519,7 @@ export const getAuditLog: GetAuditLog<
   } else if (context.user.isAdmin && !context.user.isMedico) {
     where = {};
   } else {
-    throw new HttpError(403, "Rol invÃ¡lido");
+    throw new HttpError(403, "Rol inválido");
   }
 
   if (resourceType) {
@@ -583,7 +583,7 @@ export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
 
   const { name } = parseVoiceQuery(query);
 
-  // Solo pacientes autorizados para este mÃ©dico.
+  // Solo pacientes autorizados para este médico.
   const authorizedPatients = await context.entities.SyntheticPatient.findMany({
     where: { authorizedMedicos: { some: { medicoId: user.id } } },
   });
@@ -593,7 +593,7 @@ export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
     name,
   );
 
-  // AuditorÃ­a (sin contenido clÃ­nico en metadata, RNF-002).
+  // Auditoría (sin contenido clínico en metadata, RNF-002).
   await createAuditEntry({
     userId: user.id,
     action: "VOICE_ASSISTANT_QUERY",
@@ -611,7 +611,7 @@ export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
 };
 
 // ---------------------------------------------------------------------------
-// adminGetPatients (Admin) - gestiÃ³n de pacientes sintÃ©ticos sin filtro de acceso
+// adminGetPatients (Admin) - gestión de pacientes sintéticos sin filtro de acceso
 // ---------------------------------------------------------------------------
 
 const adminGetPatientsInputSchema = z.object({
@@ -700,7 +700,7 @@ export const adminGetPatients: AdminGetPatients<
 };
 
 // ---------------------------------------------------------------------------
-// getAgenda (MÃ©dico = agenda propia; Admin = agenda por mÃ©dico)
+// getAgenda (Médico = agenda propia; Admin = agenda por médico)
 // ---------------------------------------------------------------------------
 
 const getAgendaInputSchema = z.object({
@@ -748,12 +748,12 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
   context,
 ) => {
   if (!context.user) {
-    throw new HttpError(401, "Debe iniciar sesiÃ³n");
+    throw new HttpError(401, "Debe iniciar sesión");
   }
   const authUser = context.user;
   const isMedico = authUser.isMedico && !authUser.isAdmin;
   if (!isMedico && !(authUser.isAdmin && !authUser.isMedico)) {
-    throw new HttpError(403, "Rol invÃ¡lido");
+    throw new HttpError(403, "Rol inválido");
   }
 
   const { medicoId, from, to } = ensureArgsSchemaOrThrowHttpError(
@@ -883,7 +883,7 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
 };
 
 // ---------------------------------------------------------------------------
-// getDoctorsAgenda (Admin) - mÃ©tricas y estado por profesional
+// getDoctorsAgenda (Admin) - métricas y estado por profesional
 // ---------------------------------------------------------------------------
 
 type DoctorAgendaRow = {
