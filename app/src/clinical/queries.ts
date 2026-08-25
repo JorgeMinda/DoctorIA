@@ -761,6 +761,33 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
     rawArgs,
   );
 
+  // DEBUG temporal: exponer el error real de la rama admin (quitar tras diagnóstico).
+  try {
+    return await getAgendaInner(rawArgs, context);
+  } catch (e: any) {
+    if (e instanceof HttpError) throw e;
+    throw new HttpError(
+      500,
+      `AGENDA_DEBUG: ${e?.message ?? String(e)} :: ${e?.stack?.split("\n")[1] ?? ""}`,
+    );
+  }
+}
+
+async function getAgendaInner(rawArgs: any, context: any) {
+  if (!context.user) {
+    throw new HttpError(401, "Debe iniciar sesión");
+  }
+  const authUser = context.user;
+  const isMedico = authUser.isMedico && !authUser.isAdmin;
+  if (!isMedico && !(authUser.isAdmin && !authUser.isMedico)) {
+    throw new HttpError(403, "Rol inválido");
+  }
+
+  const { medicoId, from, to } = ensureArgsSchemaOrThrowHttpError(
+    getAgendaInputSchema,
+    rawArgs,
+  );
+
   const isAdmin = authUser.isAdmin && !authUser.isMedico;
   const scopeMedicoId = isAdmin ? medicoId : authUser.id;
 
