@@ -1,5 +1,5 @@
-// Operaciones de consulta (Queries) del módulo clínico.
-// contracts/clinical-operations.md §1, §4.
+﻿// Operaciones de consulta (Queries) del mÃ³dulo clÃ­nico.
+// contracts/clinical-operations.md Â§1, Â§4.
 
 import { HttpError, prisma } from "wasp/server";
 import { type SyntheticPatient } from "wasp/entities";
@@ -182,7 +182,7 @@ export const getPatientById: GetPatientById<
       }),
     ]);
 
-  // Audit VIEW_PATIENT (contracts §1)
+  // Audit VIEW_PATIENT (contracts Â§1)
   await createAuditEntry({
     userId: user.id,
     action: "VIEW_PATIENT",
@@ -495,7 +495,7 @@ export const getAuditLog: GetAuditLog<
   GetAuditLogOutput
 > = async (rawArgs, context) => {
   if (!context.user) {
-    throw new HttpError(401, "Debe iniciar sesión");
+    throw new HttpError(401, "Debe iniciar sesiÃ³n");
   }
 
   const {
@@ -508,7 +508,7 @@ export const getAuditLog: GetAuditLog<
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
 
-  // Scoping por rol (contracts §4)
+  // Scoping por rol (contracts Â§4)
   // Admin: ve TODO el registro (incluye alta de pacientes, citas y notas).
   let where: any = {};
   if (context.user.isMedico && !context.user.isAdmin) {
@@ -519,7 +519,7 @@ export const getAuditLog: GetAuditLog<
   } else if (context.user.isAdmin && !context.user.isMedico) {
     where = {};
   } else {
-    throw new HttpError(403, "Rol inválido");
+    throw new HttpError(403, "Rol invÃ¡lido");
   }
 
   if (resourceType) {
@@ -583,7 +583,7 @@ export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
 
   const { name } = parseVoiceQuery(query);
 
-  // Solo pacientes autorizados para este médico.
+  // Solo pacientes autorizados para este mÃ©dico.
   const authorizedPatients = await context.entities.SyntheticPatient.findMany({
     where: { authorizedMedicos: { some: { medicoId: user.id } } },
   });
@@ -593,7 +593,7 @@ export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
     name,
   );
 
-  // Auditoría (sin contenido clínico en metadata, RNF-002).
+  // AuditorÃ­a (sin contenido clÃ­nico en metadata, RNF-002).
   await createAuditEntry({
     userId: user.id,
     action: "VOICE_ASSISTANT_QUERY",
@@ -611,7 +611,7 @@ export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
 };
 
 // ---------------------------------------------------------------------------
-// adminGetPatients (Admin) - gestión de pacientes sintéticos sin filtro de acceso
+// adminGetPatients (Admin) - gestiÃ³n de pacientes sintÃ©ticos sin filtro de acceso
 // ---------------------------------------------------------------------------
 
 const adminGetPatientsInputSchema = z.object({
@@ -700,7 +700,7 @@ export const adminGetPatients: AdminGetPatients<
 };
 
 // ---------------------------------------------------------------------------
-// getAgenda (Médico = agenda propia; Admin = agenda por médico)
+// getAgenda (MÃ©dico = agenda propia; Admin = agenda por mÃ©dico)
 // ---------------------------------------------------------------------------
 
 const getAgendaInputSchema = z.object({
@@ -748,12 +748,12 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
   context,
 ) => {
   if (!context.user) {
-    throw new HttpError(401, "Debe iniciar sesión");
+    throw new HttpError(401, "Debe iniciar sesiÃ³n");
   }
   const authUser = context.user;
   const isMedico = authUser.isMedico && !authUser.isAdmin;
   if (!isMedico && !(authUser.isAdmin && !authUser.isMedico)) {
-    throw new HttpError(403, "Rol inválido");
+    throw new HttpError(403, "Rol invÃ¡lido");
   }
 
   const { medicoId, from, to } = ensureArgsSchemaOrThrowHttpError(
@@ -761,7 +761,7 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
     rawArgs,
   );
 
-  // DEBUG temporal: exponer el error real de la rama admin (quitar tras diagnóstico).
+  // DEBUG temporal: exponer el error real de la rama admin (quitar tras diagnÃ³stico).
   try {
     return await getAgendaInner(rawArgs, context);
   } catch (e: any) {
@@ -775,12 +775,12 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
 
 async function getAgendaInner(rawArgs: any, context: any) {
   if (!context.user) {
-    throw new HttpError(401, "Debe iniciar sesión");
+    throw new HttpError(401, "Debe iniciar sesiÃ³n");
   }
   const authUser = context.user;
   const isMedico = authUser.isMedico && !authUser.isAdmin;
   if (!isMedico && !(authUser.isAdmin && !authUser.isMedico)) {
-    throw new HttpError(403, "Rol inválido");
+    throw new HttpError(403, "Rol invÃ¡lido");
   }
 
   const { medicoId, from, to } = ensureArgsSchemaOrThrowHttpError(
@@ -822,7 +822,7 @@ async function getAgendaInner(rawArgs: any, context: any) {
   const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
 
   const currentStatus = citas.some(
-    (c) =>
+    (c: any) =>
       (c.status === statusRef.SCHEDULED ||
         c.status === statusRef.IN_PROGRESS) &&
       c.scheduledAt.getTime() <= now.getTime() &&
@@ -890,7 +890,7 @@ async function getAgendaInner(rawArgs: any, context: any) {
     ]);
     citasHoy = citasToday.length;
     citasCompletadasHoy = citasToday.filter(
-      (c) => c.status === "COMPLETED",
+      (c: any) => c.status === "COMPLETED",
     ).length;
     atencionesHoy = notesToday + epicrisisToday + citasCompletadasHoy;
   }
@@ -908,7 +908,7 @@ async function getAgendaInner(rawArgs: any, context: any) {
 };
 
 // ---------------------------------------------------------------------------
-// getDoctorsAgenda (Admin) - métricas y estado por profesional
+// getDoctorsAgenda (Admin) - mÃ©tricas y estado por profesional
 // ---------------------------------------------------------------------------
 
 type DoctorAgendaRow = {
@@ -997,12 +997,12 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
       ]);
       const citasHoy = citas.length;
       const citasCompletadasHoy = citas.filter(
-        (c) => c.status === "COMPLETED",
+        (c: any) => c.status === "COMPLETED",
       ).length;
       const atencionesHoy = notesToday + epicrisisToday + citasCompletadasHoy;
 
       const currentStatus = citas.some(
-        (c) =>
+        (c: any) =>
           (c.status === "SCHEDULED" || c.status === "IN_PROGRESS") &&
           c.scheduledAt.getTime() <= now.getTime() &&
           now.getTime() < c.scheduledAt.getTime() + c.durationMinutes * 60_000,
