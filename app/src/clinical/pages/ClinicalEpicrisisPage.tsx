@@ -291,6 +291,11 @@ export function ClinicalEpicrisisPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {epicrisis.aiAssisted && !isConfirmed && (
+            <p className="text-xs italic text-muted-foreground">
+              La información generada debe ser revisada y validada por el profesional.
+            </p>
+          )}
           {EPICRISIS_FIELDS.map(([key, label]) => (
             <div key={key}>
               <p className="mono-label mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">

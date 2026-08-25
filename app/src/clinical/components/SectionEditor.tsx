@@ -1,4 +1,4 @@
-import { Textarea } from "../../client/components/ui/textarea";
+﻿import { Textarea } from "../../client/components/ui/textarea";
 import { Input } from "../../client/components/ui/input";
 import { REQUIRED_SECTIONS, SECTION_LABELS, type SectionKey } from "../services/noteValidation";
 
@@ -10,9 +10,10 @@ export interface SectionDraft {
 interface SectionEditorProps {
   draft: SectionDraft;
   onChange: (draft: SectionDraft) => void;
+  disabled?: boolean;
 }
 
-export function SectionEditor({ draft, onChange }: SectionEditorProps) {
+export function SectionEditor({ draft, onChange, disabled = false }: SectionEditorProps) {
   const { sections, sectionsNotApplicable } = draft;
 
   const update = (
@@ -33,7 +34,7 @@ export function SectionEditor({ draft, onChange }: SectionEditorProps) {
               <label className="text-sm font-semibold">{SECTION_LABELS[key]}</label>
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <input
-                  type="checkbox"
+                  type="checkbox" disabled={disabled}
                   checked={isNa}
                   onChange={(e) => {
                     const next = { ...sectionsNotApplicable };
@@ -62,6 +63,7 @@ export function SectionEditor({ draft, onChange }: SectionEditorProps) {
               <Textarea
                 className="border-outline-variant bg-surface"
                 rows={3}
+                disabled={disabled}
                 value={sections[key] ?? ""}
                 onChange={(e) => update(key, e.target.value)}
               />
