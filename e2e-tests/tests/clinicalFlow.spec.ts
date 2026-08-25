@@ -2,8 +2,9 @@
 //
 // NOTA ARQUITECTÓNICA: OpenRouter se llama DESDE EL SERVIDOR, por lo que
 // `page.route()` NO puede interceptarlo. El mock se hace contra las rutas HTTP
-// de las operaciones (`request-ai-structuring`, `get-clinical-note`),
-// devolviendo respuestas superjson válidas que simulan al backend.
+// de las operaciones, devolviendo respuestas superjson válidas que simulan al
+// backend. OJO: Wasp kebab-cases los identificadores pegando siglas —
+// requestAIStructuring -> `/operations/request-aistructuring`.
 //
 // Requiere la app corriendo localmente (`wasp start`) con la BD seedeada:
 //   npx playwright test -c playwright.local.config.ts tests/clinicalFlow.spec.ts
@@ -16,7 +17,7 @@ const MEDICO = {
   password: "Doctoria2026!",
 };
 
-const ROUTE_AI = "**/operations/request-ai-structuring";
+const ROUTE_AI = "**/operations/request-aistructuring";
 const ROUTE_NOTE = "**/operations/get-clinical-note";
 
 async function loginMedico(page: Page): Promise<void> {

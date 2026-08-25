@@ -22,7 +22,7 @@ import type {
   CreateClinicalNote,
   UpdateClinicalNoteDraft,
   RequestAIStructuring,
-  GenerateAddendumDraft,
+  GenerateAddendumDraftAction,
   ConfirmClinicalNote,
   CreateNoteAddendum,
   GenerateEpicrisisDraft,
@@ -473,7 +473,7 @@ type GenerateAddendumDraftInput = z.infer<
   typeof generateAddendumDraftInputSchema
 >;
 
-export const generateAddendumDraftAction: GenerateAddendumDraft<
+export const generateAddendumDraftAction: GenerateAddendumDraftAction<
   GenerateAddendumDraftInput,
   ClinicalNote
 > = async (rawArgs, context) => {
