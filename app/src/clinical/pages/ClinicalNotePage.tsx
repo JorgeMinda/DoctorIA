@@ -7,6 +7,7 @@ import {
   confirmClinicalNote,
   createNoteAddendum,
   deleteClinicalNote,
+  generateAddendumDraftAction,
   requestAIStructuring,
   updateClinicalNoteDraft,
 } from "wasp/client/operations";
@@ -17,6 +18,7 @@ import {
   CalendarDays,
   FileText,
   FilePlus2,
+  Loader2,
   Save,
   ShieldCheck,
   Sparkles,
@@ -54,6 +56,7 @@ export function ClinicalNotePage() {
   const confirmFn = useAction(confirmClinicalNote);
   const addendumFn = useAction(createNoteAddendum);
   const deleteNoteFn = useAction(deleteClinicalNote);
+  const aiAddendumFn = useAction(generateAddendumDraftAction);
 
   const [draft, setDraft] = useState<SectionDraft>({
     sections: {
@@ -67,11 +70,14 @@ export function ClinicalNotePage() {
   });
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [addendumOpen, setAddendumOpen] = useState(false);
   const [addendumText, setAddendumText] = useState("");
   const [addendumReason, setAddendumReason] = useState("");
+  const [aiAddendumOpen, setAiAddendumOpen] = useState(false);
+  const [aiInstruction, setAiInstruction] = useState("");
 
   useEffect(() => {
     if (note) {
@@ -176,8 +182,16 @@ export function ClinicalNotePage() {
     }
   };
 
+  // Mensaje unificado (kickoff Fase 6) para 409 (CAS) y 502 (respuesta IA
+  // inválida); otros errores muestran el mensaje del servidor.
+  const AI_CONFLICT_TOAST = {
+    title: "No se pudo aplicar la asistencia de IA",
+    description:
+      "El documento cambió o la respuesta fue inválida. Recarga para ver los cambios e inténtalo de nuevo.",
+  } as const;
+
   const handleRequestAI = async () => {
-    setSaving(true);
+    setAiBusy(true);
     setError(null);
     try {
       // Token CAS: versión de la nota vista por el cliente (Fase 7).
@@ -188,9 +202,47 @@ export function ClinicalNotePage() {
       await refetch();
       toast({ title: "Nota estructurada con IA" });
     } catch (err: any) {
-      setError(err?.message ?? "No se pudo estructurar");
+      if (err?.statusCode === 409 || err?.statusCode === 502) {
+        toast({ ...AI_CONFLICT_TOAST, variant: "destructive" });
+        setError(err?.message ?? AI_CONFLICT_TOAST.description);
+      } else {
+        const msg =
+          err?.message ?? "No se pudo estructurar con el asistente de IA";
+        setError(msg);
+        toast({ title: msg, variant: "destructive" });
+      }
     } finally {
-      setSaving(false);
+      setAiBusy(false);
+    }
+  };
+
+  const handleAIAddendum = async () => {
+    setAiBusy(true);
+    setError(null);
+    try {
+      const addendum = await aiAddendumFn({
+        parentNoteId: note.id,
+        instruction: aiInstruction,
+        expectedUpdatedAt: new Date(note.updatedAt).toISOString(),
+      });
+      toast({ title: "Borrador de adenda generado con IA" });
+      navigate(
+        routes.ClinicalNoteRoute.build({
+          params: { noteId: (addendum as { id: string }).id },
+        }),
+      );
+    } catch (err: any) {
+      if (err?.statusCode === 409 || err?.statusCode === 502) {
+        toast({ ...AI_CONFLICT_TOAST, variant: "destructive" });
+        setError(err?.message ?? AI_CONFLICT_TOAST.description);
+      } else {
+        const msg =
+          err?.message ?? "No se pudo generar el borrador de la adenda";
+        setError(msg);
+        toast({ title: msg, variant: "destructive" });
+      }
+    } finally {
+      setAiBusy(false);
     }
   };
 
@@ -295,6 +347,12 @@ export function ClinicalNotePage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={note.status} />
+          {note.status === "DRAFT_AI_ASSISTED" && (
+            <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
+              <Sparkles className="size-3" />
+              Borrador asistido por IA
+            </Badge>
+          )}
           {note.aiAssisted && (
             <Badge variant="secondary">
               <Sparkles className="size-3" />
@@ -342,27 +400,42 @@ export function ClinicalNotePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <SectionEditor draft={draft} onChange={persistDraft} />
+            {aiBusy && (
+              <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin text-primary" />
+                DoctorIA está generando un borrador…
+              </div>
+            )}
+            <SectionEditor draft={draft} onChange={persistDraft} disabled={aiBusy} />
+            {note.status === "DRAFT_AI_ASSISTED" && (
+              <p className="text-xs italic text-muted-foreground">
+                La información generada debe ser revisada y validada por el profesional.
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               {note.status === "DRAFT_MANUAL" && (
                 <Button
                   onClick={handleRequestAI}
-                  disabled={saving}
+                  disabled={saving || aiBusy}
                   className="shadow-[0_0_20px_rgba(0,218,243,0.25)]"
                 >
-                  <Sparkles className="size-4" />
+                  {aiBusy ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
                   Estructurar con IA
                 </Button>
               )}
               <Button
                 variant="secondary"
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || aiBusy}
               >
                 <Save className="size-4" />
                 Actualizar nota
               </Button>
-              <Button onClick={handleConfirm} disabled={saving}>
+              <Button onClick={handleConfirm} disabled={saving || aiBusy}>
                 <ShieldCheck className="size-4" />
                 Confirmar nota
               </Button>
@@ -443,13 +516,69 @@ export function ClinicalNotePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {!addendumOpen && (
-              <Button
-                variant="outline"
-                onClick={() => setAddendumOpen(true)}
-              >
-                Crear adenda
-              </Button>
+            {!addendumOpen && !aiAddendumOpen && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setAddendumOpen(true)}
+                >
+                  Crear adenda
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setAiAddendumOpen(true)}
+                  disabled={aiBusy}
+                  className="gap-1.5"
+                >
+                  <Sparkles className="size-4 text-primary" />
+                  Asistir redacción con IA
+                </Button>
+              </div>
+            )}
+            {aiAddendumOpen && (
+              <>
+                {aiBusy && (
+                  <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                    DoctorIA está generando un borrador…
+                  </div>
+                )}
+                <Textarea
+                  className="border-outline-variant bg-surface"
+                  placeholder="Instrucción para el asistente (p. ej.: «Aclarar el plan de analgesia indicado el día 2»)"
+                  rows={3}
+                  value={aiInstruction}
+                  disabled={aiBusy}
+                  onChange={(e) => setAiInstruction(e.target.value)}
+                />
+                <p className="text-xs italic text-muted-foreground">
+                  La información generada debe ser revisada y validada por el profesional.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleAIAddendum}
+                    disabled={aiBusy || !aiInstruction.trim()}
+                  >
+                    {aiBusy ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-4" />
+                    )}
+                    Generar borrador con IA
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setAiAddendumOpen(false);
+                      setAiInstruction("");
+                    }}
+                    disabled={aiBusy}
+                  >
+                    <X className="size-4" />
+                    Cancelar
+                  </Button>
+                </div>
+              </>
             )}
             {addendumOpen && (
               <>
