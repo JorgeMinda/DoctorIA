@@ -29,7 +29,8 @@ BEGIN
       AND column_name = 'status' AND udt_name <> 'CitaStatus'
   ) THEN
     ALTER TABLE "Cita" ALTER COLUMN "status" DROP DEFAULT;
-    ALTER TABLE "Cita" ALTER COLUMN "status" USING "status"::text::"CitaStatus";
+    ALTER TABLE "Cita" ALTER COLUMN "status" TYPE "CitaStatus"
+      USING ("status"::text)::"CitaStatus";
     ALTER TABLE "Cita" ALTER COLUMN "status" SET DEFAULT 'SCHEDULED'::"CitaStatus";
   END IF;
 END$$;
