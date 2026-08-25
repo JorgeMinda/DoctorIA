@@ -763,7 +763,11 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
 
   // DEBUG temporal: exponer el error real de la rama admin (quitar tras diagnÃ³stico).
   try {
-    return await getAgendaInner(rawArgs, context);
+    const result = await getAgendaInner(rawArgs, context);
+    // Serializa dentro del try: si algo rompe superjson, aparece como AGENDA_DEBUG.
+    const safe = JSON.parse(JSON.stringify(result));
+    (safe as any)._debug = "agenda-wrapper-v2";
+    return safe;
   } catch (e: any) {
     if (e instanceof HttpError) throw e;
     throw new HttpError(
