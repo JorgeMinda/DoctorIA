@@ -22,6 +22,7 @@ import type {
   CreateClinicalNote,
   UpdateClinicalNoteDraft,
   RequestAIStructuring,
+  GenerateAddendumDraft,
   ConfirmClinicalNote,
   CreateNoteAddendum,
   GenerateEpicrisisDraft,
@@ -44,6 +45,8 @@ import { createAuditEntry } from "./services/audit";
 import {
   structureClinicalText,
   generateEpicrisisFromHistory,
+  generateAddendumDraft,
+  AIInvalidResponseError,
 } from "./services/aiService";
 import {
   validateConfirmableNote,
@@ -196,11 +199,31 @@ export const updateClinicalNoteDraft: UpdateClinicalNoteDraft<
 
 const requestAIStructuringInputSchema = z.object({
   noteId: z.string().min(1),
+  // Token de concurrencia (CAS): updatedAt de la nota vista por el cliente (ISO).
+  expectedUpdatedAt: z.string().min(1),
 });
 
 type RequestAIStructuringInput = z.infer<
   typeof requestAIStructuringInputSchema
 >;
+
+// Mapea errores del servicio de IA a HttpError controlados (FASE 8):
+// - AIInvalidResponseError -> 502 (respuesta estructuralmente inválida, nada se guardó)
+// - resto (timeout/red/429) -> 504 (servicio no disponible)
+function mapAIServiceError(err: unknown): never {
+  if (err instanceof AIInvalidResponseError) {
+    throw new HttpError(
+      502,
+      "El asistente de IA devolvió una respuesta no válida. No se modificó el documento; intenta nuevamente.",
+    );
+  }
+  throw new HttpError(
+    504,
+    err instanceof Error && err.message
+      ? err.message
+      : "El servicio de IA no está disponible",
+  );
+}
 
 export const requestAIStructuring: RequestAIStructuring<
   RequestAIStructuringInput,
@@ -208,7 +231,7 @@ export const requestAIStructuring: RequestAIStructuring<
 > = async (rawArgs, context) => {
   const user = ensureMedico(context.user);
 
-  const { noteId } = ensureArgsSchemaOrThrowHttpError(
+  const { noteId, expectedUpdatedAt } = ensureArgsSchemaOrThrowHttpError(
     requestAIStructuringInputSchema,
     rawArgs,
   );
@@ -231,34 +254,51 @@ export const requestAIStructuring: RequestAIStructuring<
     );
   }
 
+  // Fail-fast: si el cliente vio una versión vieja, no gastamos la llamada IA.
+  if (note.updatedAt.getTime() !== new Date(expectedUpdatedAt).getTime()) {
+    throw new HttpError(
+      409,
+      "El documento fue modificado mientras la IA procesaba. Recarga para ver los cambios.",
+    );
+  }
+
   let result;
   try {
     result = await structureClinicalText({
       text: note.originalText,
       mode: "NOTE",
     });
-  } catch (err: any) {
+  } catch (err) {
     // RNF-008: falla de IA -> la nota permanece en DRAFT_MANUAL, texto intacto
-    throw new HttpError(
-      504,
-      err?.message ?? "El servicio de IA no está disponible",
-    );
+    mapAIServiceError(err);
   }
 
-  const updated = await context.entities.ClinicalNote.update({
-    where: { id: note.id },
-    data: {
-      status: "DRAFT_AI_ASSISTED",
-      aiAssisted: true,
-      aiRawResponse: JSON.stringify(result).slice(0, 8000),
-      motivoConsulta: result.sections.motivoConsulta ?? undefined,
-      notaClinica: result.sections.notaClinica ?? undefined,
-      examenFisico: result.sections.examenFisico ?? undefined,
-      valoracionClinica: result.sections.valoracionClinica ?? undefined,
-      planIndicaciones: result.sections.planIndicaciones ?? undefined,
-      unclassifiedContent: result.unclassifiedContent ?? undefined,
-    },
-  });
+  // CAS update (Fase 7): si nadie tocó la nota durante la generación,
+  // updatedAt coincide y el write aplica; si no, Prisma lanza P2025.
+  let updated: ClinicalNote;
+  try {
+    updated = await context.entities.ClinicalNote.update({
+      where: { id: note.id, updatedAt: new Date(expectedUpdatedAt) },
+      data: {
+        status: "DRAFT_AI_ASSISTED",
+        aiAssisted: true,
+        motivoConsulta: result.sections.motivoConsulta ?? undefined,
+        notaClinica: result.sections.notaClinica ?? undefined,
+        examenFisico: result.sections.examenFisico ?? undefined,
+        valoracionClinica: result.sections.valoracionClinica ?? undefined,
+        planIndicaciones: result.sections.planIndicaciones ?? undefined,
+        unclassifiedContent: result.unclassifiedContent ?? undefined,
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === "P2025") {
+      throw new HttpError(
+        409,
+        "El documento fue modificado mientras la IA procesaba. Recarga para ver los cambios.",
+      );
+    }
+    throw err;
+  }
 
   await createAuditEntry({
     userId: user.id,
@@ -267,7 +307,7 @@ export const requestAIStructuring: RequestAIStructuring<
     resourceId: note.id,
     patientId: note.patientId,
     clinicalNoteId: note.id,
-    metadata: { status: "DRAFT_AI_ASSISTED" },
+    metadata: { source: "AI", status: "DRAFT_AI_ASSISTED" },
   });
 
   return updated;
@@ -417,6 +457,100 @@ export const createNoteAddendum: CreateNoteAddendum<
 };
 
 // ---------------------------------------------------------------------------
+// generateAddendumDraft (IA asistiva, Fase 3): borrador de adenda de nota
+// a partir del documento confirmado + instrucción del profesional.
+// Exclusivamente asistivo: crea SIEMPRE un DRAFT_AI_ASSISTED editable.
+// ---------------------------------------------------------------------------
+
+const generateAddendumDraftInputSchema = z.object({
+  parentNoteId: z.string().min(1),
+  instruction: z.string().min(1).max(4000),
+  // Token CAS sobre el padre confirmado visto por el cliente (ISO).
+  expectedUpdatedAt: z.string().min(1),
+});
+
+type GenerateAddendumDraftInput = z.infer<
+  typeof generateAddendumDraftInputSchema
+>;
+
+export const generateAddendumDraftAction: GenerateAddendumDraft<
+  GenerateAddendumDraftInput,
+  ClinicalNote
+> = async (rawArgs, context) => {
+  const user = ensureMedico(context.user);
+
+  const { parentNoteId, instruction, expectedUpdatedAt } =
+    ensureArgsSchemaOrThrowHttpError(generateAddendumDraftInputSchema, rawArgs);
+
+  const parent = await context.entities.ClinicalNote.findUnique({
+    where: { id: parentNoteId },
+  });
+  if (!parent) {
+    throw new HttpError(404, "Nota original no encontrada");
+  }
+  if (parent.status !== "CONFIRMED") {
+    throw new HttpError(
+      409,
+      "Solo se pueden crear adendas sobre notas confirmadas",
+    );
+  }
+  await assertMedicoPatientAccess(user.id, parent.patientId);
+
+  // Fail-fast si el padre cambió desde que el cliente lo consultó.
+  if (parent.updatedAt.getTime() !== new Date(expectedUpdatedAt).getTime()) {
+    throw new HttpError(
+      409,
+      "El documento fue modificado mientras la IA procesaba. Recarga para ver los cambios.",
+    );
+  }
+
+  let result;
+  try {
+    result = await generateAddendumDraft(parent.originalText, instruction);
+  } catch (err) {
+    mapAIServiceError(err);
+  }
+
+  const addendum = await context.entities.ClinicalNote.create({
+    data: {
+      patientId: parent.patientId,
+      authorId: user.id,
+      // RNF-004: se preserva la instrucción del profesional como texto fuente
+      // inmutable de la adenda; las secciones IA quedan como borrador editable.
+      originalText: instruction,
+      status: "DRAFT_AI_ASSISTED",
+      aiAssisted: true,
+      noteType: "ADDENDUM",
+      parentNoteId: parent.id,
+      addendumReason: instruction,
+      motivoConsulta: result.sections.motivoConsulta ?? undefined,
+      notaClinica: result.sections.notaClinica ?? undefined,
+      examenFisico: result.sections.examenFisico ?? undefined,
+      valoracionClinica: result.sections.valoracionClinica ?? undefined,
+      planIndicaciones: result.sections.planIndicaciones ?? undefined,
+      unclassifiedContent: result.unclassifiedContent ?? undefined,
+    },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "CREATE_ADDENDUM",
+    resourceType: "NOTE",
+    resourceId: addendum.id,
+    patientId: parent.patientId,
+    clinicalNoteId: addendum.id,
+    metadata: {
+      source: "AI",
+      status: "DRAFT_AI_ASSISTED",
+      parentNoteId: parent.id,
+      noteType: "ADDENDUM",
+    },
+  });
+
+  return addendum;
+};
+
+// ---------------------------------------------------------------------------
 // generateEpicrisisDraft
 // ---------------------------------------------------------------------------
 
@@ -458,11 +592,8 @@ export const generateEpicrisisDraft: GenerateEpicrisisDraft<
     result = await generateEpicrisisFromHistory(
       confirmedNotes.map((n) => n.originalText),
     );
-  } catch (err: any) {
-    throw new HttpError(
-      504,
-      err?.message ?? "El servicio de IA no está disponible",
-    );
+  } catch (err) {
+    mapAIServiceError(err);
   }
 
   const patient = await context.entities.SyntheticPatient.findUnique({
@@ -499,6 +630,7 @@ export const generateEpicrisisDraft: GenerateEpicrisisDraft<
     resourceId: epicrisis.id,
     patientId,
     epicrisisId: epicrisis.id,
+    metadata: { source: "AI", status: "DRAFT_AI_ASSISTED" },
   });
 
   return epicrisis;
