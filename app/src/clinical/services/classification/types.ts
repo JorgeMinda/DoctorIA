@@ -29,10 +29,14 @@ export type ICD11TokenCache = {
 export type ICD11SearchResponse = {
   destinationEntities?: Array<{
     id?: string;
+    stemId?: string;
     code?: string;
-    title?: {
-      "@value"?: string;
-    };
+    theCode?: string;
+    title?:
+      | string
+      | {
+          "@value"?: string;
+        };
     iris?: string[];
   }>;
 };

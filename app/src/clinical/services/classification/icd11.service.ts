@@ -188,6 +188,7 @@ export async function searchICD11(
         Authorization: `Bearer ${token}`,
         Accept: "application/json",
         "Accept-Language": language,
+        "API-Version": "v2",
       },
       signal: controller.signal,
     });
@@ -210,15 +211,35 @@ export async function searchICD11(
 
     const data = (await response.json()) as ICD11SearchResponse;
 
-    // Normalizar resultados
+    // Normalizar resultados (soporta API v2 theCode, id, string titles con HTML)
     const entities = data.destinationEntities ?? [];
-    return entities
-      .filter((e) => e.code && e.title?.["@value"])
-      .map((e) => ({
-        code: e.code!,
-        title: e.title!["@value"]!,
-        uri: e.iris?.[0] ?? `${baseUrl}/icd/release/11/${release}/mms/${e.code}`,
-      }));
+    const results: ICD11Result[] = [];
+
+    for (const e of entities) {
+      const code = e.theCode || e.code;
+      let title = "";
+      if (typeof e.title === "string") {
+        title = e.title.replace(/<[^>]*>?/gm, "").trim();
+      } else if (e.title && typeof e.title["@value"] === "string") {
+        title = e.title["@value"].replace(/<[^>]*>?/gm, "").trim();
+      }
+
+      if (code && title) {
+        const uri =
+          e.iris?.[0] ||
+          (e.id?.startsWith("http") ? e.id : undefined) ||
+          (e.stemId?.startsWith("http") ? e.stemId : undefined) ||
+          `${baseUrl}/icd/release/11/${release}/mms/${code}`;
+
+        results.push({
+          code,
+          title,
+          uri,
+        });
+      }
+    }
+
+    return results;
   } catch (err: any) {
     if (err.name === "AbortError") {
       throw new Error(
