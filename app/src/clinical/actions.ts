@@ -1334,7 +1334,7 @@ export const createVitalSignAction: CreateVitalSignAction<
     }
   }
 
-  const created = await context.entities.vitalSign.create({
+  const created = await context.entities.VitalSign.create({
     data: {
       patientId,
       citaId: citaId ?? undefined,
