@@ -190,7 +190,7 @@ export const clinicalSpec: Spec = [
     ],
   }),
   action(manageCita, {
-    entities: ["Cita", "User", "SyntheticPatient", "AuditLog"],
+    entities: ["Cita", "User", "SyntheticPatient", "MedicoPatientAccess", "AuditLog"],
   }),
   action(updateCitaStatus, {
     entities: ["Cita", "AuditLog"],
