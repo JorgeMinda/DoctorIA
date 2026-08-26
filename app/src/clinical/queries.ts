@@ -161,19 +161,6 @@ export const getPatientById: GetPatientById<
     await assertMedicoPatientAccess(user.id, patientId);
   }
 
-  // Regla crítica: la secretaria NO recibe contenido de notas (ni siquiera
-  // preview). Se devuelve el paciente + citas + conteos, pero sin latestNotes.
-  if ((user as any).isSecretaria && !user.isMedico && !user.isAdmin) {
-    return {
-      patient,
-      noteCount,
-      latestNotes: [],
-      epicrisisCount,
-      citaCount,
-      latestCitas,
-    };
-  }
-
   const patient = await context.entities.SyntheticPatient.findUnique({
     where: { id: patientId },
   });
@@ -217,6 +204,19 @@ export const getPatientById: GetPatientById<
         },
       }),
     ]);
+
+  // Regla crítica: la secretaria NO recibe contenido de notas (ni siquiera
+  // preview). Se devuelve el paciente + citas + conteos, pero sin latestNotes.
+  if ((user as any).isSecretaria && !user.isMedico && !user.isAdmin) {
+    return {
+      patient,
+      noteCount,
+      latestNotes: [],
+      epicrisisCount,
+      citaCount,
+      latestCitas,
+    };
+  }
 
   // Audit VIEW_PATIENT (contracts Â§1)
   await createAuditEntry({
@@ -1395,17 +1395,17 @@ type GetSecretaryAuditLogInput = z.infer<
   typeof secretaryAuditLogInputSchema
 >;
 
-export interface SecretaryAuditLogEntry {
+export type SecretaryAuditLogEntry = {
   id: string;
   createdAt: Date;
   action: string;
   resourceType: string;
   resourceId: string | null;
-  metadata: any;
+  metadata: Record<string, any> | null;
   patientId: string | null;
   citaId: string | null;
   user: { id: string; fullName: string | null } | null;
-}
+};
 
 export const getSecretaryAuditLog: GetSecretaryAuditLog<
   GetSecretaryAuditLogInput,

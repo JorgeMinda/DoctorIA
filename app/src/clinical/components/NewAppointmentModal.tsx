@@ -55,7 +55,7 @@ export function NewAppointmentModal({
     getAvailableSlots,
     medicoId && date
       ? { medicoId, date, durationMinutes: Number(duration) }
-      : null,
+      : undefined,
   );
 
   const createCitaFn = useAction(manageCita);

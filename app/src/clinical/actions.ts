@@ -39,7 +39,6 @@ import type {
   RecordEpicrisisExport,
   CreateVitalSignAction,
   CreatePreClinicalRecord,
-  CreatePreClinicalRecordAction,
 } from "wasp/server/operations";
 import * as z from "zod";
 import type { CitaStatus, PreClinicalRecord } from "@prisma/client";
@@ -1389,7 +1388,7 @@ const preClinicalRecordInputSchema = vitalSignInputSchema.extend({
 
 type CreatePreClinicalRecordInput = z.infer<typeof preClinicalRecordInputSchema>;
 
-export const createPreClinicalRecord: CreatePreClinicalRecordAction<
+export const createPreClinicalRecord: CreatePreClinicalRecord<
   CreatePreClinicalRecordInput,
   PreClinicalRecord
 > = async (rawArgs, context) => {
