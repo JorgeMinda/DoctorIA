@@ -15,6 +15,7 @@ import type {
   GetAuditLog,
   GetVoiceAssistantResponse,
   GetVitalSigns,
+  GetAvailableSlots,
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
@@ -34,6 +35,11 @@ import {
   type VoiceAssistantResponse,
   type VoicePatientMatch,
 } from "./services/voiceAssistant";
+import {
+  buildDaySlots,
+  filterFreeSlots,
+  getOccupiedSlots,
+} from "./services/appointmentAvailability";
 
 // ---------------------------------------------------------------------------
 // getPatients
@@ -1096,4 +1102,63 @@ export const getVitalSigns: GetVitalSigns<
     totalPages: Math.ceil(total / pageSize),
   };
 };
+
+// ---------------------------------------------------------------------------
+// getAvailableSlots (Médico, Secretaria o Admin) - huecos libres de un médico
+// en un día. Estados bloqueantes (SCHEDULED/IN_PROGRESS) descartan sus slots.
+// ---------------------------------------------------------------------------
+
+const getAvailableSlotsInputSchema = z.object({
+  medicoId: z.string().min(1),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha en formato YYYY-MM-DD"),
+  durationMinutes: z.number().int().positive().max(240).optional(),
+});
+
+type GetAvailableSlotsInput = z.infer<typeof getAvailableSlotsInputSchema>;
+
+type GetAvailableSlotsOutput = {
+  medicoId: string;
+  date: string;
+  durationMinutes: number;
+  freeSlots: string[];
+  busyIntervals: { start: string; end: string }[];
+};
+
+export const getAvailableSlots: GetAvailableSlots<
+  GetAvailableSlotsInput,
+  GetAvailableSlotsOutput
+> = async (rawArgs, context) => {
+  ensureRole(context.user, "admin", "medico", "secretaria");
+
+  const { medicoId, date, durationMinutes = 30 } =
+    ensureArgsSchemaOrThrowHttpError(getAvailableSlotsInputSchema, rawArgs);
+
+  const busy = await getOccupiedSlots({
+    citaDelegate: context.entities.Cita,
+    medicoId,
+    dateISO: date,
+  });
+
+  const freeSlots = filterFreeSlots(
+    buildDaySlots(durationMinutes),
+    date,
+    busy,
+    durationMinutes,
+    Date.now(),
+  );
+
+  return {
+    medicoId,
+    date,
+    durationMinutes,
+    freeSlots,
+    busyIntervals: busy.map((iv) => ({
+      start: new Date(iv.startMs).toISOString(),
+      end: new Date(iv.endMs).toISOString(),
+    })),
+  };
+};
+
 

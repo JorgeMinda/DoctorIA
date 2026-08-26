@@ -2,12 +2,15 @@
 // conflictos. Estados que BLOQUEAN un slot: SCHEDULED e IN_PROGRESS.
 // CANCELLED libera el hueco; COMPLETED / NO_SHOW / NOT_STARTED son históricos.
 
+import { HttpError } from "wasp/server";
+
 export const BLOCKING_CITA_STATUSES: ReadonlySet<string> = new Set([
   "SCHEDULED",
   "IN_PROGRESS",
 ]);
 
 export interface Interval {
+  id?: string;
   startMs: number;
   endMs: number;
 }
@@ -50,4 +53,62 @@ export function filterFreeSlots(
     if (startMs <= nowMs) return false;
     return !hasConflict(busy, startMs, startMs + durationMinutes * 60_000);
   });
+}
+
+// Convierte citas bloqueantes en intervalos [start, end).
+export function citasToIntervals(
+  citas: { id?: string; scheduledAt: Date | string; durationMinutes: number }[],
+): Interval[] {
+  return citas.map((c) => {
+    const startMs = new Date(c.scheduledAt).getTime();
+    return { id: c.id, startMs, endMs: startMs + c.durationMinutes * 60_000 };
+  });
+}
+
+// Intervalos ocupados de un médico en un día (solo estados bloqueantes).
+// dateISO = "YYYY-MM-DD" (misma zona que se usa para mostrar los slots).
+export async function getOccupiedSlots(args: {
+  citaDelegate: any;
+  medicoId: string;
+  dateISO: string;
+}): Promise<Interval[]> {
+  const dayStart = new Date(`${args.dateISO}T00:00:00.000Z`);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const citas = await args.citaDelegate.findMany({
+    where: {
+      medicoId: args.medicoId,
+      status: { in: [...BLOCKING_CITA_STATUSES] },
+      scheduledAt: { gte: dayStart, lt: dayEnd },
+    },
+    select: { id: true, scheduledAt: true, durationMinutes: true },
+  });
+  return citasToIntervals(citas);
+}
+
+// Lanza HttpError(409) si el nuevo intervalo solapa con uno ocupado.
+// excludeCitaId permite ignorar la propia cita al reagendar.
+export async function validateNoOverlap(args: {
+  citaDelegate: any;
+  medicoId: string;
+  scheduledAt: Date | string;
+  durationMinutes: number;
+  excludeCitaId?: string;
+}): Promise<void> {
+  const dateISO = new Date(args.scheduledAt).toISOString().slice(0, 10);
+  const busy = await getOccupiedSlots({
+    citaDelegate: args.citaDelegate,
+    medicoId: args.medicoId,
+    dateISO,
+  });
+  const startMs = new Date(args.scheduledAt).getTime();
+  const endMs = startMs + args.durationMinutes * 60_000;
+  const conflict = busy.some(
+    (iv) =>
+      iv.id !== args.excludeCitaId &&
+      iv.startMs < endMs &&
+      iv.endMs > startMs,
+  );
+  if (conflict) {
+    throw new HttpError(409, "El médico ya tiene una cita en ese horario");
+  }
 }

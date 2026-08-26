@@ -17,7 +17,8 @@ export const CITA_STATUS_LABELS: Record<string, string> = {
   IN_PROGRESS: "En curso",
   COMPLETED: "Completada",
   CANCELLED: "Cancelada",
-  NO_SHOW: "No asistió",
+  NO_SHOW: "No asistio",
+  NOT_STARTED: "No iniciada",
 };
 
 export const AUDIT_ACTION_LABELS: Record<string, string> = {

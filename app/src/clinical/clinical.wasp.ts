@@ -38,6 +38,7 @@ import {
   getPatients,
   getVoiceAssistantResponse,
   getVitalSigns,
+  getAvailableSlots,
 } from "./queries" with { type: "ref" };
 
 import { ClinicalAdminPage } from "./pages/ClinicalAdminPage" with { type: "ref" };
@@ -77,6 +78,9 @@ export const clinicalSpec: Spec = [
   }),
   query(getVitalSigns, {
     entities: ["VitalSign", "SyntheticPatient", "MedicoPatientAccess"],
+  }),
+  query(getAvailableSlots, {
+    entities: ["Cita"],
   }),
   query(adminGetPatients, {
     entities: ["SyntheticPatient", "MedicoPatientAccess", "User"],
