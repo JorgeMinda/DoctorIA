@@ -43,7 +43,7 @@ export interface CreateAuditEntryArgs {
   action: AuditAction;
   resourceType: AuditResourceType;
   resourceId?: string | null;
-  metadata?: Record<string, string> | null;
+  metadata?: Record<string, string | null> | null;
   patientId?: string | null;
   clinicalNoteId?: string | null;
   epicrisisId?: string | null;
