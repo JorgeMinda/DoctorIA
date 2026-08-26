@@ -17,6 +17,9 @@ import type {
   GetVitalSigns,
   GetAvailableSlots,
   GetEpicrisisForPrint,
+  GetSecretaryAuditLog,
+  GetPreClinicalRecord,
+  GetPrintableEpicrises,
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
@@ -24,6 +27,8 @@ import {
   ensureMedico,
   ensureAdmin,
   ensureRole,
+  ensureSecretaria,
+  ensureSecretariaOrMedico,
   getActiveClinicalRole,
   ensurePatientViewer,
 } from "./services/guards";
@@ -156,6 +161,19 @@ export const getPatientById: GetPatientById<
     await assertMedicoPatientAccess(user.id, patientId);
   }
 
+  // Regla crítica: la secretaria NO recibe contenido de notas (ni siquiera
+  // preview). Se devuelve el paciente + citas + conteos, pero sin latestNotes.
+  if ((user as any).isSecretaria && !user.isMedico && !user.isAdmin) {
+    return {
+      patient,
+      noteCount,
+      latestNotes: [],
+      epicrisisCount,
+      citaCount,
+      latestCitas,
+    };
+  }
+
   const patient = await context.entities.SyntheticPatient.findUnique({
     where: { id: patientId },
   });
@@ -281,6 +299,13 @@ export const getPatientHistory: GetPatientHistory<
     await assertMedicoPatientAccess(user.id, patientId);
   }
 
+  // Regla crítica: la secretaria NUNCA accede a notas ni epicrisis (solo
+  // registro pre-clínico). Se devuelve vacío como defensa en profundidad;
+  // la UI también oculta estas secciones para el rol secretaria.
+  if ((user as any).isSecretaria && !user.isMedico && !user.isAdmin) {
+    return { notes: [], epicrises: [] };
+  }
+
   const authorSelect = { fullName: true, username: true, email: true };
 
   const [notes, epicrises] = await Promise.all([
@@ -324,6 +349,72 @@ export const getPatientHistory: GetPatientHistory<
     notes: notes as HistoryNote[],
     epicrises: epicrises as HistoryEpicrisis[],
   };
+};
+
+// ---------------------------------------------------------------------------
+// getPreClinicalRecord (Médico / Secretaria) - lectura del registro pre-clínico
+// ligado a una cita (1:1). Sin contenido clínico (desacoplado de la historia).
+// ---------------------------------------------------------------------------
+
+const getPreClinicalRecordInputSchema = z.object({
+  citaId: z.string().min(1),
+});
+
+type GetPreClinicalRecordInput = z.infer<
+  typeof getPreClinicalRecordInputSchema
+>;
+
+export const getPreClinicalRecord: GetPreClinicalRecord<
+  GetPreClinicalRecordInput,
+  any
+> = async (rawArgs, context) => {
+  ensureSecretariaOrMedico(context.user);
+
+  const { citaId } = ensureArgsSchemaOrThrowHttpError(
+    getPreClinicalRecordInputSchema,
+    rawArgs,
+  );
+
+  const rec = await context.entities.PreClinicalRecord.findUnique({
+    where: { citaId },
+  });
+  return rec;
+};
+
+// ---------------------------------------------------------------------------
+// getPrintableEpicrises (Médico / Secretaria) - lista de epicrises CONFIRMED de
+// un paciente (solo metadatos id/fecha/tipo) para la acción de impresión. El
+// contenido completo se entrega vía getEpicrisisForPrint al imprimir.
+// ---------------------------------------------------------------------------
+
+const getPrintableEpicrisesInputSchema = z.object({
+  patientId: z.string().min(1),
+});
+
+type GetPrintableEpicrisesInput = z.infer<
+  typeof getPrintableEpicrisesInputSchema
+>;
+
+export const getPrintableEpicrises: GetPrintableEpicrises<
+  GetPrintableEpicrisesInput,
+  any[]
+> = async (rawArgs, context) => {
+  // Metadatos (ids/fechas) de epicrises confirmadas para la acción de impresión.
+  // Incluye admin (superusuario) para evitar errores de fondo en la vista de
+  // detalle; el contenido completo sigue restringido a secretaria||medico.
+  ensureRole(context.user, "admin", "medico", "secretaria");
+
+  const { patientId } = ensureArgsSchemaOrThrowHttpError(
+    getPrintableEpicrisesInputSchema,
+    rawArgs,
+  );
+
+  const rows = await context.entities.Epicrisis.findMany({
+    where: { patientId, status: "CONFIRMED" },
+    orderBy: { dateTime: "desc" },
+    select: { id: true, dateTime: true, noteType: true },
+  });
+  return rows;
 };
 
 // ---------------------------------------------------------------------------
@@ -1211,8 +1302,8 @@ export const getEpicrisisForPrint: GetEpicrisisForPrint<
   GetEpicrisisForPrintInput,
   GetEpicrisisForPrintOutput
 > = async (rawArgs, context) => {
-  // P3: secretaría solo imprime; médico/admin también. Sin rol clínico => 403.
-  const viewer = ensureRole(context.user, "admin", "medico", "secretaria");
+  // P3: secretaría solo imprime; médico también. Admin NO (RBAC estricto).
+  const viewer = ensureSecretariaOrMedico(context.user);
 
   const { epicrisisId } = ensureArgsSchemaOrThrowHttpError(
     getEpicrisisForPrintInputSchema,
@@ -1278,6 +1369,69 @@ export const getEpicrisisForPrint: GetEpicrisisForPrint<
       lastName: epicrisis.patient.lastName,
     },
   };
+};
+
+// ---------------------------------------------------------------------------
+// getSecretaryAuditLog (Secretaria) - trail administrativo: citas, registro
+// pre-clínico, signos vitales, inicio/cancelación. Solo metadata (RNF-002).
+// ---------------------------------------------------------------------------
+
+const SECRETARY_AUDIT_ACTIONS = [
+  "MANAGE_CITA",
+  "REGISTER_PRE_CLINICAL_DATA",
+  "REGISTER_VITAL_SIGNS",
+  "START_APPOINTMENT",
+  "CANCEL_APPOINTMENT",
+  "MARK_NO_SHOW",
+];
+
+const secretaryAuditLogInputSchema = z.object({
+  take: z.number().int().min(1).max(200).optional(),
+  citaId: z.string().optional(),
+  patientId: z.string().optional(),
+});
+
+type GetSecretaryAuditLogInput = z.infer<
+  typeof secretaryAuditLogInputSchema
+>;
+
+export interface SecretaryAuditLogEntry {
+  id: string;
+  createdAt: Date;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  metadata: any;
+  patientId: string | null;
+  citaId: string | null;
+  user: { id: string; fullName: string | null } | null;
+}
+
+export const getSecretaryAuditLog: GetSecretaryAuditLog<
+  GetSecretaryAuditLogInput,
+  SecretaryAuditLogEntry[]
+> = async (rawArgs, context) => {
+  ensureSecretaria(context.user);
+
+  const { take, citaId, patientId } = ensureArgsSchemaOrThrowHttpError(
+    secretaryAuditLogInputSchema,
+    rawArgs,
+  );
+
+  const where: any = {
+    action: { in: SECRETARY_AUDIT_ACTIONS },
+  };
+  if (citaId) where.citaId = citaId;
+  if (patientId) where.patientId = patientId;
+
+  const logs = await prisma.auditLog.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: take ?? 50,
+    include: { user: { select: { id: true, fullName: true } } },
+  });
+
+  return logs as SecretaryAuditLogEntry[];
 };
 
 

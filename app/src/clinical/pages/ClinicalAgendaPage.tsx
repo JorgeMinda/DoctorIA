@@ -10,6 +10,7 @@ import {
   Clock,
   FileCheck2,
   PhoneMissed,
+  Plus,
   ShieldAlert,
   Users,
   XCircle,
@@ -24,7 +25,7 @@ import {
 import { Badge } from "../../client/components/ui/badge";
 import { toast } from "../../client/hooks/use-toast";
 import { citaStatusLabel } from "../services/statusLabels";
-import { SecretaryCitaPanel } from "../components/SecretaryCitaPanel";
+import { NewAppointmentModal } from "../components/NewAppointmentModal";
 
 function citaBadgeVariant(status: string) {
   if (status === "COMPLETED") return "success";
@@ -55,6 +56,7 @@ function metricTile(value: number | string, label: string) {
 export function ClinicalAgendaPage() {
   const { data: user } = useAuth();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [showNewCita, setShowNewCita] = useState(false);
 
   const { data: agenda, isLoading } = useQuery(getAgenda, {});
   const updateStatusFn = useAction(updateCitaStatus);
@@ -96,6 +98,9 @@ export function ClinicalAgendaPage() {
 
   // Secretaria/admin gestionan citas desde el panel de creación.
   if (!isMedicoView) {
+    const scheduled = (agenda?.citas ?? []).filter(
+      (c) => c.status === "SCHEDULED",
+    );
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
@@ -109,7 +114,106 @@ export function ClinicalAgendaPage() {
             Programa citas para los profesionales médicos.
           </p>
         </div>
-        <SecretaryCitaPanel />
+
+        <Card className="overflow-hidden border-outline-variant">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="flex items-center justify-between text-base font-semibold">
+              <span className="flex items-center gap-2">
+                <CalendarClock className="size-4 text-primary" />
+                Citas agendadas
+              </span>
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setShowNewCita(true)}
+              >
+                <Plus className="size-4" />
+                Nueva cita
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {scheduled.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground">
+                No hay citas agendadas.
+              </div>
+            )}
+            <div className="divide-y divide-outline-variant/40">
+              {scheduled.map((cita) => (
+                <div
+                  key={cita.id}
+                  className="flex flex-wrap items-center gap-4 px-5 py-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        {cita.patient.firstName} {cita.patient.lastName}
+                      </span>
+                      <Badge variant="outline" className="mono-label">
+                        {cita.patient.syntheticId}
+                      </Badge>
+                      <CitaBadge status={cita.status} />
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="size-3.5" />
+                        {new Date(cita.scheduledAt).toLocaleString()}
+                      </span>
+                      <span>· {cita.durationMinutes} min</span>
+                      {cita.reason && <span>· {cita.reason}</span>}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={busyId === cita.id}
+                      onClick={() =>
+                        runTransition(cita.id, "IN_PROGRESS", "Cita iniciada")
+                      }
+                    >
+                      <Activity className="size-4" />
+                      Iniciar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busyId === cita.id}
+                      onClick={() =>
+                        runTransition(
+                          cita.id,
+                          "NO_SHOW",
+                          "Registrado: no asistió",
+                        )
+                      }
+                    >
+                      <PhoneMissed className="size-4" />
+                      No asistió
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busyId === cita.id}
+                      onClick={() =>
+                        runTransition(cita.id, "CANCELLED", "Cita cancelada")
+                      }
+                    >
+                      <XCircle className="size-4" />
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {showNewCita && (
+          <NewAppointmentModal
+            open={showNewCita}
+            onOpenChange={setShowNewCita}
+            onDone={() => {}}
+          />
+        )}
       </div>
     );
   }

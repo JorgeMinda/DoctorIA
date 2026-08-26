@@ -38,14 +38,17 @@ import type {
   DeleteClinicalNote,
   RecordEpicrisisExport,
   CreateVitalSignAction,
+  CreatePreClinicalRecord,
+  CreatePreClinicalRecordAction,
 } from "wasp/server/operations";
 import * as z from "zod";
-import type { CitaStatus } from "@prisma/client";
+import type { CitaStatus, PreClinicalRecord } from "@prisma/client";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
 import {
   ensureMedico,
   ensureAdmin,
   ensureRole,
+  ensureSecretaria,
   ensureClinicalStaff,
   getActiveClinicalRole,
 } from "./services/guards";
@@ -1377,6 +1380,98 @@ type AdminUpdateMedicoUserInput = z.infer<
   typeof adminUpdateMedicoUserInputSchema
 >;
 
+// createPreClinicalRecord (Secretaria) - Registro pre-clínico ligado 1:1 a la cita.
+// ESTRICTO: solo citas SCHEDULED, un registro por cita, sin contenido clínico.
+const preClinicalRecordInputSchema = vitalSignInputSchema.extend({
+  citaId: z.string().min(1),
+  motivoConsulta: z.string().min(1).max(500),
+});
+
+type CreatePreClinicalRecordInput = z.infer<typeof preClinicalRecordInputSchema>;
+
+export const createPreClinicalRecord: CreatePreClinicalRecordAction<
+  CreatePreClinicalRecordInput,
+  PreClinicalRecord
+> = async (rawArgs, context) => {
+  const user = ensureSecretaria(context.user);
+
+  const args = ensureArgsSchemaOrThrowHttpError(
+    preClinicalRecordInputSchema,
+    rawArgs,
+  );
+  validateVitalSignRanges(args);
+
+  const cita = await context.entities.Cita.findUnique({
+    where: { id: args.citaId },
+    select: { id: true, status: true, patientId: true },
+  });
+  if (!cita) {
+    throw new HttpError(404, "Cita no encontrada");
+  }
+  if (cita.status !== "SCHEDULED") {
+    throw new HttpError(
+      409,
+      "El registro pre-clínico solo se permite en citas agendadas (SCHEDULED)",
+    );
+  }
+  if (cita.patientId !== args.patientId) {
+    throw new HttpError(
+      400,
+      "La cita indicada no pertenece a este paciente",
+    );
+  }
+
+  const patient = await context.entities.SyntheticPatient.findUnique({
+    where: { id: args.patientId },
+    select: { id: true, isActive: true },
+  });
+  if (!patient) {
+    throw new HttpError(404, "Paciente no encontrado");
+  }
+  if (patient.isActive === false) {
+    throw new HttpError(409, "El paciente está inactivo");
+  }
+
+  const existing = await context.entities.PreClinicalRecord.findUnique({
+    where: { citaId: args.citaId },
+  });
+  if (existing) {
+    throw new HttpError(
+      409,
+      "Ya existe un registro pre-clínico para esta cita",
+    );
+  }
+
+  const created = await context.entities.PreClinicalRecord.create({
+    data: {
+      citaId: args.citaId,
+      patientId: args.patientId,
+      recordedById: user.id,
+      motivoConsulta: args.motivoConsulta,
+      systolicBP: args.systolicBP,
+      diastolicBP: args.diastolicBP,
+      heartRate: args.heartRate,
+      temperature: args.temperature,
+      respiratoryRate: args.respiratoryRate,
+      oxygenSaturation: args.oxygenSaturation,
+      weight: args.weight,
+      height: args.height,
+    },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "REGISTER_PRE_CLINICAL_DATA",
+    resourceType: "CITA",
+    resourceId: created.id,
+    patientId: created.patientId,
+    citaId: created.citaId,
+    metadata: { registeredByRole: "secretaria" },
+  });
+
+  return created;
+};
+
 export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
   AdminUpdateMedicoUserInput,
   User
@@ -1575,6 +1670,7 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
         durationMinutes: data.durationMinutes ?? 30,
         status: citaStatus,
         reason: data.reason ?? undefined,
+        secretaryId: user.id,
       },
     });
     await createAuditEntry({
@@ -1741,7 +1837,12 @@ export const updateCitaStatus: UpdateCitaStatus<
   }
 
   // Matriz por rol: la secretaria solo maneja estados administrativos.
-  const SECRETARIA_TARGETS = ["CANCELLED", "NO_SHOW", "NOT_STARTED"];
+  const SECRETARIA_TARGETS = [
+    "CANCELLED",
+    "NO_SHOW",
+    "NOT_STARTED",
+    "IN_PROGRESS",
+  ];
   if (
     role === "secretaria" &&
     !SECRETARIA_TARGETS.includes(status)

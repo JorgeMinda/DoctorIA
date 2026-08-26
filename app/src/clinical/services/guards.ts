@@ -109,6 +109,16 @@ export function ensureClinicalStaff(
   return ensureRole(user, "medico", "secretaria");
 }
 
+// Médico O secretaria (sin admin). Acceso combinado para registro pre-clínico,
+// visualización de pre-clínico y epicrisis. RBAC estricto: admin es rol
+// separado y NO entra aquí (defensa en profundidad; coherente con
+// createVitalSignAction, que tampoco admite admin).
+export function ensureSecretariaOrMedico(
+  user: AuthUser | null | undefined,
+): AuthUser {
+  return ensureRole(user, "medico", "secretaria");
+}
+
 // Sesión válida (sin chequeo de rol ni de estado): solo autenticación.
 // NO usar para operaciones clínicas — usar ensureRole/guards específicos.
 export function ensureAuthenticated(user: AuthUser | null | undefined): AuthUser {

@@ -21,6 +21,7 @@ import {
   manageSyntheticPatients,
   recordEpicrisisExport,
   createVitalSignAction,
+  createPreClinicalRecord,
   requestAIStructuring,
   updateClinicalNoteDraft,
   updateCitaStatus,
@@ -40,6 +41,7 @@ import {
   getVitalSigns,
   getAvailableSlots,
   getEpicrisisForPrint,
+  getSecretaryAuditLog,
 } from "./queries" with { type: "ref" };
 
 import { ClinicalAdminPage } from "./pages/ClinicalAdminPage" with { type: "ref" };
@@ -84,6 +86,15 @@ export const clinicalSpec: Spec = [
     entities: ["Cita"],
   }),
   query(getEpicrisisForPrint, {
+    entities: ["Epicrisis", "SyntheticPatient"],
+  }),
+  query(getSecretaryAuditLog, {
+    entities: ["AuditLog", "User"],
+  }),
+  query(getPreClinicalRecord, {
+    entities: ["PreClinicalRecord", "Cita", "SyntheticPatient", "User"],
+  }),
+  query(getPrintableEpicrises, {
     entities: ["Epicrisis", "SyntheticPatient"],
   }),
   query(adminGetPatients, {
@@ -140,6 +151,9 @@ export const clinicalSpec: Spec = [
   }),
   action(createVitalSignAction, {
     entities: ["VitalSign", "SyntheticPatient", "Cita", "MedicoPatientAccess", "AuditLog"],
+  }),
+  action(createPreClinicalRecord, {
+    entities: ["PreClinicalRecord", "Cita", "SyntheticPatient", "User", "AuditLog"],
   }),
   action(createEpicrisisAddendum, {
     entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],

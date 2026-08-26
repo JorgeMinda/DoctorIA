@@ -54,7 +54,9 @@ model User {
   authorizedPatients   MedicoPatientAccess[] @relation("MedicoAccess")
   grantedAccesses      MedicoPatientAccess[] @relation("AccessGranter")
   citasAsMedico        Cita[]         @relation("MedicoCitas")
+  scheduledCitas       Cita[]         @relation("CitaSecretary")
   recordedVitalSigns   VitalSign[]    @relation("VitalSignRecorder")
+  recordedPreClinicalRecords PreClinicalRecord[] @relation("PreClinicalRecorder")
 }
 
 // ─────────────── PACIENTES SINTÉTICOS (solo datos ficticios, P5) ───────────────
@@ -94,6 +96,7 @@ model SyntheticPatient {
   citas             Cita[]
   auditLogs         AuditLog[]
   vitalSigns        VitalSign[]
+  preClinicalRecords PreClinicalRecord[]
 
   @@index([syntheticId])
   @@index([lastName, firstName])
@@ -143,10 +146,15 @@ model Cita {
 
   status CitaStatus @default(SCHEDULED)
 
+  // Trazabilidad: quién agendó/creó la cita (secretaria o admin).
+  secretaryId String?
+  secretary   User?    @relation("CitaSecretary", fields: [secretaryId], references: [id])
+
   reason String? // motivo de la cita (no clínico estructurado)
 
   auditLogs AuditLog[]
   vitalSigns VitalSign[]
+  preClinicalRecord PreClinicalRecord? @relation("CitaPreClinicalRecord")
 
   @@index([medicoId, scheduledAt])
   @@index([patientId, scheduledAt])
@@ -177,6 +185,41 @@ model VitalSign {
   height           Float // cm
 
   @@index([patientId, createdAt])
+}
+
+// ─────────────── REGISTRO PRE-CLÍNICO (Secretaria, ligado 1:1 a Cita) ─�──────────────
+// Dato administrativo previo a la atención médica. ESTRICTAMENTE desacoplado de la
+// Historia Clínica: NO contiene notas narrativas ni diagnósticos. Accesible por
+// secretaria, médico y admin; NUNCA expone contenido de ClinicalNote/Epicrisis.
+model PreClinicalRecord {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // Relación 1:1 con la cita (una secretaria registra un solo pre-clínico por cita).
+  citaId    String   @unique
+  cita      Cita     @relation("CitaPreClinicalRecord", fields: [citaId], references: [id])
+
+  patientId String
+  patient   SyntheticPatient @relation(fields: [patientId], references: [id])
+
+  recordedById String
+  recordedBy   User   @relation("PreClinicalRecorder", fields: [recordedById], references: [id])
+
+  // Motivo de consulta (registrado por secretaria, no clínico estructurado).
+  motivoConsulta String
+
+  // Signos vitales (validados contra rangos plausibles en la action/service).
+  systolicBP       Int
+  diastolicBP      Int
+  heartRate        Int
+  temperature      Float
+  respiratoryRate  Int
+  oxygenSaturation Int
+  weight           Float
+  height           Float
+
+  @@index([patientId, createdAt])
+  @@index([recordedById])
 }
 
 // ─────────────── NOTA CLÍNICA (estados + adendas, RF-005..RF-029) ───────────────

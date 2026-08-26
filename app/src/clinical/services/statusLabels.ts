@@ -34,6 +34,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   EXPORT_EPICRISIS_PDF: "Exportó epicrisis a PDF",
   PRINT_EPICRISIS: "Imprimió epicrisis",
   REGISTER_VITAL_SIGNS: "Registró signos vitales",
+  REGISTER_PRE_CLINICAL_DATA: "Registró registro pre-clínico",
   START_APPOINTMENT: "Inició cita",
   CANCEL_APPOINTMENT: "Canceló cita",
   MARK_NO_SHOW: "Marcó no asistió",
