@@ -37,7 +37,7 @@ import type {
   CreateNoteFromVoice,
   DeleteClinicalNote,
   RecordEpicrisisExport,
-  CreateVitalSign,
+  CreateVitalSignAction,
 } from "wasp/server/operations";
 import * as z from "zod";
 import type { CitaStatus } from "@prisma/client";
@@ -1217,7 +1217,7 @@ const adminCreateMedicoUserInputSchema = z.object({
   specialty: z.string().min(1).optional(),
   username: z.string().min(1).optional(),
   // B3: el admin puede crear también personal de secretaría.
-  role: z.enum(["medico", "secretaria"]).default("medico"),
+  role: z.enum(["medico", "secretaria"]).optional(),
 });
 
 type AdminCreateMedicoUserInput = z.infer<
@@ -1230,8 +1230,9 @@ export const adminCreateMedicoUser: AdminCreateMedicoUser<
 > = async (rawArgs, context) => {
   const user = ensureAdmin(context.user);
 
-  const { email, password, fullName, specialty, username, role } =
+  const { email, password, fullName, specialty, username, role: roleArg } =
     ensureArgsSchemaOrThrowHttpError(adminCreateMedicoUserInputSchema, rawArgs);
+  const role = roleArg ?? "medico";
 
   const existingUser = await context.entities.User.findUnique({
     where: { email },
@@ -1286,7 +1287,7 @@ const createVitalSignInputSchema = vitalSignInputSchema;
 
 type CreateVitalSignInput = z.infer<typeof createVitalSignInputSchema>;
 
-export const createVitalSignAction: CreateVitalSign<
+export const createVitalSignAction: CreateVitalSignAction<
   CreateVitalSignInput,
   VitalSign
 > = async (rawArgs, context) => {
