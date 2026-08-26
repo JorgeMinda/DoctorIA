@@ -522,16 +522,22 @@ export const getAuditLog: GetAuditLog<
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
 
-  // Scoping por rol (contracts Â§4)
-  // Admin: ve TODO el registro (incluye alta de pacientes, citas y notas).
+  // Scoping por rol (contracts §4)
+  // Admin: ve TODO el registro. Medico: sus notas/epicrisis/pacientes.
+  // Secretaria: registro funcional de su ambito (pacientes, citas, epicrisis, usuarios).
+  const role = getActiveClinicalRole(context.user);
   let where: any = {};
-  if (context.user.isMedico && !context.user.isAdmin) {
+  if (role === "medico") {
     where = {
       userId: context.user.id,
       resourceType: { in: ["PATIENT", "NOTE", "EPICRISIS"] },
     };
-  } else if (context.user.isAdmin && !context.user.isMedico) {
+  } else if (role === "admin") {
     where = {};
+  } else if (role === "secretaria") {
+    where = {
+      resourceType: { in: ["PATIENT", "CITA", "EPICRISIS", "USER", "SYSTEM"] },
+    };
   } else {
     throw new HttpError(403, "Rol inválido");
   }
