@@ -42,6 +42,8 @@ import {
   getAvailableSlots,
   getEpicrisisForPrint,
   getSecretaryAuditLog,
+  getPreClinicalRecord,
+  getPrintableEpicrises,
 } from "./queries" with { type: "ref" };
 
 import { ClinicalAdminPage } from "./pages/ClinicalAdminPage" with { type: "ref" };
