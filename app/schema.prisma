@@ -55,10 +55,6 @@ model User {
   grantedAccesses      MedicoPatientAccess[] @relation("AccessGranter")
   citasAsMedico        Cita[]         @relation("MedicoCitas")
   recordedVitalSigns   VitalSign[]    @relation("VitalSignRecorder")
-
-  // P3 / RBAC estricto: exclusión mutua de roles a nivel BD (defensa en
-  // profundidad junto a los guards de src/clinical/services/guards.ts).
-  @@check("NOT (is_admin AND is_medico) AND NOT (is_admin AND is_secretaria) AND NOT (is_medico AND is_secretaria)")
 }
 
 // ─────────────── PACIENTES SINTÉTICOS (solo datos ficticios, P5) ───────────────
