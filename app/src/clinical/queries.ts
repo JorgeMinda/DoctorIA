@@ -1,4 +1,4 @@
-﻿// Operaciones de consulta (Queries) del módulo clínico.
+// Operaciones de consulta (Queries) del módulo clínico.
 // contracts/clinical-operations.md Â§1, Â§4.
 
 import { HttpError, prisma } from "wasp/server";
@@ -442,6 +442,9 @@ type ClinicalNoteDetail = {
   sectionsNotApplicable: Record<string, string> | null;
   aiAssisted: boolean;
   unclassifiedContent: string | null;
+  cie11Code: string | null;
+  cie11Description: string | null;
+  cie11Uri: string | null;
   addendumReason: string | null;
   confirmedAt: Date | null;
   createdAt: Date;
@@ -511,6 +514,9 @@ type EpicrisisDetail = {
   status: string;
   noteType: string;
   aiAssisted: boolean;
+  cie11Code: string | null;
+  cie11Description: string | null;
+  cie11Uri: string | null;
   addendumReason: string | null;
   patientIdentification: string;
   reasonForAdmission: string | null;
