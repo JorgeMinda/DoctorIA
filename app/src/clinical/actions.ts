@@ -1655,6 +1655,25 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     }
   }
 
+  // El médico asignado a la cita DEBE tener acceso activo al paciente
+  // (MedicoPatientAccess). La secretaria no puede asociar médicos arbitrarios.
+  if (data?.medicoId && data?.patientId) {
+    const hasAccess = await context.entities.MedicoPatientAccess.findUnique({
+      where: {
+        medicoId_patientId: {
+          medicoId: data.medicoId,
+          patientId: data.patientId,
+        },
+      },
+    });
+    if (!hasAccess) {
+      throw new HttpError(
+        403,
+        "El médico seleccionado no tiene acceso activo a este paciente",
+      );
+    }
+  }
+
   if (action === "CREATE") {
     if (!data?.medicoId || !data.patientId || !data.scheduledAt) {
       throw new HttpError(
@@ -1763,6 +1782,26 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
         durationMinutes: data?.durationMinutes ?? existing.durationMinutes,
         excludeCitaId: citaId,
       });
+    }
+
+    // Si se reasigna médico o paciente, verificar acceso activo.
+    if (data?.medicoId || data?.patientId) {
+      const targetMedicoId = data.medicoId ?? existing.medicoId;
+      const targetPatientId = data.patientId ?? existing.patientId;
+      const hasAccess = await context.entities.MedicoPatientAccess.findUnique({
+        where: {
+          medicoId_patientId: {
+            medicoId: targetMedicoId,
+            patientId: targetPatientId,
+          },
+        },
+      });
+      if (!hasAccess) {
+        throw new HttpError(
+          403,
+          "El médico seleccionado no tiene acceso activo a este paciente",
+        );
+      }
     }
 
     const updated = await context.entities.Cita.update({
