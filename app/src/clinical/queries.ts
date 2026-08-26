@@ -1476,7 +1476,7 @@ export const searchCIE11 = async (
     );
   }
 
-  const results = await searchICD11(query, config);
+  const results = searchICD11(query, config);
   return results;
 };
 
