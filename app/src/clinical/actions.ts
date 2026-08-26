@@ -1400,10 +1400,16 @@ export const createPreClinicalRecord: CreatePreClinicalRecord<
   );
   validateVitalSignRanges(args);
 
-  const cita = await context.entities.Cita.findUnique({
-    where: { id: args.citaId },
-    select: { id: true, status: true, patientId: true },
-  });
+    const cita = await context.entities.Cita.findUnique({
+      where: { id: args.citaId },
+      select: {
+        id: true,
+        status: true,
+        patientId: true,
+        medicoId: true,
+        medico: { select: { fullName: true } },
+      },
+    });
   if (!cita) {
     throw new HttpError(404, "Cita no encontrada");
   }
@@ -1465,7 +1471,10 @@ export const createPreClinicalRecord: CreatePreClinicalRecord<
     resourceId: created.id,
     patientId: created.patientId,
     citaId: created.citaId,
-    metadata: { registeredByRole: "secretaria" },
+    metadata: {
+      registeredByRole: "secretaria",
+      doctorName: cita.medico?.fullName ?? null,
+    },
   });
 
   return created;
@@ -1601,6 +1610,18 @@ const CITA_STATUS_OPTIONS = [
   "NO_SHOW",
 ];
 
+async function resolveMedicoName(
+  context: any,
+  medicoId: string | null | undefined,
+): Promise<string | null> {
+  if (!medicoId) return null;
+  const m = await context.entities.User.findUnique({
+    where: { id: medicoId },
+    select: { fullName: true },
+  });
+  return m?.fullName ?? null;
+}
+
 export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
   rawArgs,
   context,
@@ -1679,7 +1700,11 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
       resourceId: cita.id,
       patientId: cita.patientId,
       citaId: cita.id,
-      metadata: { action: "CREATE", status: cita.status },
+      metadata: {
+        action: "CREATE",
+        status: cita.status,
+        doctorName: await resolveMedicoName(context, cita.medicoId),
+      },
     });
     return cita;
   }
@@ -1762,6 +1787,7 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
         action: "UPDATE",
         status: updated.status,
         previousStatus: existing.status,
+        doctorName: await resolveMedicoName(context, updated.medicoId),
       },
     });
     return updated;
@@ -1779,7 +1805,11 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     resourceId: citaId,
     patientId: existing.patientId,
     citaId,
-    metadata: { action: "DELETE", status: existing.status },
+      metadata: {
+        action: "DELETE",
+        status: existing.status,
+        doctorName: await resolveMedicoName(context, existing.medicoId),
+      },
   });
   return existing;
 };
@@ -1903,6 +1933,7 @@ export const updateCitaStatus: UpdateCitaStatus<
       phase: role.toUpperCase(),
       status: updated.status,
       previousStatus: cita.status,
+      doctorName: await resolveMedicoName(context, cita.medicoId),
     },
   });
 
