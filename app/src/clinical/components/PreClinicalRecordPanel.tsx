@@ -40,16 +40,24 @@ type VitalKey = (typeof VITAL_FIELDS)[number]["key"];
 export function PreClinicalRecordPanel({
   patientId,
   citaId,
+  readOnly = false,
+  onSaved,
 }: {
   patientId: string;
   citaId: string;
+  readOnly?: boolean;
+  onSaved?: () => void;
 }) {
   const [motivo, setMotivo] = useState("");
   const [vitals, setVitals] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: existing, isLoading } = useQuery(getPreClinicalRecord, {
+  const {
+    data: existing,
+    isLoading,
+    refetch,
+  } = useQuery(getPreClinicalRecord, {
     citaId,
   });
   const createFn = useAction(createPreClinicalRecord);
@@ -72,31 +80,62 @@ export function PreClinicalRecordPanel({
             <Badge variant="outline" className="mono-label">
               📊 Registro Pre-Clínico
             </Badge>
-            <span className="text-xs font-normal text-muted-foreground">
-              registrado
+            <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
+              Registrado por secretaría
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 p-5">
+        <CardContent className="space-y-4 p-5">
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Motivo de consulta
             </p>
-            <p className="text-sm">{existing.motivoConsulta}</p>
+            <p className="mt-1 text-sm font-medium text-foreground">
+              {existing.motivoConsulta}
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {VITAL_FIELDS.map((f) => (
-              <div key={f.key}>
-                <p className="text-xs text-muted-foreground">{f.label}</p>
-                <p className="font-mono text-sm">
-                  {(existing as any)[f.key]}
-                </p>
-              </div>
-            ))}
+          <div>
+            <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+              Signos vitales registrados
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {VITAL_FIELDS.map((f) => (
+                <div
+                  key={f.key}
+                  className="rounded-md border border-outline-variant/60 bg-surface-container/30 p-2.5"
+                >
+                  <p className="text-[11px] text-muted-foreground">{f.label}</p>
+                  <p className="mt-0.5 font-mono text-sm font-semibold text-foreground">
+                    {(existing as any)[f.key]}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Registro único por cita (bloqueado para edición).
+            Registro administrativo previo completado · Bloqueado para edición clínica.
           </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Si no hay registro y la vista es de solo lectura (Médico)
+  if (readOnly) {
+    return (
+      <Card className="overflow-hidden border-outline-variant bg-surface">
+        <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Badge variant="outline" className="mono-label">
+              📊 Registro Pre-Clínico
+            </Badge>
+            <span className="text-xs font-normal text-muted-foreground">
+              Pendiente
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-5 text-sm text-muted-foreground">
+          Aún no se ha ingresado el registro pre-clínico (signos vitales y motivo de consulta) por parte del personal de secretaría para esta cita.
         </CardContent>
       </Card>
     );
@@ -131,6 +170,8 @@ export function PreClinicalRecordPanel({
         ...(parsed as Record<VitalKey, number>),
       });
       toast({ title: "Registro pre-clínico guardado" });
+      await refetch();
+      onSaved?.();
     } catch (err: any) {
       toast({
         title: "No se pudo guardar",
@@ -149,6 +190,9 @@ export function PreClinicalRecordPanel({
           <Badge variant="outline" className="mono-label">
             📋 Registro Pre-Clínico
           </Badge>
+          <span className="text-xs font-normal text-muted-foreground">
+            Ingreso por secretaría
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 p-5">

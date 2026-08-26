@@ -20,10 +20,11 @@ import { PatientClinicalSummary } from "../components/PatientClinicalSummary";
 import { PatientQuickActions } from "../components/PatientQuickActions";
 import { PatientHistoryTimeline } from "../components/PatientHistoryTimeline";
 import { PatientFormModal } from "../components/PatientFormModal";
-import { VitalSignsForm } from "../components/VitalSignsForm";
 import { NewAppointmentModal } from "../components/NewAppointmentModal";
 import { PreClinicalRecordPanel } from "../components/PreClinicalRecordPanel";
 import { EpicrisisPrintView } from "../components/EpicrisisPrintView";
+import { CardHeader, CardTitle } from "../../client/components/ui/card";
+import { Badge } from "../../client/components/ui/badge";
 
 export function ClinicalPatientDetailPage() {
   const { patientId } = useParams();
@@ -172,11 +173,16 @@ export function ClinicalPatientDetailPage() {
     }
   };
 
-  const handleStartCita = async () => {
-    if (!scheduledCita) return;
+  const activeCita = (detail.latestCitas ?? []).find(
+    (c: any) => c.status === "IN_PROGRESS" || c.status === "SCHEDULED",
+  ) || detail.latestCitas?.[0];
+
+  const handleStartCita = async (citaId?: string) => {
+    const targetCitaId = citaId ?? scheduledCita?.id;
+    if (!targetCitaId) return;
     try {
       await updateStatusFn({
-        citaId: scheduledCita.id,
+        citaId: targetCitaId,
         status: "IN_PROGRESS",
       });
       toast({ title: "Cita iniciada" });
@@ -220,11 +226,12 @@ export function ClinicalPatientDetailPage() {
       {isSecretariaView ? (
         <SecretaryView
           patientId={patient.id}
-          scheduledCita={scheduledCita}
+          citas={detail.latestCitas ?? []}
           printableEpicrises={printableEpicrises ?? []}
           onNewCita={() => setShowNewCita(true)}
           onStartCita={handleStartCita}
           onPrint={(id) => setPrintEpicrisisId(id)}
+          onDone={() => refetch()}
         />
       ) : (
         <>
@@ -234,7 +241,29 @@ export function ClinicalPatientDetailPage() {
             citas={detail?.latestCitas ?? []}
           />
 
-          <VitalSignsForm patientId={patient.id} />
+          {activeCita ? (
+            <PreClinicalRecordPanel
+              patientId={patient.id}
+              citaId={activeCita.id}
+              readOnly={true}
+            />
+          ) : (
+            <Card className="overflow-hidden border-outline-variant bg-surface">
+              <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <Badge variant="outline" className="mono-label">
+                    📊 Registro Pre-Clínico
+                  </Badge>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Sin cita activa
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 text-sm text-muted-foreground">
+                No hay citas asociadas a este paciente. El registro pre-clínico (motivo de consulta y signos vitales) es cargado por secretaría al recibir al paciente para su cita.
+              </CardContent>
+            </Card>
+          )}
 
           <PatientQuickActions
             noteCount={detail.noteCount}
@@ -282,26 +311,55 @@ export function ClinicalPatientDetailPage() {
 
 function SecretaryView({
   patientId,
-  scheduledCita,
+  citas,
   printableEpicrises,
   onNewCita,
   onStartCita,
   onPrint,
+  onDone,
 }: {
   patientId: string;
-  scheduledCita: any;
+  citas: any[];
   printableEpicrises: any[];
   onNewCita: () => void;
-  onStartCita: () => void;
+  onStartCita: (citaId: string) => void;
   onPrint: (id: string) => void;
+  onDone: () => void;
 }) {
+  const scheduledCita = (citas ?? []).find((c: any) => c.status === "SCHEDULED");
+  const activeCita =
+    scheduledCita ||
+    (citas ?? []).find((c: any) => c.status === "IN_PROGRESS") ||
+    citas?.[0];
+
   return (
     <>
-      {scheduledCita && (
+      {activeCita ? (
         <PreClinicalRecordPanel
           patientId={patientId}
-          citaId={scheduledCita.id}
+          citaId={activeCita.id}
+          readOnly={false}
+          onSaved={onDone}
         />
+      ) : (
+        <Card className="overflow-hidden border-outline-variant bg-surface">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Badge variant="outline" className="mono-label">
+                📋 Registro Pre-Clínico
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 p-5 text-sm text-muted-foreground">
+            <p>
+              El paciente no tiene citas agendadas. Para ingresar el registro pre-clínico (motivo de consulta y signos vitales), crea primero una nueva cita.
+            </p>
+            <Button size="sm" className="gap-1.5" onClick={onNewCita}>
+              <Plus className="size-4" />
+              Agendar nueva cita
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       <Card className="overflow-hidden border-outline-variant">
@@ -311,7 +369,11 @@ function SecretaryView({
             Nueva cita
           </Button>
           {scheduledCita && (
-            <Button variant="outline" className="gap-1.5" onClick={onStartCita}>
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => onStartCita(scheduledCita.id)}
+            >
               <Play className="size-4" />
               Iniciar cita
             </Button>
@@ -321,7 +383,7 @@ function SecretaryView({
               ? `Cita agendada: ${new Date(
                   scheduledCita.scheduledAt,
                 ).toLocaleString()}`
-              : "Sin cita agendada."}
+              : "Sin cita agendada pendiente."}
           </span>
         </CardContent>
       </Card>
