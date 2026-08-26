@@ -19,3 +19,5 @@ BEGIN
   END IF;
 END
 $$;
+
+-- Aplicado y verificado en produccion (2026-08-26): constraint User_role_exclusivity activo.
