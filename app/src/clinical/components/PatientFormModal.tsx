@@ -109,7 +109,7 @@ export function PatientFormModal({
         data: {
           firstName: form.firstName.trim(),
           lastName: form.lastName.trim(),
-          birthDate: form.birthDate,
+          birthDate: new Date(form.birthDate),
           sex: form.sex,
           documento: form.documento || null,
           phone: form.phone || null,

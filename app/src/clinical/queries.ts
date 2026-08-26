@@ -25,6 +25,7 @@ import {
   ensureAdmin,
   ensureRole,
   getActiveClinicalRole,
+  ensurePatientViewer,
 } from "./services/guards";
 import { assertMedicoPatientAccess } from "./services/patientAccess";
 import { createAuditEntry } from "./services/audit";

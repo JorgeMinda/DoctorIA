@@ -8,7 +8,15 @@ import { Label } from "../../client/components/ui/label";
 import { Badge } from "../../client/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../client/components/ui/card";
 
-const fields = [
+type VitalField = {
+  key: string;
+  label: string;
+  min: number;
+  max: number;
+  step?: number;
+};
+
+const fields: VitalField[] = [
   { key: "systolicBP", label: "TA sistólica (mmHg)", min: 50, max: 300 },
   { key: "diastolicBP", label: "TA diastólica (mmHg)", min: 20, max: 200 },
   { key: "heartRate", label: "Frec. cardíaca (lpm)", min: 20, max: 300 },
@@ -17,9 +25,9 @@ const fields = [
   { key: "oxygenSaturation", label: "Sat. O₂ (%)", min: 40, max: 100 },
   { key: "weight", label: "Peso (kg)", min: 0.1, max: 500, step: 0.1 },
   { key: "height", label: "Talla (cm)", min: 0.1, max: 260, step: 0.1 },
-] as const;
+];
 
-type FieldKey = (typeof fields)[number]["key"];
+type FieldKey = string;
 
 export function VitalSignsForm({
   patientId,
@@ -46,7 +54,7 @@ export function VitalSignsForm({
     setValues((f) => ({ ...f, [k]: v }));
 
   const handleSubmit = async () => {
-    const payload: Record<string, number> = { patientId };
+    const payload: any = { patientId };
     if (citaId) payload.citaId = citaId;
     for (const f of fields) {
       const raw = values[f.key];
