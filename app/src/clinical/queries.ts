@@ -890,8 +890,9 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
     rawArgs,
   );
 
-  const isAdmin = authUser.isAdmin && !authUser.isMedico;
-  const scopeMedicoId = isAdmin ? medicoId : authUser.id;
+  const role = getActiveClinicalRole(authUser);
+  const isMedicoUser = role === "medico";
+  const scopeMedicoId = isMedicoUser ? authUser.id : medicoId;
 
   const now = new Date();
   const fromDate = from ?? new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
@@ -995,6 +996,18 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
       (c: any) => c.status === "COMPLETED",
     ).length;
     atencionesHoy = notesToday + epicrisisToday + citasCompletadasHoy;
+  } else {
+    const todayCitas = await context.entities.Cita.findMany({
+      where: {
+        scheduledAt: { gte: startOfToday, lt: endOfToday },
+      },
+      select: { status: true },
+    });
+    citasHoy = todayCitas.length;
+    citasCompletadasHoy = todayCitas.filter(
+      (c: any) => c.status === "COMPLETED",
+    ).length;
+    atencionesHoy = citasCompletadasHoy;
   }
 
   // Los valores se devuelven como JSON plano (fechas en ISO): evita fallos de

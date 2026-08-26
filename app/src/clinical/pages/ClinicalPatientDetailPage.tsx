@@ -11,10 +11,25 @@ import {
   getPrintableEpicrises,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
-import { ArrowLeft, Pencil, ShieldAlert, Plus, Play, Printer } from "lucide-react";
+import {
+  Activity,
+  ArrowLeft,
+  CalendarClock,
+  CalendarDays,
+  Clock,
+  ExternalLink,
+  Pencil,
+  PhoneMissed,
+  Play,
+  Plus,
+  Printer,
+  ShieldAlert,
+  XCircle,
+} from "lucide-react";
 import { Card, CardContent } from "../../client/components/ui/card";
 import { Button } from "../../client/components/ui/button";
 import { toast } from "../../client/hooks/use-toast";
+import { citaStatusLabel } from "../services/statusLabels";
 import { PatientProfileHeader } from "../components/PatientProfileHeader";
 import { PatientClinicalSummary } from "../components/PatientClinicalSummary";
 import { PatientQuickActions } from "../components/PatientQuickActions";
@@ -37,6 +52,7 @@ export function ClinicalPatientDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showNewCita, setShowNewCita] = useState(false);
   const [printEpicrisisId, setPrintEpicrisisId] = useState<string | null>(null);
+  const [busyCitaId, setBusyCitaId] = useState<string | null>(null);
 
   const { data: detail, isLoading: loadingDetail, refetch } = useQuery(
     getPatientById,
@@ -98,9 +114,6 @@ export function ClinicalPatientDetailPage() {
   }
 
   const patient = detail.patient;
-  const scheduledCita = (detail.latestCitas ?? []).find(
-    (c: any) => c.status === "SCHEDULED",
-  );
 
   const handleCreateNote = async () => {
     if (!newNoteText.trim()) return;
@@ -177,22 +190,27 @@ export function ClinicalPatientDetailPage() {
     (c: any) => c.status === "IN_PROGRESS" || c.status === "SCHEDULED",
   ) || detail.latestCitas?.[0];
 
-  const handleStartCita = async (citaId?: string) => {
-    const targetCitaId = citaId ?? scheduledCita?.id;
-    if (!targetCitaId) return;
+  const handleUpdateCitaStatus = async (
+    citaId: string,
+    status: string,
+    label: string,
+  ) => {
+    setBusyCitaId(citaId);
     try {
       await updateStatusFn({
-        citaId: targetCitaId,
-        status: "IN_PROGRESS",
+        citaId,
+        status,
       });
-      toast({ title: "Cita iniciada" });
+      toast({ title: label });
       await refetch();
     } catch (err: any) {
       toast({
-        title: "No se pudo iniciar la cita",
+        title: "No se pudo actualizar el estado de la cita",
         description: err?.message,
         variant: "destructive",
       });
+    } finally {
+      setBusyCitaId(null);
     }
   };
 
@@ -228,8 +246,9 @@ export function ClinicalPatientDetailPage() {
           patientId={patient.id}
           citas={detail.latestCitas ?? []}
           printableEpicrises={printableEpicrises ?? []}
+          busyCitaId={busyCitaId}
           onNewCita={() => setShowNewCita(true)}
-          onStartCita={handleStartCita}
+          onUpdateCitaStatus={handleUpdateCitaStatus}
           onPrint={(id) => setPrintEpicrisisId(id)}
           onDone={() => refetch()}
         />
@@ -313,22 +332,27 @@ function SecretaryView({
   patientId,
   citas,
   printableEpicrises,
+  busyCitaId,
   onNewCita,
-  onStartCita,
+  onUpdateCitaStatus,
   onPrint,
   onDone,
 }: {
   patientId: string;
   citas: any[];
   printableEpicrises: any[];
+  busyCitaId: string | null;
   onNewCita: () => void;
-  onStartCita: (citaId: string) => void;
+  onUpdateCitaStatus: (
+    citaId: string,
+    status: string,
+    label: string,
+  ) => Promise<void>;
   onPrint: (id: string) => void;
   onDone: () => void;
 }) {
-  const scheduledCita = (citas ?? []).find((c: any) => c.status === "SCHEDULED");
   const activeCita =
-    scheduledCita ||
+    (citas ?? []).find((c: any) => c.status === "SCHEDULED") ||
     (citas ?? []).find((c: any) => c.status === "IN_PROGRESS") ||
     citas?.[0];
 
@@ -352,7 +376,7 @@ function SecretaryView({
           </CardHeader>
           <CardContent className="space-y-3 p-5 text-sm text-muted-foreground">
             <p>
-              El paciente no tiene citas agendadas. Para ingresar el registro pre-clínico (motivo de consulta y signos vitales), crea primero una nueva cita.
+              El paciente no tiene citas registradas. Para ingresar el registro pre-clínico (motivo de consulta y signos vitales), crea primero una nueva cita.
             </p>
             <Button size="sm" className="gap-1.5" onClick={onNewCita}>
               <Plus className="size-4" />
@@ -362,29 +386,135 @@ function SecretaryView({
         </Card>
       )}
 
+      {/* Gestión de citas del paciente */}
       <Card className="overflow-hidden border-outline-variant">
-        <CardContent className="flex flex-wrap items-center gap-3 p-5">
-          <Button className="gap-1.5" onClick={onNewCita}>
-            <Plus className="size-4" />
-            Nueva cita
-          </Button>
-          {scheduledCita && (
-            <Button
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => onStartCita(scheduledCita.id)}
-            >
-              <Play className="size-4" />
-              Iniciar cita
-            </Button>
+        <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+          <CardTitle className="flex items-center justify-between text-base font-semibold">
+            <span className="flex items-center gap-2">
+              <CalendarClock className="size-4 text-primary" />
+              Citas del paciente ({citas?.length ?? 0})
+            </span>
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="gap-1.5" onClick={onNewCita}>
+                <Plus className="size-4" />
+                Nueva cita
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {(!citas || citas.length === 0) && (
+            <div className="p-6 text-sm text-muted-foreground">
+              No hay citas programadas para este paciente.
+            </div>
           )}
-          <span className="text-xs text-muted-foreground">
-            {scheduledCita
-              ? `Cita agendada: ${new Date(
-                  scheduledCita.scheduledAt,
-                ).toLocaleString()}`
-              : "Sin cita agendada pendiente."}
-          </span>
+          <div className="divide-y divide-outline-variant/40">
+            {(citas ?? []).map((cita: any) => (
+              <div
+                key={cita.id}
+                className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"
+              >
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">
+                      {new Date(cita.scheduledAt).toLocaleString()}
+                    </span>
+                    <Badge
+                      variant={
+                        cita.status === "COMPLETED"
+                          ? "success"
+                          : cita.status === "IN_PROGRESS"
+                            ? "warning"
+                            : cita.status === "CANCELLED"
+                              ? "destructive"
+                              : "outline"
+                      }
+                      className="mono-label"
+                    >
+                      {citaStatusLabel(cita.status)}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+                    <span>{cita.durationMinutes ?? 30} min</span>
+                    {cita.reason && <span>· Motivo: {cita.reason}</span>}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {cita.status === "SCHEDULED" && (
+                    <>
+                      <Button
+                        size="sm"
+                        disabled={busyCitaId === cita.id}
+                        onClick={() =>
+                          onUpdateCitaStatus(
+                            cita.id,
+                            "IN_PROGRESS",
+                            "Cita iniciada (paciente asistió)",
+                          )
+                        }
+                        className="gap-1 text-xs"
+                      >
+                        <Play className="size-3.5" />
+                        Asistió / Iniciar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyCitaId === cita.id}
+                        onClick={() =>
+                          onUpdateCitaStatus(
+                            cita.id,
+                            "NO_SHOW",
+                            "Registrado: no asistió",
+                          )
+                        }
+                        className="gap-1 text-xs"
+                      >
+                        <PhoneMissed className="size-3.5" />
+                        No asistió
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyCitaId === cita.id}
+                        onClick={() =>
+                          onUpdateCitaStatus(
+                            cita.id,
+                            "CANCELLED",
+                            "Cita cancelada (horario liberado)",
+                          )
+                        }
+                        className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <XCircle className="size-3.5" />
+                        Cancelar cita
+                      </Button>
+                    </>
+                  )}
+
+                  {cita.status === "IN_PROGRESS" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busyCitaId === cita.id}
+                      onClick={() =>
+                        onUpdateCitaStatus(
+                          cita.id,
+                          "CANCELLED",
+                          "Cita cancelada",
+                        )
+                      }
+                      className="gap-1 text-xs text-destructive"
+                    >
+                      <XCircle className="size-3.5" />
+                      Cancelar
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
