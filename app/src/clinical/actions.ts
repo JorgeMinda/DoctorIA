@@ -51,8 +51,8 @@ import {
 } from "./services/guards";
 import { assertMedicoPatientAccess } from "./services/patientAccess";
 import { createAuditEntry, type AuditAction } from "./services/audit";
-import { vitalSignInputSchema } from "./services/vitalSigns";
-import { BLOCKING_CITA_STATUSES, hasConflict, type Interval } from "./services/appointmentAvailability";
+import { vitalSignInputSchema, validateVitalSignRanges } from "./services/vitalSigns";
+import { validateNoOverlap } from "./services/appointmentAvailability";
 import {
   structureClinicalText,
   generateEpicrisisFromHistory,
@@ -1298,6 +1298,7 @@ export const createVitalSignAction: CreateVitalSignAction<
     createVitalSignInputSchema,
     rawArgs,
   );
+  validateVitalSignRanges(args);
   const { patientId, citaId } = args;
 
   const patient = await context.entities.SyntheticPatient.findUnique({
@@ -1559,27 +1560,13 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     const citaStatus = status as CitaStatus;
     const startMs = data.scheduledAt.getTime();
     const durMin = data.durationMinutes ?? 30;
-    const endMs = startMs + durMin * 60_000;
-    const overlapWindowStart = new Date(startMs - 240 * 60_000);
     // Disponibilidad centralizada (Fase B3): solo SCHEDULED/IN_PROGRESS bloquean.
-    const blocking = await context.entities.Cita.findMany({
-      where: {
-        medicoId: data.medicoId,
-        status: { in: Array.from(BLOCKING_CITA_STATUSES) as CitaStatus[] },
-        scheduledAt: { gte: overlapWindowStart, lt: new Date(endMs) },
-      },
-      select: { scheduledAt: true, durationMinutes: true },
+    await validateNoOverlap({
+      citaDelegate: context.entities.Cita,
+      medicoId: data.medicoId,
+      scheduledAt: data.scheduledAt,
+      durationMinutes: durMin,
     });
-    const busy: Interval[] = blocking.map((c) => ({
-      startMs: c.scheduledAt.getTime(),
-      endMs: c.scheduledAt.getTime() + c.durationMinutes * 60_000,
-    }));
-    if (hasConflict(busy, startMs, endMs)) {
-      throw new HttpError(
-        409,
-        "El horario seleccionado no estÃ¡ disponible para este mÃ©dico",
-      );
-    }
     const cita = await context.entities.Cita.create({
       data: {
         medicoId: data.medicoId,
@@ -1646,6 +1633,18 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     if (data?.status !== undefined && nextStatus === undefined) {
       throw new HttpError(400, "Estado de cita invÃ¡lido");
     }
+    // Si se reprograma (horario o duración), revalidar solapamiento contra el
+    // médico afectado, ignorando la propia cita.
+    if (data?.scheduledAt || data?.durationMinutes !== undefined) {
+      await validateNoOverlap({
+        citaDelegate: context.entities.Cita,
+        medicoId: data?.medicoId ?? existing.medicoId,
+        scheduledAt: data?.scheduledAt ?? existing.scheduledAt,
+        durationMinutes: data?.durationMinutes ?? existing.durationMinutes,
+        excludeCitaId: citaId,
+      });
+    }
+
     const updated = await context.entities.Cita.update({
       where: { id: citaId },
       data: {

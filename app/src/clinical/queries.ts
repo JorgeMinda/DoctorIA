@@ -16,6 +16,7 @@ import type {
   GetVoiceAssistantResponse,
   GetVitalSigns,
   GetAvailableSlots,
+  GetEpicrisisForPrint,
 } from "wasp/server/operations";
 import * as z from "zod";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
@@ -1158,6 +1159,112 @@ export const getAvailableSlots: GetAvailableSlots<
       start: new Date(iv.startMs).toISOString(),
       end: new Date(iv.endMs).toISOString(),
     })),
+  };
+};
+
+// ---------------------------------------------------------------------------
+// getEpicrisisForPrint (Admin / Médico / Secretaria) - datos de impresión de
+// una epicrisis CONFIRMED. Solo lectura; nunca se editan documentos confirmados
+// (P5 inmutabilidad). No incluye campos de debug/IA.
+// ---------------------------------------------------------------------------
+
+const getEpicrisisForPrintInputSchema = z.object({
+  epicrisisId: z.string().min(1),
+});
+
+type GetEpicrisisForPrintInput = z.infer<
+  typeof getEpicrisisForPrintInputSchema
+>;
+
+type EpicrisisPrintData = {
+  id: string;
+  status: string;
+  noteType: string;
+  patientIdentification: string;
+  reasonForAdmission: string | null;
+  relevantHistory: string | null;
+  evolutionSummary: string | null;
+  proceduresResults: string | null;
+  validatedDiagnoses: string | null;
+  conditionAtDischarge: string | null;
+  followUpInstructions: string | null;
+  responsibleProfessional: string;
+  dateTime: Date;
+  patient: { syntheticId: string; firstName: string; lastName: string };
+};
+
+type GetEpicrisisForPrintOutput = EpicrisisPrintData;
+
+export const getEpicrisisForPrint: GetEpicrisisForPrint<
+  GetEpicrisisForPrintInput,
+  GetEpicrisisForPrintOutput
+> = async (rawArgs, context) => {
+  // P3: secretaría solo imprime; médico/admin también. Sin rol clínico => 403.
+  const viewer = ensureRole(context.user, "admin", "medico", "secretaria");
+
+  const { epicrisisId } = ensureArgsSchemaOrThrowHttpError(
+    getEpicrisisForPrintInputSchema,
+    rawArgs,
+  );
+
+  const epicrisis = await context.entities.Epicrisis.findUnique({
+    where: { id: epicrisisId },
+    include: {
+      patient: {
+        select: {
+          id: true,
+          syntheticId: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
+  });
+  if (!epicrisis) {
+    throw new HttpError(404, "Epicrisis no encontrada");
+  }
+
+  // P5: solo epicrisis confirmadas se entregan para impresión.
+  if (epicrisis.status !== "CONFIRMED") {
+    throw new HttpError(
+      409,
+      "Solo se puede imprimir una epicrisis confirmada",
+    );
+  }
+
+  if (getActiveClinicalRole(viewer) === "medico") {
+    await assertMedicoPatientAccess(viewer.id, epicrisis.patientId);
+  }
+
+  await createAuditEntry({
+    userId: viewer.id,
+    action: "PRINT_EPICRISIS",
+    resourceType: "EPICRISIS",
+    resourceId: epicrisis.id,
+    patientId: epicrisis.patientId,
+    epicrisisId: epicrisis.id,
+    metadata: { noteType: epicrisis.noteType },
+  });
+
+  return {
+    id: epicrisis.id,
+    status: epicrisis.status,
+    noteType: epicrisis.noteType,
+    patientIdentification: epicrisis.patientIdentification,
+    reasonForAdmission: epicrisis.reasonForAdmission,
+    relevantHistory: epicrisis.relevantHistory,
+    evolutionSummary: epicrisis.evolutionSummary,
+    proceduresResults: epicrisis.proceduresResults,
+    validatedDiagnoses: epicrisis.validatedDiagnoses,
+    conditionAtDischarge: epicrisis.conditionAtDischarge,
+    followUpInstructions: epicrisis.followUpInstructions,
+    responsibleProfessional: epicrisis.responsibleProfessional,
+    dateTime: epicrisis.dateTime,
+    patient: {
+      syntheticId: epicrisis.patient.syntheticId,
+      firstName: epicrisis.patient.firstName,
+      lastName: epicrisis.patient.lastName,
+    },
   };
 };
 

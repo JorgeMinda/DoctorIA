@@ -3,6 +3,7 @@
 // el AuditLog (solo referencias) ni sustituyen la valoración del profesional.
 
 import { z } from "zod";
+import { HttpError } from "wasp/server";
 
 export const vitalSignInputSchema = z.object({
   patientId: z.string().min(1),
@@ -41,3 +42,47 @@ export const vitalSignInputSchema = z.object({
 });
 
 export type VitalSignInput = z.infer<typeof vitalSignInputSchema>;
+
+// Valida rangos clínicos plausibles. Lanza HttpError(400) si algún valor
+// está fuera de rango (defensa en profundidad junto al schema zod).
+export function validateVitalSignRanges(
+  data: VitalSignInput,
+): VitalSignInput {
+  const parsed = vitalSignInputSchema.safeParse(data);
+  if (!parsed.success) {
+    const msg = parsed.error.issues
+      .map((i) => i.message)
+      .filter(Boolean)
+      .join("; ");
+    throw new HttpError(400, msg || "Valores de signos vitales inválidos");
+  }
+  return parsed.data;
+}
+
+// Formatea para UI: etiquetas legibles y unidad por signo.
+export interface VitalSignDisplay {
+  label: string;
+  value: string;
+}
+
+export function formatVitalSignsForDisplay(v: {
+  systolicBP: number;
+  diastolicBP: number;
+  heartRate: number;
+  temperature: number;
+  respiratoryRate: number;
+  oxygenSaturation: number;
+  weight: number;
+  height: number;
+}): VitalSignDisplay[] {
+  return [
+    { label: "Presión arterial", value: `${v.systolicBP}/${v.diastolicBP} mmHg` },
+    { label: "Frecuencia cardíaca", value: `${v.heartRate} lpm` },
+    { label: "Temperatura", value: `${v.temperature.toFixed(1)} °C` },
+    { label: "Frecuencia respiratoria", value: `${v.respiratoryRate} rpm` },
+    { label: "Saturación O₂", value: `${v.oxygenSaturation} %` },
+    { label: "Peso", value: `${v.weight} kg` },
+    { label: "Talla", value: `${v.height} cm` },
+  ];
+}
+

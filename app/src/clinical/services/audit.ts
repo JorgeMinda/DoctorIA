@@ -24,6 +24,7 @@ export type AuditAction =
   | "VOICE_NOTE_CREATE"
   | "DELETE_NOTE"
   | "MANAGE_CITA"
+  | "PRINT_EPICRISIS"
   | "ADMIN_MANAGE_USER"
   | "ADMIN_MANAGE_ROLE"
   | "ADMIN_MANAGE_DATA";
