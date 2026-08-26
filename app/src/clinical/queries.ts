@@ -47,6 +47,10 @@ import {
   filterFreeSlots,
   getOccupiedSlots,
 } from "./services/appointmentAvailability";
+import {
+  searchICD11,
+  isConfigured as isICD11Configured,
+} from "./services/classification/icd11.service";
 
 // ---------------------------------------------------------------------------
 // getPatients
@@ -1460,16 +1464,12 @@ export const searchCIE11 = async (
     rawArgs,
   );
 
-  const { searchICD11, isConfigured } = await import(
-    "./services/classification/icd11.service"
-  );
-
   const config = {
     clientId: process.env.ICD11_CLIENT_ID ?? "",
     clientSecret: process.env.ICD11_CLIENT_SECRET ?? "",
   };
 
-  if (!isConfigured(config)) {
+  if (!isICD11Configured(config)) {
     throw new HttpError(
       503,
       "Servicio CIE-11 no configurado. Contacte al administrador.",
