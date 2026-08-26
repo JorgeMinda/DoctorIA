@@ -63,7 +63,7 @@ export const getPatients: GetPatients<
   GetPatientsInput,
   GetPatientsOutput
 > = async (rawArgs, context) => {
-  const user = ensureMedico(context.user);
+  const user = ensurePatientViewer(context.user);
 
   const {
     search,
@@ -71,12 +71,13 @@ export const getPatients: GetPatients<
     pageSize = 20,
   } = ensureArgsSchemaOrThrowHttpError(getPatientsInputSchema, rawArgs);
 
-  const medicoId = user.id;
   const skip = (page - 1) * pageSize;
 
-  const where = {
+  const where: any = {
     isActive: true,
-    authorizedMedicos: { some: { medicoId } },
+    ...(user.isMedico && !user.isAdmin
+      ? { authorizedMedicos: { some: { medicoId: user.id } } }
+      : {}),
     ...(search
       ? {
           OR: [
@@ -143,14 +144,16 @@ export const getPatientById: GetPatientById<
   GetPatientByIdInput,
   GetPatientByIdOutput
 > = async (rawArgs, context) => {
-  const user = ensureMedico(context.user);
+  const user = ensurePatientViewer(context.user);
 
   const { patientId } = ensureArgsSchemaOrThrowHttpError(
     getPatientByIdInputSchema,
     rawArgs,
   );
 
-  await assertMedicoPatientAccess(user.id, patientId);
+  if (user.isMedico && !user.isAdmin) {
+    await assertMedicoPatientAccess(user.id, patientId);
+  }
 
   const patient = await context.entities.SyntheticPatient.findUnique({
     where: { id: patientId },
@@ -268,12 +271,14 @@ export const getPatientHistory: GetPatientHistory<
   GetPatientHistoryInput,
   GetPatientHistoryOutput
 > = async (rawArgs, context) => {
-  const user = ensureMedico(context.user);
+  const user = ensurePatientViewer(context.user);
 
   const { patientId, includeAddenda = false } =
     ensureArgsSchemaOrThrowHttpError(getPatientHistoryInputSchema, rawArgs);
 
-  await assertMedicoPatientAccess(user.id, patientId);
+  if (user.isMedico && !user.isAdmin) {
+    await assertMedicoPatientAccess(user.id, patientId);
+  }
 
   const authorSelect = { fullName: true, username: true, email: true };
 
@@ -928,7 +933,7 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
   Record<string, never>,
   GetDoctorsAgendaOutput
 > = async (_rawArgs, context) => {
-  ensureAdmin(context.user);
+  ensureRole(context.user, "admin", "secretaria");
 
   const medicos = await context.entities.User.findMany({
     where: { isMedico: true, isAdmin: false },

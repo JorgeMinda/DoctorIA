@@ -8,13 +8,16 @@ import {
   generateEpicrisisDraft,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
-import { ArrowLeft, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Pencil, ShieldAlert } from "lucide-react";
 import { Card, CardContent } from "../../client/components/ui/card";
+import { Button } from "../../client/components/ui/button";
 import { toast } from "../../client/hooks/use-toast";
 import { PatientProfileHeader } from "../components/PatientProfileHeader";
 import { PatientClinicalSummary } from "../components/PatientClinicalSummary";
 import { PatientQuickActions } from "../components/PatientQuickActions";
 import { PatientHistoryTimeline } from "../components/PatientHistoryTimeline";
+import { PatientFormModal } from "../components/PatientFormModal";
+import { VitalSignsForm } from "../components/VitalSignsForm";
 
 export function ClinicalPatientDetailPage() {
   const { patientId } = useParams();
@@ -24,26 +27,29 @@ export function ClinicalPatientDetailPage() {
   const [newNoteText, setNewNoteText] = useState("");
   const [creating, setCreating] = useState(false);
   const [generatingEpicrisis, setGeneratingEpicrisis] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
-  const { data: detail, isLoading: loadingDetail } = useQuery(getPatientById, {
-    patientId: patientId ?? "",
-  });
+  const { data: detail, isLoading: loadingDetail, refetch } = useQuery(
+    getPatientById,
+    {
+      patientId: patientId ?? "",
+    },
+  );
   const { data: history, isLoading: loadingHistory, refetch: refetchHistory } =
     useQuery(getPatientHistory, { patientId: patientId ?? "" });
 
   const createNoteFn = useAction(createClinicalNote);
   const generateEpicrisisFn = useAction(generateEpicrisisDraft);
 
-  if (!user?.isMedico || user.isAdmin) {
+  if (!(user?.isMedico || user?.isSecretaria || user?.isAdmin)) {
     return (
       <div className="mx-auto max-w-2xl">
         <Card className="border-outline-variant">
           <CardContent className="flex items-start gap-3 p-6 text-sm">
             <ShieldAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
-            <span>
-              Solo profesionales médicos habilitados pueden acceder a este
-              módulo.
-            </span>
+      <span>
+        No tienes acceso a este módulo clínico.
+      </span>
           </CardContent>
         </Card>
       </div>
@@ -159,17 +165,30 @@ export function ClinicalPatientDetailPage() {
         Volver a pacientes
       </WaspRouterLink>
 
-      <PatientProfileHeader
-        patient={patient}
-        noteCount={detail.noteCount}
-        epicrisisCount={detail.epicrisisCount}
-      />
+      <div className="flex items-center justify-between gap-2">
+        <PatientProfileHeader
+          patient={patient}
+          noteCount={detail.noteCount}
+          epicrisisCount={detail.epicrisisCount}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setShowEdit(true)}
+        >
+          <Pencil className="size-3.5" />
+          Editar paciente
+        </Button>
+      </div>
 
       <PatientClinicalSummary
         notes={history?.notes ?? []}
         epicrises={history?.epicrises ?? []}
         citas={detail?.latestCitas ?? []}
       />
+
+      <VitalSignsForm patientId={patient.id} />
 
       <PatientQuickActions
         noteCount={detail.noteCount}
@@ -184,6 +203,13 @@ export function ClinicalPatientDetailPage() {
       <PatientHistoryTimeline
         notes={history?.notes ?? []}
         epicrises={history?.epicrises ?? []}
+      />
+
+      <PatientFormModal
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        initialPatient={patient}
+        onDone={() => refetch()}
       />
     </div>
   );

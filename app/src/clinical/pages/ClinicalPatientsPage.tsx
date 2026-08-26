@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
-import { useQuery } from "wasp/client/operations";
-import { getPatients } from "wasp/client/operations";
+import { useQuery, useAction } from "wasp/client/operations";
+import { getPatients, manageSyntheticPatients } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
 import {
   Activity,
   ChevronRight,
   Mic,
+  Plus,
   Search,
   ShieldCheck,
   Sparkles,
@@ -20,28 +21,33 @@ import {
   patientAge,
   sexLabel,
 } from "../services/clinicalFormat";
+import { PatientFormModal } from "../components/PatientFormModal";
 
 export function ClinicalPatientsPage() {
   const { data: user } = useAuth();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [showCreate, setShowCreate] = useState(false);
 
-  const { data, isLoading, error } = useQuery(getPatients, {
+  const { data, isLoading, error, refetch } = useQuery(getPatients, {
     search: search || undefined,
     page,
     pageSize: 20,
   });
 
-  if (!user?.isMedico || user.isAdmin) {
+  const canManage = Boolean(
+    user?.isMedico || user?.isSecretaria || user?.isAdmin,
+  );
+
+  if (!(user?.isMedico || user?.isSecretaria || user?.isAdmin)) {
     return (
       <div className="mx-auto max-w-2xl">
         <Card className="border-outline-variant">
           <CardContent className="flex items-start gap-3 p-6 text-sm">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-destructive" />
-            <span>
-              Solo profesionales médicos habilitados pueden acceder a este
-              módulo.
-            </span>
+      <span>
+        No tienes acceso a este módulo clínico.
+      </span>
           </CardContent>
         </Card>
       </div>
@@ -62,12 +68,24 @@ export function ClinicalPatientsPage() {
             Historia clínica asistida por DoctorIA · datos 100% sintéticos
           </p>
         </div>
-        <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
-          <Button className="shadow-[0_0_20px_rgba(0,218,243,0.25)]">
-            <Mic className="size-4" />
-            Asistente de voz
-          </Button>
-        </WaspRouterLink>
+        <div className="flex flex-wrap items-center gap-2">
+          {canManage && (
+            <Button
+              variant="outline"
+              onClick={() => setShowCreate(true)}
+              className="gap-1.5"
+            >
+              <Plus className="size-4" />
+              Nuevo paciente
+            </Button>
+          )}
+          <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
+            <Button className="shadow-[0_0_20px_rgba(0,218,243,0.25)]">
+              <Mic className="size-4" />
+              Asistente de voz
+            </Button>
+          </WaspRouterLink>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -247,6 +265,12 @@ export function ClinicalPatientsPage() {
           </div>
         )}
       </Card>
+
+      <PatientFormModal
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        onDone={() => refetch()}
+      />
     </div>
   );
 }

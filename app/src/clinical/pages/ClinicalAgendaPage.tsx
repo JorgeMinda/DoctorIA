@@ -24,6 +24,7 @@ import {
 import { Badge } from "../../client/components/ui/badge";
 import { toast } from "../../client/hooks/use-toast";
 import { citaStatusLabel } from "../services/statusLabels";
+import { SecretaryCitaPanel } from "../components/SecretaryCitaPanel";
 
 function citaBadgeVariant(status: string) {
   if (status === "COMPLETED") return "success";
@@ -78,18 +79,37 @@ export function ClinicalAgendaPage() {
     }
   };
 
-  if (!user?.isMedico || user.isAdmin) {
+  if (!(user?.isMedico || user?.isSecretaria || user?.isAdmin)) {
     return (
       <div className="mx-auto max-w-2xl">
         <Card className="border-outline-variant">
           <CardContent className="flex items-start gap-3 p-6 text-sm">
             <ShieldAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
-            <span>
-              Solo profesionales médicos habilitados pueden acceder a este
-              módulo.
-            </span>
+            <span>No tienes acceso a este módulo clínico.</span>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  const isMedicoView = Boolean(user.isMedico && !user.isAdmin);
+
+  // Secretaria/admin gestionan citas desde el panel de creación.
+  if (!isMedicoView) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div>
+          <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-primary">
+            Panel clínico
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Gestión de citas
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Programa citas para los profesionales médicos.
+          </p>
+        </div>
+        <SecretaryCitaPanel />
       </div>
     );
   }

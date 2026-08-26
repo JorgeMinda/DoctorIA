@@ -74,6 +74,14 @@ export function ensureMedico(user: AuthUser | null | undefined): AuthUser {
   return u;
 }
 
+// Visualización de pacientes: médico, secretaria y admin. El médico ve solo
+// pacientes autorizados; secretaria/admin ven el universo activo.
+export function ensurePatientViewer(
+  user: AuthUser | null | undefined,
+): AuthUser {
+  return ensureRole(user, "admin", "medico", "secretaria");
+}
+
 export function ensureAdmin(user: AuthUser | null | undefined): AuthUser {
   const u = requireActiveAuthenticated(user);
   if (!u.isAdmin || u.isMedico || (u as any).isSecretaria) {
