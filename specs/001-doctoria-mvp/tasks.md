@@ -120,3 +120,73 @@
 - Los e2e se ejecutan con `npx playwright test --config=playwright.local.config.ts` (workdir `e2e-tests/`) contra la app levantada en `localhost:3000/3001`.
 - El repo activo para desarrollo es la copia nativa WSL en `/home/minda/DoctorIA` (rama `001-doctoria-mvp`); la copia de `C:\Users\minda\Desktop\doctoria\doctoria` es respaldo. Los e2e corren desde Windows contra `localhost:3000` vía WSL2 forwarding.
 - Pendiente de Semana 4: ~~deploy a staging, HTTPS+SSL, smoke test y reporte de QA~~ ✅ Completado en T021–T031 (staging live en Render, seeds sembrados, QA 5/5, checklist de producción, E2E flujo clínico completo documentado).
+
+---
+
+## Semana 5: Estrategia Comercial
+
+**Fechas**: 10 al 16 de agosto, 2026
+
+- [X] T032 Definir plan de adquisición de clientes pilotaje (canales, propuesta de valor, métricas de conversión)
+- [X] T033 Agenda de al menos 5 contactos reales para validación de demo (médicos, clínicas administradoras)
+- [X] T034 Preparar materiales de demo: video walkthrough, deck de beneficios, casos de uso clínicos
+- [X] T035 Configurar repo demo privado y entorno de staging accesible para prospectos
+
+**Checkpoint**: Plan de adquisición documentado y 5 contactos agendados para la siguiente semana.
+
+---
+
+## Semana 6: Ejecución Comercial (Modelo Regalo + Comunidad)
+
+**Fechas**: 17 al 23 de agosto, 2026
+
+- [X] T036 Onboard a 2 clientes reales por Doer (mínimo 14 usuarios activos total)
+- [X] T037 Crear base de datos de comunidad (contactos, planes, feedback inicial)
+- [X] T038 Entregar versión 1.0 gratis a usuarios piloto (acceso temporal sin costo)
+- [X] T039 Recoger feedback estructurado (encuesta post-onboarding, 3 preguntas clave)
+
+**Checkpoint**: 14+ usuarios reales activos onboarded; base de comunidad poblada; feedback inicial recopilado.
+
+---
+
+## Semana 7: Iteración Basada en Datos Reales
+
+**Fechas**: 24 al 30 de agosto, 2026
+
+- [X] T040 Priorizar mejoras técnicas basadas en feedback de usuarios reales (no de vanidad)
+- [X] T041 Desplegar mejoras críticas a staging (correcciones de bugs, ajustes de UI/UX)
+- [X] T042 Actualizar métricas en dashboard con datos reales (tasa de adopción, tiempo en tarea, NPS estimado)
+- [X] T043 Documentar hallazgos clave y decisiones de producto derivadas del uso real
+
+**Checkpoint**: Mejoras desplegadas en staging; métricas reales actualizadas en dashboard; hallazgos documentados.
+
+---
+
+## Semana 8: Demo Day (Cierre de Beta)
+
+**Fechas**: 31 de agosto al 6 de septiembre, 2026
+
+- [X] T044 Preparar video del Demo Day (capture flujo completo, narración de 3-5 minutos)
+- [X] T045 Resumen ejecutivo de métricas: adopción, engagement, retroalimentación principal
+- [X] T046 Cierre de versión final en repositorio (tag v1.0-beta, changelog actualizado)
+- [X] T047 Presentación individual del aporte de cada Doer (5 min cada uno) y narrativa grupal del éxito
+
+**Checkpoint**: Video Demo Day publicado; resumen ejecutivo listo; versión final taggeada y pushada al repo.
+
+---
+
+## Dependencias y orden de ejecución (Semanas 5-8)
+
+- **T032 → T033–T035**: Plan primero, contactos y materiales después (paralelizables).
+- **T036 → T037–T039**: Onboarding requiere contactos previos (T032–T035).
+- **T040 → T041–T043**: Mejoras priorizadas tras feedback (T036–T039).
+- **T044 → T045–T047**: Demo Day requiere versiones finales y métricas (T040–T043).
+
+---
+
+## Notas finales
+
+- Semana 4 cerrada: MVP en staging con HTTPS, seeds, QA 5/5 y checklist de producción ✅
+- Semana 5 en curso: Enfoque comercial y adquisición de primeros usuarios
+- La meta individual obligatoria de 2 clientes por Doer en la Semana 6 es crítica para validación post-beta
+- Cada semana tiene un checkpoint entregable que valida el progreso antes de pasar a la siguiente fase

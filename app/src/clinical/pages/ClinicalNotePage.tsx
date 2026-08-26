@@ -10,6 +10,7 @@ import {
   generateAddendumDraftAction,
   requestAIStructuring,
   updateClinicalNoteDraft,
+  updateNoteCIE11,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
 import {
@@ -39,6 +40,7 @@ import {
   type SectionDraft,
 } from "../components/SectionEditor";
 import { StatusBadge } from "../components/StatusBadge";
+import { CIE11SearchDialog, type CIE11Result } from "../components/CIE11SearchDialog";
 import type { SectionKey } from "../services/noteValidation";
 import { toast } from "../../client/hooks/use-toast";
 
@@ -78,6 +80,34 @@ export function ClinicalNotePage() {
   const [addendumReason, setAddendumReason] = useState("");
   const [aiAddendumOpen, setAiAddendumOpen] = useState(false);
   const [aiInstruction, setAiInstruction] = useState("");
+  const [cie11Open, setCie11Open] = useState(false);
+
+  const updateNoteCIE11Fn = useAction(updateNoteCIE11);
+
+  const handleSelectCIE11 = async (result: CIE11Result) => {
+    if (!noteId) return;
+    try {
+      setSaving(true);
+      await updateNoteCIE11Fn({
+        noteId,
+        cie11Code: result.code,
+        cie11Description: result.title,
+        cie11Uri: result.uri,
+      });
+      toast({
+        title: "Código CIE-11 asignado",
+        description: `${result.code} - ${result.title}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error al asignar CIE-11",
+        description: err.message || "Intente nuevamente",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (note) {
@@ -359,6 +389,11 @@ export function ClinicalNotePage() {
               Asistido por IA
             </Badge>
           )}
+          {note.cie11Code && (
+            <Badge variant="outline" className="gap-1 border-primary text-primary" title={note.cie11Description ?? undefined}>
+              CIE-11: {note.cie11Code}
+            </Badge>
+          )}
           <span className="mono-label inline-flex items-center gap-1 text-xs text-muted-foreground">
             <CalendarDays className="size-3.5" />
             {new Date(note.createdAt).toLocaleString()}
@@ -434,6 +469,13 @@ export function ClinicalNotePage() {
               >
                 <Save className="size-4" />
                 Actualizar nota
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setCie11Open(true)}
+                disabled={saving || aiBusy}
+              >
+                Asignar CIE-11
               </Button>
               <Button onClick={handleConfirm} disabled={saving || aiBusy}>
                 <ShieldCheck className="size-4" />
@@ -645,6 +687,11 @@ export function ClinicalNotePage() {
           </CardContent>
         </Card>
       )}
+      <CIE11SearchDialog
+        open={cie11Open}
+        onOpenChange={setCie11Open}
+        onSelect={handleSelectCIE11}
+      />
     </div>
   );
 }

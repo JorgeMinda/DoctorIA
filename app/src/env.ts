@@ -12,5 +12,8 @@ export const serverEnvValidationSchema = defineEnvValidationSchema(
     OPENROUTER_API_KEY: z.string(),
     // Modelo de IA configurable (default: tier gratuito de OpenRouter).
     OPENROUTER_MODEL: z.string().default("openai/gpt-oss-20b:free"),
+    // ICD-11 (CIE-11) — API oficial de la OMS.
+    ICD11_CLIENT_ID: z.string().optional(),
+    ICD11_CLIENT_SECRET: z.string().optional(),
   }),
 );

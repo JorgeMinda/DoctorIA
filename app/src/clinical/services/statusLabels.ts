@@ -35,6 +35,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   PRINT_EPICRISIS: "Imprimió epicrisis",
   REGISTER_VITAL_SIGNS: "Registró signos vitales",
   REGISTER_PRE_CLINICAL_DATA: "Registró registro pre-clínico",
+  UPDATE_NOTE_CIE11: "Asignó clasificación CIE-11 a nota",
+  UPDATE_EPICRISIS_CIE11: "Asignó clasificación CIE-11 a epicrisis",
   START_APPOINTMENT: "Inició cita",
   CANCEL_APPOINTMENT: "Canceló cita",
   MARK_NO_SHOW: "Marcó no asistió",

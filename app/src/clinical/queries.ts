@@ -1434,4 +1434,44 @@ export const getSecretaryAuditLog: GetSecretaryAuditLog<
   return logs as SecretaryAuditLogEntry[];
 };
 
+// ---------------------------------------------------------------------------
+// searchCIE11 — Búsqueda de códigos CIE-11 vía API oficial de la OMS
+// ---------------------------------------------------------------------------
+
+const searchCIE11InputSchema = z.object({
+  query: z.string().min(1).max(200),
+});
+
+export const searchCIE11 = async (
+  rawArgs: { query: string },
+  context: any,
+) => {
+  const user = ensureMedico(context.user);
+  void user;
+
+  const { query } = ensureArgsSchemaOrThrowHttpError(
+    searchCIE11InputSchema,
+    rawArgs,
+  );
+
+  const { searchICD11, isConfigured } = await import(
+    "./services/classification/icd11.service"
+  );
+
+  const config = {
+    clientId: process.env.ICD11_CLIENT_ID ?? "",
+    clientSecret: process.env.ICD11_CLIENT_SECRET ?? "",
+  };
+
+  if (!isConfigured(config)) {
+    throw new HttpError(
+      503,
+      "Servicio CIE-11 no configurado. Contacte al administrador.",
+    );
+  }
+
+  const results = await searchICD11(query, config);
+  return results;
+};
+
 

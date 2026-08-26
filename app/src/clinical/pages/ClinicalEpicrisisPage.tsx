@@ -7,6 +7,7 @@ import {
   confirmEpicrisis,
   createEpicrisisAddendum,
   updateEpicrisisDraft,
+  updateEpicrisisCIE11,
 } from "wasp/client/operations";
 import { recordEpicrisisExport } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
@@ -33,6 +34,7 @@ import {
 } from "../../client/components/ui/card";
 import { Badge } from "../../client/components/ui/badge";
 import { StatusBadge } from "../components/StatusBadge";
+import { CIE11SearchDialog, type CIE11Result } from "../components/CIE11SearchDialog";
 import {
   EpicrisisPDFDocument,
   type EpicrisisPDFData,
@@ -82,6 +84,34 @@ export function ClinicalEpicrisisPage() {
   const [addendumDraft, setAddendumDraft] = useState<Record<string, string>>(
     {},
   );
+  const [cie11Open, setCie11Open] = useState(false);
+
+  const updateEpicrisisCIE11Fn = useAction(updateEpicrisisCIE11);
+
+  const handleSelectCIE11 = async (result: CIE11Result) => {
+    if (!epicrisisId) return;
+    try {
+      setSaving(true);
+      await updateEpicrisisCIE11Fn({
+        epicrisisId,
+        cie11Code: result.code,
+        cie11Description: result.title,
+        cie11Uri: result.uri,
+      });
+      toast({
+        title: "Código CIE-11 asignado a epicrisis",
+        description: `${result.code} - ${result.title}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error al asignar CIE-11",
+        description: err.message || "Intente nuevamente",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -252,6 +282,11 @@ export function ClinicalEpicrisisPage() {
               Asistido por IA
             </Badge>
           )}
+          {epicrisis.cie11Code && (
+            <Badge variant="outline" className="gap-1 border-primary text-primary" title={epicrisis.cie11Description ?? undefined}>
+              CIE-11: {epicrisis.cie11Code}
+            </Badge>
+          )}
           <span className="mono-label inline-flex items-center gap-1 text-xs text-muted-foreground">
             <CalendarDays className="size-3.5" />
             {new Date(epicrisis.createdAt).toLocaleString()}
@@ -334,6 +369,13 @@ export function ClinicalEpicrisisPage() {
                 <Save className="size-4" />
                 Guardar cambios
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => setCie11Open(true)}
+                disabled={saving}
+              >
+                Asignar CIE-11
+              </Button>
               <Button onClick={handleConfirm} disabled={saving}>
                 <ShieldCheck className="size-4" />
                 Confirmar epicrisis
@@ -409,6 +451,11 @@ export function ClinicalEpicrisisPage() {
           </CardContent>
         </Card>
       )}
+      <CIE11SearchDialog
+        open={cie11Open}
+        onOpenChange={setCie11Open}
+        onSelect={handleSelectCIE11}
+      />
     </div>
   );
 }

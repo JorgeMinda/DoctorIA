@@ -261,6 +261,12 @@ model ClinicalNote {
   childNotes   ClinicalNote[] @relation("NoteVersions")
   addendumReason String?
 
+  // Clasificación CIE-11 (metadata, NO contenido clínico).
+  // El médico asigna manualmente ANTES de confirmar (inmutabilidad post-confirmación).
+  cie11Code        String?
+  cie11Description String?
+  cie11Uri         String?
+
   auditLogs AuditLog[]
 
   @@index([patientId, createdAt])
@@ -305,6 +311,12 @@ model Epicrisis {
   parentEpicrisis   Epicrisis? @relation("EpicrisisVersions", fields: [parentEpicrisisId], references: [id])
   childEpicrises    Epicrisis[] @relation("EpicrisisVersions")
   addendumReason    String?
+
+  // Clasificación CIE-11 (metadata, NO contenido clínico).
+  // El médico asigna manualmente ANTES de confirmar (inmutabilidad post-confirmación).
+  cie11Code        String?
+  cie11Description String?
+  cie11Uri         String?
 
   auditLogs AuditLog[]
 

@@ -2228,3 +2228,142 @@ export const recordEpicrisisExport: RecordEpicrisisExport<
 
   return { ok: true };
 };
+
+// ---------------------------------------------------------------------------
+// updateNoteCIE11 — Asignar clasificación CIE-11 a una nota clínica
+// Solo médicos autorizados. Solo en estado DRAFT (antes de confirmar).
+// ---------------------------------------------------------------------------
+
+const updateNoteCIE11InputSchema = z.object({
+  noteId: z.string().min(1),
+  cie11Code: z.string().min(1).max(20),
+  cie11Description: z.string().min(1).max(500),
+  cie11Uri: z.string().url().optional(),
+});
+
+type UpdateNoteCIE11Input = z.infer<typeof updateNoteCIE11InputSchema>;
+
+export const updateNoteCIE11 = async (
+  rawArgs: UpdateNoteCIE11Input,
+  context: any,
+) => {
+  const user = ensureMedico(context.user);
+
+  const args = ensureArgsSchemaOrThrowHttpError(
+    updateNoteCIE11InputSchema,
+    rawArgs,
+  );
+
+  const note = await context.entities.ClinicalNote.findUnique({
+    where: { id: args.noteId },
+    select: { id: true, patientId: true, status: true },
+  });
+  if (!note) {
+    throw new HttpError(404, "Nota clínica no encontrada");
+  }
+
+  // Inmutabilidad: solo se puede clasificar en estado DRAFT
+  if (note.status !== "DRAFT_MANUAL" && note.status !== "DRAFT_AI_ASSISTED") {
+    throw new HttpError(
+      409,
+      "Solo se puede asignar CIE-11 en notas en borrador (DRAFT). La nota confirmada es inmutable.",
+    );
+  }
+
+  await assertMedicoPatientAccess(user.id, note.patientId);
+
+  const updated = await context.entities.ClinicalNote.update({
+    where: { id: args.noteId },
+    data: {
+      cie11Code: args.cie11Code,
+      cie11Description: args.cie11Description,
+      cie11Uri: args.cie11Uri ?? null,
+    },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "UPDATE_NOTE_CIE11",
+    resourceType: "NOTE",
+    resourceId: note.id,
+    patientId: note.patientId,
+    clinicalNoteId: note.id,
+    metadata: {
+      code: args.cie11Code,
+      description: args.cie11Description,
+    },
+  });
+
+  return updated;
+};
+
+// ---------------------------------------------------------------------------
+// updateEpicrisisCIE11 — Asignar clasificación CIE-11 a una epicrisis
+// Solo médicos autorizados. Solo en estado DRAFT (antes de confirmar).
+// ---------------------------------------------------------------------------
+
+const updateEpicrisisCIE11InputSchema = z.object({
+  epicrisisId: z.string().min(1),
+  cie11Code: z.string().min(1).max(20),
+  cie11Description: z.string().min(1).max(500),
+  cie11Uri: z.string().url().optional(),
+});
+
+type UpdateEpicrisisCIE11Input = z.infer<typeof updateEpicrisisCIE11InputSchema>;
+
+export const updateEpicrisisCIE11 = async (
+  rawArgs: UpdateEpicrisisCIE11Input,
+  context: any,
+) => {
+  const user = ensureMedico(context.user);
+
+  const args = ensureArgsSchemaOrThrowHttpError(
+    updateEpicrisisCIE11InputSchema,
+    rawArgs,
+  );
+
+  const epicrisis = await context.entities.Epicrisis.findUnique({
+    where: { id: args.epicrisisId },
+    select: { id: true, patientId: true, status: true },
+  });
+  if (!epicrisis) {
+    throw new HttpError(404, "Epicrisis no encontrada");
+  }
+
+  // Inmutabilidad: solo se puede clasificar en estado DRAFT
+  if (
+    epicrisis.status !== "DRAFT_AI_ASSISTED" &&
+    epicrisis.status !== "REVIEWED"
+  ) {
+    throw new HttpError(
+      409,
+      "Solo se puede asignar CIE-11 en epicrisis en borrador. La epicrisis confirmada es inmutable.",
+    );
+  }
+
+  await assertMedicoPatientAccess(user.id, epicrisis.patientId);
+
+  const updated = await context.entities.Epicrisis.update({
+    where: { id: args.epicrisisId },
+    data: {
+      cie11Code: args.cie11Code,
+      cie11Description: args.cie11Description,
+      cie11Uri: args.cie11Uri ?? null,
+    },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "UPDATE_EPICRISIS_CIE11",
+    resourceType: "EPICRISIS",
+    resourceId: epicrisis.id,
+    patientId: epicrisis.patientId,
+    epicrisisId: epicrisis.id,
+    metadata: {
+      code: args.cie11Code,
+      description: args.cie11Description,
+    },
+  });
+
+  return updated;
+};
