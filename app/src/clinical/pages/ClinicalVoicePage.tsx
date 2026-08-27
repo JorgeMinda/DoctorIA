@@ -96,12 +96,6 @@ export function ClinicalVoicePage() {
   const speechCurrentRef = useRef("");
   const sessionFinalDeliveredRef = useRef(false);
 
-  const { isFetching } = useQuery(
-    getVoiceAssistantResponse,
-    { query: transcript },
-    { enabled: false, refetchOnWindowFocus: false },
-  );
-
   const { data: patientsData } = useQuery(getPatients, { pageSize: 50 });
   const assignedPatients: {
     id: string;
@@ -400,11 +394,12 @@ export function ClinicalVoicePage() {
 
   const vitals =
     response?.actionType === "VOICE_RETRIEVED" ? response.vitals : [];
-  const TrendIcon = vitals.find((v) => v.trend === "down")
-    ? TrendingDown
-    : vitals.find((v) => v.trend === "up")
-      ? TrendingUp
-      : Minus;
+
+  const getTrendIcon = (trend: "up" | "down" | "stable") => {
+    if (trend === "down") return TrendingDown;
+    if (trend === "up") return TrendingUp;
+    return Minus;
+  };
 
   return (
     <div className="mt-6 px-6 pb-16">
@@ -464,7 +459,7 @@ export function ClinicalVoicePage() {
             >
               {STATUS_HINT[phase]}
             </span>
-            {isFetching && <span className="animate-pulse">· consultando…</span>}
+            {phase === "PROCESSING" && <span className="animate-pulse">· consultando…</span>}
             {speechOn && (
               <>
                 <span className="animate-pulse text-emerald-400">· habla ahora…</span>
@@ -623,15 +618,10 @@ export function ClinicalVoicePage() {
                     </p>
                   )}
                 </div>
-                {response.patient && response.patient.id !== "demo-patient" && (
-                  <WaspRouterLink
-                    to={routes.ClinicalPatientDetailRoute.to}
-                    params={{ patientId: response.patient.id }}
-                  >
-                    <Button variant="outline" size="sm">
-                      Ver historia completa
-                    </Button>
-                  </WaspRouterLink>
+                {demoMode && (
+                  <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning">
+                    DEMO
+                  </span>
                 )}
               </CardHeader>
               <CardContent className="space-y-5">
@@ -648,24 +638,39 @@ export function ClinicalVoicePage() {
                 {/* Signos vitales */}
                 {response.vitals.length > 0 && (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {response.vitals.map((v) => (
-                      <div
-                        key={v.label}
-                        className="rounded-xl border border-outline-variant bg-surface/60 p-4"
-                      >
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          {v.label}
-                        </p>
-                        <div className="mt-1 flex items-baseline gap-2">
-                          <span className="text-xl font-semibold">{v.value}</span>
-                          <span className="text-xs text-muted-foreground">{v.unit}</span>
-                          <TrendIcon
-                            className="text-muted-foreground ml-auto size-4"
-                            aria-hidden="true"
-                          />
+                    {response.vitals.map((v) => {
+                      const VitalTrendIcon = getTrendIcon(v.trend);
+                      const trendColor =
+                        v.trend === "down"
+                          ? "text-destructive"
+                          : v.trend === "up"
+                            ? "text-emerald-500"
+                            : "text-muted-foreground";
+                      return (
+                        <div
+                          key={v.label}
+                          className="rounded-xl border border-outline-variant bg-surface/60 p-4"
+                        >
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            {v.label}
+                          </p>
+                          <div className="mt-1 flex items-baseline gap-2">
+                            <span className="text-xl font-semibold">{v.value}</span>
+                            <span className="text-xs text-muted-foreground">{v.unit}</span>
+                            <VitalTrendIcon
+                              className={`ml-auto size-4 ${trendColor}`}
+                              aria-label={
+                                v.trend === "down"
+                                  ? "en descenso"
+                                  : v.trend === "up"
+                                    ? "en ascenso"
+                                    : "estable"
+                              }
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 
@@ -726,19 +731,17 @@ export function ClinicalVoicePage() {
                         </Button>
                       </WaspRouterLink>
                     ) : (
-                      <WaspRouterLink to={routes.ClinicalPatientsRoute.to}>
-                        <Button variant="outline" size="sm">
-                          Ver pacientes asignados
-                        </Button>
-                      </WaspRouterLink>
+                      <>
+                        <WaspRouterLink to={routes.ClinicalPatientsRoute.to}>
+                          <Button variant="outline" size="sm">
+                            Ver pacientes asignados
+                          </Button>
+                        </WaspRouterLink>
+                        <span className="flex items-center text-xs text-muted-foreground">
+                          (Modo demo — sin paciente real seleccionado)
+                        </span>
+                      </>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowSparkline((s) => !s)}
-                    >
-                      Ver gráfico de evolución
-                    </Button>
                     <Button variant="ghost" size="sm" onClick={handleReset}>
                       Nueva consulta
                     </Button>

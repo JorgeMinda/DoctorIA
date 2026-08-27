@@ -189,17 +189,19 @@ export function VoiceOrb({ state, onActivate, disabled, className }: VoiceOrbPro
                 : state === "PROCESSING"
                   ? "voice-wave-bar bg-violet-400"
                   : state === "RESPONDING"
-                    ? "voice-wave-bar bg-emerald-400"
+                    ? "bg-emerald-400/60"
                     : "bg-cyan-400/30",
             )}
             style={{
-              height: "100%",
+              height:
+                state === "RESPONDING"
+                  ? `${30 + 20 * Math.sin((i / WAVE_BARS) * Math.PI)}%`
+                  : "100%",
               transformOrigin: "center",
               animation:
-                state === "LISTENING" || state === "PROCESSING" || state === "RESPONDING"
+                state === "LISTENING" || state === "PROCESSING"
                   ? `voice-wave-bar ${1.4 + (i % 7) * 0.18}s ease-in-out ${i * 0.06}s infinite`
                   : undefined,
-              animationDelay: state === "RESPONDING" ? `${i * 0.12}s` : undefined,
             }}
           />
         ))}
