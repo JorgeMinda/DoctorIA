@@ -93,82 +93,120 @@ export function parseVoiceQuery(query: string): VoiceQueryParseResult {
 const stripAccents = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-// Frases que disparan el modo CREATE_NOTE (detection de intención).
+// Frases que disparan el modo CREATE_NOTE (detección de intención).
 const CREATE_NOTE_PHRASES: readonly string[] = [
+  "anota en la historia",
+  "anota en el historial",
+  "anotar en la historia",
+  "anotar en el historial",
+  "anota en",
+  "anotar en",
+  "anota a",
+  "anotar a",
   "agrega una nota",
   "agrega la nota",
   "agregar una nota",
   "agregarle una nota",
+  "agrega nota",
+  "agregar nota",
+  "crea una nota",
+  "crear una nota",
+  "crea nota",
+  "crear nota",
+  "nueva nota",
+  "abrir nota",
+  "abre nota",
+  "abre la nota",
+  "abrir la nota",
+  "nota para",
+  "nota de",
+  "dictar nota",
+  "dicta nota",
   "registra que",
   "registrar que",
-  "anota en la historia",
-  "anota en el historial",
+  "anota que",
   "apunta que",
   "déjame una nota",
   "dejame una nota",
-  "crea una nota",
-  "crear una nota",
-  "nueva nota",
 ];
 
 // Marcadores tras los que aparece el paciente (nombre o ID).
 const PATIENT_MARKER_RE =
-  /(?:en el historial de|en la historia de|a la historia de|de la historia de|registra que|anota que|apunta que|sobre|para|con|de|a)\s+/i;
-
-// Nombre propio corto (1-2 palabras con mayúscula), evita capturar la
-// transcripción clínica posterior ("presenta fiebre...").
-const NAME_TOKEN_RE =
-  /([A-ZÁÉÍÓÚÜÑ][a-záéíóúüñ]+(?:\s+[A-ZÁÉÍÓÚÜÑ][a-záéíóúüñ]+)?)/;
+  /(?:en el historial de|en la historia de|a la historia de|de la historia de|al paciente|del paciente|el paciente|la paciente|paciente|registra que|anota que|apunta que|sobre|para|con|de|a|en)\s+/i;
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Detecta la intención del comando de voz:
-//   - CREATE_NOTE: el médico pide crear un borrador de nota por voz.
-//   - RETRIEVE:    comportamiento actual (buscar/resumir paciente).
-// NUNCA genera una nota confirmada: solo extrae patientQuery + clinicalText.
+//   - CREATE_NOTE: el médico pide crear o abrir un borrador de nota por voz.
+//   - RETRIEVE:    comportamiento de consulta (resumen de paciente).
 export function parseVoiceCommand(query: string): VoiceCommand {
   const normalized = query.trim().replace(/[.,;!?]+$/g, "");
   const lower = normalized.toLowerCase();
-  const isCreate = CREATE_NOTE_PHRASES.some((phrase) =>
+  
+  // Buscar si coincide con alguna frase de creación de nota
+  const matchedPhrase = CREATE_NOTE_PHRASES.find((phrase) =>
     lower.includes(phrase),
   );
 
-  if (!isCreate) {
+  if (!matchedPhrase) {
     return {
       intent: "RETRIEVE",
       patientQuery: parseVoiceQuery(normalized).name ?? "",
     };
   }
 
-  // 1) Preferencia por syntheticId (sin ambigüedad posible).
+  // 1) Preferencia por syntheticId si existe en el texto (ej. PAC-001).
   const idMatch = normalized.match(/\b(PAC-\d{1,4})\b/i);
-  if (idMatch) {
+  if (idMatch && idMatch.index != null) {
     return {
       intent: "CREATE_NOTE",
       patientQuery: idMatch[1].toUpperCase(),
-      clinicalText: clinicalTextAfter(normalized, idMatch.index!, idMatch[0].length),
+      clinicalText: clinicalTextAfter(normalized, idMatch.index, idMatch[0].length),
     };
   }
 
-  // 2) Nombre propio tras un marcador.
-  const markerMatch = normalized.match(PATIENT_MARKER_RE);
-  if (markerMatch && markerMatch.index != null) {
-    const afterMarker = normalized.slice(
-      markerMatch.index + markerMatch[0].length,
-    );
-    const nameMatch = afterMarker.match(NAME_TOKEN_RE);
-    if (nameMatch && nameMatch.index != null) {
-      const patientQuery = nameMatch[1].trim();
-      const start = markerMatch.index + markerMatch[0].length + nameMatch.index;
-      return {
-        intent: "CREATE_NOTE",
-        patientQuery,
-        clinicalText: clinicalTextAfter(normalized, start, patientQuery.length),
-      };
-    }
+  // 2) Extraer el texto tras la frase de activación (ej. tras "anota en", "crear nota para", etc.)
+  const phraseIndex = lower.indexOf(matchedPhrase);
+  let afterPhrase = normalized.slice(phraseIndex + matchedPhrase.length).trim();
+
+  // Limpiar marcadores iniciales ("el paciente", "de", "a", etc.)
+  afterPhrase = afterPhrase
+    .replace(/^(?:el paciente|la paciente|al paciente|del paciente|paciente|en la historia de|en el historial de|de|a|para|en)\s+/i, "")
+    .trim();
+
+  // Si hay conectores clínicos que separan el nombre del dictado ("que presenta...", "con dolor...", "donde...")
+  const connectorMatch = afterPhrase.match(/\s+(?:que|con|donde|y\s+dice|refiere|presenta|quien|indicando)\s+/i);
+
+  if (connectorMatch && connectorMatch.index != null) {
+    const patientQuery = afterPhrase.slice(0, connectorMatch.index).trim();
+    const clinicalText = afterPhrase.slice(connectorMatch.index + connectorMatch[0].length).trim();
+    return {
+      intent: "CREATE_NOTE",
+      patientQuery,
+      clinicalText: clinicalText || undefined,
+    };
   }
 
-  return { intent: "CREATE_NOTE", patientQuery: "", clinicalText: normalized };
+  // Si no hay conector, verificar si son 1 a 3 palabras (nombre del paciente)
+  const words = afterPhrase.split(/\s+/).filter(Boolean);
+  if (words.length > 0 && words.length <= 4) {
+    return {
+      intent: "CREATE_NOTE",
+      patientQuery: afterPhrase.trim(),
+      clinicalText: undefined,
+    };
+  } else if (words.length > 4) {
+    // Si hay muchas palabras, tomar las primeras 2 como nombre y el resto como dictado clínico
+    const patientQuery = words.slice(0, 2).join(" ");
+    const clinicalText = words.slice(2).join(" ");
+    return {
+      intent: "CREATE_NOTE",
+      patientQuery,
+      clinicalText: clinicalText || undefined,
+    };
+  }
+
+  return { intent: "CREATE_NOTE", patientQuery: afterPhrase, clinicalText: undefined };
 }
 
 // Extrae el dictado clínico: resto del texto tras la mención del paciente,
@@ -181,7 +219,7 @@ function clinicalTextAfter(
   const after = text.slice(start + length).trim();
   const cleaned = after
     .replace(
-      /^(que|con|donde|por|sobre|y|le|la|el|se)\b/i,
+      /^(?:que|con|donde|por|sobre|y|le|la|el|se|al paciente|del paciente|paciente)\b\s*/i,
       "",
     )
     .trim()
@@ -199,10 +237,10 @@ export function resolvePatientMatches(
   query: string | null,
 ): VoicePatientMatch[] {
   if (!query) return [];
-  const normalized = stripAccents(query).toLowerCase().normalize("NFC");
+  const normalized = stripAccents(query).toLowerCase().normalize("NFC").trim();
   const parts = normalized.split(/\s+/).filter(Boolean);
 
-  if (/^pac-\d+$/.test(normalized)) {
+  if (/^pac-\d+$/i.test(normalized)) {
     const byId = patients.filter(
       (p) => stripAccents(p.syntheticId).toLowerCase() === normalized,
     );

@@ -20,10 +20,13 @@ import {
   FileText,
   FilePlus2,
   Loader2,
+  Mic,
+  MicOff,
   Save,
   ShieldCheck,
   Sparkles,
   Trash2,
+  Volume2,
   X,
 } from "lucide-react";
 import { Button } from "../../client/components/ui/button";
@@ -82,6 +85,69 @@ export function ClinicalNotePage() {
   const [aiInstruction, setAiInstruction] = useState("");
   const [cie11Open, setCie11Open] = useState(false);
 
+  // Dictado por voz a nivel de nota
+  const [isDictating, setIsDictating] = useState(false);
+  const [dictationTranscript, setDictationTranscript] = useState("");
+  const pageRecognitionRef = useRef<any>(null);
+
+  const stopPageDictation = () => {
+    if (pageRecognitionRef.current) {
+      try {
+        pageRecognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+      pageRecognitionRef.current = null;
+    }
+    setIsDictating(false);
+  };
+
+  const startPageDictation = () => {
+    const SR =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast({
+        title: "Reconocimiento no disponible",
+        description: "Tu navegador no soporta entrada de voz.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    stopPageDictation();
+
+    const rec = new SR();
+    pageRecognitionRef.current = rec;
+    rec.lang = "es-ES";
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    rec.onresult = (e: any) => {
+      let final = "";
+      let interim = "";
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          final += e.results[i][0].transcript + " ";
+        } else {
+          interim += e.results[i][0].transcript + " ";
+        }
+      }
+      setDictationTranscript((final + interim).trim());
+    };
+
+    rec.onerror = () => {
+      setIsDictating(false);
+    };
+
+    rec.onend = () => {
+      setIsDictating(false);
+      pageRecognitionRef.current = null;
+    };
+
+    rec.start();
+    setIsDictating(true);
+  };
+
   const updateNoteCIE11Fn = useAction(updateNoteCIE11);
 
   const handleSelectCIE11 = async (result: CIE11Result) => {
@@ -124,14 +190,14 @@ export function ClinicalNotePage() {
     }
   }, [note?.id]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    return () => {
+      stopPageDictation();
       if (autosaveTimer.current) {
         clearTimeout(autosaveTimer.current);
       }
-    },
-    [],
-  );
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -426,6 +492,87 @@ export function ClinicalNotePage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Panel de Dictado Asistido por Voz con IA */}
+      {!isConfirmed && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-surface to-primary/5 shadow-sm">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
+                    <Sparkles className="size-3" />
+                    Dictado por Voz con IA
+                  </Badge>
+                  {isDictating && (
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 animate-pulse">
+                      <span className="size-2 rounded-full bg-emerald-500" />
+                      Escuchando dictado…
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Dicta la consulta médica libremente. También puedes dictar en cada sección individual o pulsar <strong>Estructurar con IA</strong> para organizar automáticamente las secciones SOAP.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {isDictating ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={stopPageDictation}
+                    className="gap-1.5 animate-pulse"
+                  >
+                    <MicOff className="size-4" />
+                    Detener dictado
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={startPageDictation}
+                    disabled={aiBusy || saving}
+                    className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    <Mic className="size-4" />
+                    {dictationTranscript ? "Continuar dictando" : "Dictar consulta por voz"}
+                  </Button>
+                )}
+                {note.status === "DRAFT_MANUAL" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleRequestAI}
+                    disabled={saving || aiBusy}
+                    className="gap-1.5 shadow-[0_0_15px_rgba(0,218,243,0.25)]"
+                  >
+                    {aiBusy ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-3.5" />
+                    )}
+                    Estructurar con IA
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Transcripción en vivo si hay dictado */}
+            {(isDictating || dictationTranscript) && (
+              <div className="mt-3 rounded-lg border border-primary/20 bg-surface/80 p-3 text-sm">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Transcripción del dictado médico:
+                </p>
+                <p className="italic text-foreground">
+                  {dictationTranscript || "Comienza a hablar para dictar la nota clínica…"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {!isConfirmed && (
         <Card className="overflow-hidden border-outline-variant">

@@ -1,4 +1,4 @@
-﻿// Acciones (Actions) del mÃ³dulo clÃ­nico.
+// Acciones (Actions) del mÃ³dulo clÃ­nico.
 // contracts/clinical-operations.md Â§2, Â§3, Â§5.
 
 import { HttpError, prisma } from "wasp/server";
@@ -2080,15 +2080,12 @@ export const createNoteFromVoice: CreateNoteFromVoice<
     throw new HttpError(404, "Paciente no encontrado.");
   }
 
-  if (!command.clinicalText) {
-    throw new HttpError(
-      400,
-      "No detectÃ© el texto clÃ­nico de la nota. Repite indicando el contenido del dictado (ej. \u201canota en la historia de PAC-001 que presenta fiebre de 38 grados\u201d).",
-    );
-  }
+  const clinicalText =
+    command.clinicalText ||
+    "Nota clínica iniciada por voz. Pendiente de dictado clínico y estructuración con IA.";
 
   const created = await createClinicalNote(
-    { patientId: qualified.id, originalText: command.clinicalText },
+    { patientId: qualified.id, originalText: clinicalText },
     context,
   );
 
