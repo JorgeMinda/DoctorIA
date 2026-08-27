@@ -10,7 +10,6 @@ import { toast } from "../../client/hooks/use-toast";
 import { Button } from "../../client/components/ui/button";
 import { Input } from "../../client/components/ui/input";
 import { Label } from "../../client/components/ui/label";
-import { Textarea } from "../../client/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -27,6 +26,7 @@ import {
   DialogClose,
 } from "../../client/components/ui/dialog";
 import { Badge } from "../../client/components/ui/badge";
+import { AlertCircle, UserCheck } from "lucide-react";
 
 export function NewAppointmentModal({
   open,
@@ -44,13 +44,24 @@ export function NewAppointmentModal({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [duration, setDuration] = useState("30");
+  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const { data: medicosData } = useQuery(getDoctorsAgenda, {});
-  const { data: patientsData } = useQuery(getPatients, {
-    page: 1,
-    pageSize: 200,
-  });
+  const { data: medicosData, isLoading: loadingMedicos } = useQuery(
+    getDoctorsAgenda,
+    {},
+    { enabled: open },
+  );
+
+  const { data: patientsData, isLoading: loadingPatients } = useQuery(
+    getPatients,
+    {
+      page: 1,
+      pageSize: 200,
+    },
+    { enabled: open },
+  );
+
   const { data: slots, isLoading: loadingSlots } = useQuery(
     getAvailableSlots,
     medicoId && date
@@ -61,42 +72,88 @@ export function NewAppointmentModal({
   const createCitaFn = useAction(manageCita);
 
   useEffect(() => {
-    setPatientId(defaultPatientId ?? "");
+    if (open) {
+      setPatientId(defaultPatientId ?? "");
+      setDate("");
+      setTime("");
+      setReason("");
+      setBusy(false);
+    }
   }, [defaultPatientId, open]);
+
   useEffect(() => {
     setTime("");
   }, [date, medicoId, duration, slots]);
 
-  const medicos = medicosData?.medicos ?? [];
-  const patients = patientsData?.patients ?? [];
+  const allMedicos = medicosData?.medicos ?? [];
+  const allPatients = patientsData?.patients ?? [];
   const freeSlots: string[] = slots?.freeSlots ?? [];
+
+  // Paciente seleccionado y sus médicos autorizados
+  const selectedPatient = allPatients.find((p: any) => p.id === patientId);
+  const authorizedMedicoIds: string[] = (
+    selectedPatient?.authorizedMedicos ?? []
+  ).map((a: any) => a.medicoId);
+
+  // Filtrar médicos si hay un paciente seleccionado
+  const availableMedicos = patientId
+    ? allMedicos.filter((m: any) => authorizedMedicoIds.includes(m.id))
+    : allMedicos;
+
+  // Si el médico seleccionado ya no es válido para este paciente, resetearlo
+  useEffect(() => {
+    if (patientId && medicoId && !authorizedMedicoIds.includes(medicoId)) {
+      setMedicoId("");
+    }
+  }, [patientId, authorizedMedicoIds, medicoId]);
+
+  // Si el paciente solo tiene un médico asignado, auto-seleccionarlo para agilizar
+  useEffect(() => {
+    if (patientId && availableMedicos.length === 1 && !medicoId) {
+      setMedicoId(availableMedicos[0].id);
+    }
+  }, [patientId, availableMedicos, medicoId]);
 
   const handleCreate = async () => {
     if (!medicoId || !patientId || !date || !time) {
       toast({
         title: "Campos requeridos",
-        description: "Médico, paciente, fecha y hora.",
+        description: "Por favor complete médico, paciente, fecha y hora.",
         variant: "destructive",
       });
       return;
     }
+
+    // Validación de asignación médico-paciente
+    if (!authorizedMedicoIds.includes(medicoId)) {
+      toast({
+        title: "Médico no asignado",
+        description:
+          "El profesional seleccionado no tiene asignación activa para este paciente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!freeSlots.includes(time)) {
       toast({
         title: "Horario no disponible",
-        description: "Ese horario se solapa con otra cita.",
+        description: "El horario seleccionado no está disponible.",
         variant: "destructive",
       });
       return;
     }
+
     const scheduledAt = new Date(`${date}T${time}:00`);
     if (scheduledAt.getTime() <= Date.now()) {
       toast({
         title: "Fecha inválida",
-        description: "La cita no puede ser en el pasado.",
+        description: "La cita no puede programarse en el pasado.",
         variant: "destructive",
       });
       return;
     }
+
     setBusy(true);
     try {
       await createCitaFn({
@@ -106,9 +163,10 @@ export function NewAppointmentModal({
           patientId,
           scheduledAt,
           durationMinutes: Number(duration),
+          reason: reason.trim() || undefined,
         },
       });
-      toast({ title: "Cita creada" });
+      toast({ title: "Cita agendada correctamente" });
       onOpenChange(false);
       onDone?.();
     } catch (err: any) {
@@ -132,31 +190,30 @@ export function NewAppointmentModal({
             </Badge>
           </DialogTitle>
         </DialogHeader>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>Médico</Label>
-            <Select value={medicoId} onValueChange={setMedicoId}>
-              <SelectTrigger className="border-outline-variant bg-surface">
-                <SelectValue placeholder="Seleccione profesional" />
-              </SelectTrigger>
-              <SelectContent>
-                {medicos.map((m: any) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.fullName || m.email}
-                    {m.specialty ? ` · ${m.specialty}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
+          {/* Selección de Paciente */}
+          <div className="space-y-1.5 sm:col-span-2">
             <Label>Paciente</Label>
-            <Select value={patientId} onValueChange={setPatientId}>
+            <Select
+              value={patientId}
+              onValueChange={(val) => {
+                setPatientId(val);
+                setMedicoId("");
+              }}
+              disabled={loadingPatients}
+            >
               <SelectTrigger className="border-outline-variant bg-surface">
-                <SelectValue placeholder="Seleccione paciente" />
+                <SelectValue
+                  placeholder={
+                    loadingPatients
+                      ? "Cargando pacientes…"
+                      : "Seleccione paciente"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {patients.map((p: any) => (
+                {allPatients.map((p: any) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.firstName} {p.lastName} ({p.syntheticId})
                   </SelectItem>
@@ -164,6 +221,67 @@ export function NewAppointmentModal({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Selección de Médico (filtrado por los autorizados para este paciente) */}
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label className="flex items-center justify-between">
+              <span>Médico asignado</span>
+              {selectedPatient && (
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  {availableMedicos.length}{" "}
+                  {availableMedicos.length === 1
+                    ? "médico asignado"
+                    : "médicos asignados"}
+                </span>
+              )}
+            </Label>
+            <Select
+              value={medicoId}
+              onValueChange={setMedicoId}
+              disabled={
+                !patientId ||
+                loadingMedicos ||
+                availableMedicos.length === 0
+              }
+            >
+              <SelectTrigger className="border-outline-variant bg-surface">
+                <SelectValue
+                  placeholder={
+                    !patientId
+                      ? "Seleccione primero un paciente"
+                      : availableMedicos.length === 0
+                        ? "Sin médicos asignados a este paciente"
+                        : "Seleccione profesional médico"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMedicos.map((m: any) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    <div className="flex items-center gap-1.5">
+                      <UserCheck className="size-3.5 text-primary" />
+                      <span>{m.fullName || m.email}</span>
+                      {m.specialty ? (
+                        <span className="text-xs text-muted-foreground">
+                          · {m.specialty}
+                        </span>
+                      ) : null}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {patientId && selectedPatient && availableMedicos.length === 0 && (
+              <p className="flex items-center gap-1 text-xs text-destructive">
+                <AlertCircle className="size-3.5 shrink-0" />
+                Este paciente no tiene médicos asignados. Un administrador debe
+                asignarle un médico antes de programar una cita.
+              </p>
+            )}
+          </div>
+
+          {/* Fecha */}
           <div className="space-y-1.5">
             <Label htmlFor="na-date">Fecha</Label>
             <Input
@@ -174,6 +292,8 @@ export function NewAppointmentModal({
               className="border-outline-variant bg-surface font-mono"
             />
           </div>
+
+          {/* Hora */}
           <div className="space-y-1.5">
             <Label htmlFor="na-time">Hora (disponible)</Label>
             <Select
@@ -183,7 +303,9 @@ export function NewAppointmentModal({
             >
               <SelectTrigger className="border-outline-variant bg-surface">
                 <SelectValue
-                  placeholder={loadingSlots ? "Cargando…" : "Horarios libres"}
+                  placeholder={
+                    loadingSlots ? "Consultando…" : "Horarios libres"
+                  }
                 />
               </SelectTrigger>
               <SelectContent>
@@ -196,10 +318,12 @@ export function NewAppointmentModal({
             </Select>
             {medicoId && date && freeSlots.length === 0 && !loadingSlots && (
               <p className="text-xs text-destructive">
-                No hay horarios libres ese día.
+                No hay horarios libres ese día para este médico.
               </p>
             )}
           </div>
+
+          {/* Duración */}
           <div className="space-y-1.5">
             <Label htmlFor="na-dur">Duración (min)</Label>
             <Input
@@ -210,13 +334,36 @@ export function NewAppointmentModal({
               className="border-outline-variant bg-surface font-mono"
             />
           </div>
+
+          {/* Motivo */}
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="na-reason">Motivo de la cita (opcional)</Label>
+            <Input
+              id="na-reason"
+              placeholder="Ej: Control de rutina, revisión de exámenes…"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="border-outline-variant bg-surface"
+            />
+          </div>
         </div>
+
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button onClick={handleCreate} disabled={busy}>
-            {busy ? "Creando…" : "Crear cita"}
+          <Button
+            onClick={handleCreate}
+            disabled={
+              busy ||
+              !patientId ||
+              !medicoId ||
+              availableMedicos.length === 0 ||
+              !date ||
+              !time
+            }
+          >
+            {busy ? "Agendando…" : "Crear cita"}
           </Button>
         </DialogFooter>
       </DialogContent>

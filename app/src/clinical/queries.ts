@@ -59,13 +59,13 @@ import {
 const getPatientsInputSchema = z.object({
   search: z.string().optional(),
   page: z.number().int().nonnegative().optional(),
-  pageSize: z.number().int().positive().max(100).optional(),
+  pageSize: z.number().int().positive().max(500).optional(),
 });
 
 type GetPatientsInput = z.infer<typeof getPatientsInputSchema>;
 
 type GetPatientsOutput = {
-  patients: SyntheticPatient[];
+  patients: any[];
   totalPages: number;
 };
 
@@ -105,6 +105,13 @@ export const getPatients: GetPatients<
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
       skip,
       take: pageSize,
+      include: {
+        authorizedMedicos: {
+          select: {
+            medicoId: true,
+          },
+        },
+      },
     }),
     context.entities.SyntheticPatient.count({ where }),
   ]);
