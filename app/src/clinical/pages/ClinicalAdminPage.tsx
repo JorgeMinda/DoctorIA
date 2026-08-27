@@ -83,9 +83,8 @@ function StatusBanner({
   return (
     <Card className={error ? "border-destructive/50" : "border-success/50"}>
       <CardContent
-        className={`flex items-start gap-2 p-4 text-sm ${
-          error ? "text-destructive" : "text-success"
-        }`}
+        className={`flex items-start gap-2 p-4 text-sm ${error ? "text-destructive" : "text-success"
+          }`}
       >
         <AlertCircle className="mt-0.5 size-4 shrink-0" />
         {error ?? notice}
@@ -467,10 +466,10 @@ function CreatePatientForm({
         <ProfileFields values={profile} onChange={setProfileField} />
       </div>
       <div className="mt-3">
-          <Button
-            onClick={handleCreate}
-            disabled={!firstName || !lastName || !birthDate}
-          >
+        <Button
+          onClick={handleCreate}
+          disabled={!firstName || !lastName || !birthDate}
+        >
           <UserPlus className="size-4" />
           Crear paciente
         </Button>
@@ -767,9 +766,8 @@ function CreateMedicoForm({
         {passwordRules.map((rule) => (
           <li
             key={rule.label}
-            className={`flex items-center gap-1.5 text-xs ${
-              rule.ok ? "text-emerald-500" : "text-muted-foreground"
-            }`}
+            className={`flex items-center gap-1.5 text-xs ${rule.ok ? "text-emerald-500" : "text-muted-foreground"
+              }`}
           >
             {rule.ok ? "✓" : "○"} {rule.label}
           </li>
@@ -930,16 +928,14 @@ function MedicosTab({
                         <Badge variant="success">Médico</Badge>
                         {doctor && (
                           <span
-                            className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${
-                              enCita
+                            className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${enCita
                                 ? "border-warning/40 bg-warning/10 text-warning"
                                 : "border-success/40 bg-success/10 text-success"
-                            }`}
+                              }`}
                           >
                             <span
-                              className={`size-1.5 rounded-full ${
-                                enCita ? "bg-warning" : "bg-success"
-                              }`}
+                              className={`size-1.5 rounded-full ${enCita ? "bg-warning" : "bg-success"
+                                }`}
                             />
                             {enCita ? "En cita" : "Desocupado"}
                           </span>
@@ -987,7 +983,7 @@ function MedicosTab({
                         }
                       >
                         <CalendarClock className="size-3.5" />
-                        Agenda
+                        Estadística
                       </Button>
                       <Button
                         variant="outline"
@@ -1276,18 +1272,17 @@ function AssignmentsTab({
                           key={m.id}
                           className="inline-flex items-center gap-1 rounded-md border border-outline-variant/60 bg-surface px-2 py-0.5"
                         >
-                           <Badge
-                             variant="secondary"
-                             className="border-0 bg-transparent p-0"
-                           >
-                             {m.fullName ?? m.username ?? m.email}
-                             {m.specialty ? ` · ${m.specialty}` : ""}
-                           </Badge>
+                          <Badge
+                            variant="secondary"
+                            className="border-0 bg-transparent p-0"
+                          >
+                            {m.fullName ?? m.username ?? m.email}
+                            {m.specialty ? ` · ${m.specialty}` : ""}
+                          </Badge>
                           <button
                             type="button"
-                            aria-label={`Revocar acceso a ${
-                              m.fullName ?? m.email
-                            }`}
+                            aria-label={`Revocar acceso a ${m.fullName ?? m.email
+                              }`}
                             className="text-destructive transition-opacity hover:opacity-70"
                             onClick={() =>
                               handleRevoke(
@@ -1367,10 +1362,10 @@ function AdminScheduleForm({
   const agendaArgs =
     medicoId && date
       ? {
-          medicoId,
-          from: new Date(`${date}T00:00:00`),
-          to: new Date(`${date}T23:59:59`),
-        }
+        medicoId,
+        from: new Date(`${date}T00:00:00`),
+        to: new Date(`${date}T23:59:59`),
+      }
       : undefined;
   const { data: agendaData } = useQuery(getAgenda, agendaArgs);
   const [time, setTime] = useState("08:00");
@@ -1493,13 +1488,12 @@ function AdminScheduleForm({
                     type="button"
                     disabled={past}
                     onClick={() => setTime(s)}
-                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
-                      selected
+                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${selected
                         ? "border-primary bg-primary text-primary-foreground"
                         : past
                           ? "cursor-not-allowed border-outline-variant/40 bg-surface text-muted-foreground/40"
                           : "border-outline-variant bg-surface text-foreground hover:border-primary"
-                    }`}
+                      }`}
                   >
                     {s}
                   </button>
@@ -1687,18 +1681,18 @@ function AdminCitasTab({
                   )}
                   {(cita.status === "SCHEDULED" ||
                     cita.status === "IN_PROGRESS") && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busyId === cita.id}
-                      onClick={() =>
-                        runTransition(cita.id, "CANCELLED", "Cita cancelada")
-                      }
-                    >
-                      <XCircle className="size-3.5" />
-                      Cancelar
-                    </Button>
-                  )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === cita.id}
+                        onClick={() =>
+                          runTransition(cita.id, "CANCELLED", "Cita cancelada")
+                        }
+                      >
+                        <XCircle className="size-3.5" />
+                        Cancelar
+                      </Button>
+                    )}
                   {cita.status !== "COMPLETED" && (
                     <Button
                       size="sm"
@@ -1796,9 +1790,8 @@ export function ClinicalAdminPage() {
           <button
             key={t.key}
             type="button"
-            className={`${TAB_CLASS} ${
-              tab === t.key ? TAB_ACTIVE : TAB_IDLE
-            } inline-flex items-center gap-1.5`}
+            className={`${TAB_CLASS} ${tab === t.key ? TAB_ACTIVE : TAB_IDLE
+              } inline-flex items-center gap-1.5`}
             onClick={() => setTab(t.key)}
           >
             {t.icon}
