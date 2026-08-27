@@ -95,10 +95,20 @@ const stripAccents = (s: string) =>
 
 // Frases que disparan el modo CREATE_NOTE (detección de intención).
 const CREATE_NOTE_PHRASES: readonly string[] = [
+  "anota en la historia clinica",
+  "anota en la historia clínica",
+  "anotar en la historia clinica",
+  "anotar en la historia clínica",
+  "anota en el historial clinico",
+  "anota en el historial clínico",
+  "anotar en el historial clinico",
+  "anotar en el historial clínico",
   "anota en la historia",
   "anota en el historial",
   "anotar en la historia",
   "anotar en el historial",
+  "anota en la ficha",
+  "anotar en la ficha",
   "anota en",
   "anotar en",
   "anota a",
@@ -130,23 +140,16 @@ const CREATE_NOTE_PHRASES: readonly string[] = [
   "dejame una nota",
 ];
 
-// Marcadores tras los que aparece el paciente (nombre o ID).
-const PATIENT_MARKER_RE =
-  /(?:en el historial de|en la historia de|a la historia de|de la historia de|al paciente|del paciente|el paciente|la paciente|paciente|registra que|anota que|apunta que|sobre|para|con|de|a|en)\s+/i;
-
-const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 // Detecta la intención del comando de voz:
 //   - CREATE_NOTE: el médico pide crear o abrir un borrador de nota por voz.
 //   - RETRIEVE:    comportamiento de consulta (resumen de paciente).
 export function parseVoiceCommand(query: string): VoiceCommand {
   const normalized = query.trim().replace(/[.,;!?]+$/g, "");
   const lower = normalized.toLowerCase();
-  
-  // Buscar si coincide con alguna frase de creación de nota
-  const matchedPhrase = CREATE_NOTE_PHRASES.find((phrase) =>
-    lower.includes(phrase),
-  );
+
+  // Ordenar frases por longitud descendente para que "anota en la historia" tenga prioridad sobre "anota en"
+  const sortedPhrases = [...CREATE_NOTE_PHRASES].sort((a, b) => b.length - a.length);
+  const matchedPhrase = sortedPhrases.find((phrase) => lower.includes(phrase));
 
   if (!matchedPhrase) {
     return {
@@ -165,21 +168,28 @@ export function parseVoiceCommand(query: string): VoiceCommand {
     };
   }
 
-  // 2) Extraer el texto tras la frase de activación (ej. tras "anota en", "crear nota para", etc.)
+  // 2) Extraer el texto tras la frase de activación
   const phraseIndex = lower.indexOf(matchedPhrase);
   let afterPhrase = normalized.slice(phraseIndex + matchedPhrase.length).trim();
 
-  // Limpiar marcadores iniciales ("el paciente", "de", "a", etc.)
+  // Limpiar conectores y marcadores de historia clínica, ficha, paciente, etc.
   afterPhrase = afterPhrase
-    .replace(/^(?:el paciente|la paciente|al paciente|del paciente|paciente|en la historia de|en el historial de|de|a|para|en)\s+/i, "")
+    .replace(
+      /^(?:la\s+historia\s+(?:cl[íi]nica\s+)?(?:de|del|para|a)?|el\s+historial\s+(?:cl[íi]nico\s+)?(?:de|del|para|a)?|la\s+ficha\s+(?:de|del|para|a)?|historia\s+(?:cl[íi]nica\s+)?(?:de|del|para|a)?|historial\s+(?:cl[íi]nico\s+)?(?:de|del|para|a)?|el\s+paciente|la\s+paciente|al\s+paciente|del\s+paciente|paciente|en\s+la\s+historia\s+de|en\s+el\s+historial\s+de|de|del|al|a|para|en)\s+/i,
+      "",
+    )
     .trim();
 
   // Si hay conectores clínicos que separan el nombre del dictado ("que presenta...", "con dolor...", "donde...")
-  const connectorMatch = afterPhrase.match(/\s+(?:que|con|donde|y\s+dice|refiere|presenta|quien|indicando)\s+/i);
+  const connectorMatch = afterPhrase.match(
+    /\s+(?:que|con|donde|y\s+dice|refiere|presenta|quien|indicando)\s+/i,
+  );
 
   if (connectorMatch && connectorMatch.index != null) {
     const patientQuery = afterPhrase.slice(0, connectorMatch.index).trim();
-    const clinicalText = afterPhrase.slice(connectorMatch.index + connectorMatch[0].length).trim();
+    const clinicalText = afterPhrase
+      .slice(connectorMatch.index + connectorMatch[0].length)
+      .trim();
     return {
       intent: "CREATE_NOTE",
       patientQuery,
@@ -187,7 +197,7 @@ export function parseVoiceCommand(query: string): VoiceCommand {
     };
   }
 
-  // Si no hay conector, verificar si son 1 a 3 palabras (nombre del paciente)
+  // Si no hay conector, verificar si son 1 a 4 palabras (nombre del paciente)
   const words = afterPhrase.split(/\s+/).filter(Boolean);
   if (words.length > 0 && words.length <= 4) {
     return {

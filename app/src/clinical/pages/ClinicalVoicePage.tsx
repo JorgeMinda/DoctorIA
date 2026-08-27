@@ -10,6 +10,7 @@ import {
 import { useAuth } from "wasp/client/auth";
 import {
   Mic,
+  Square,
   Sparkles,
   TrendingDown,
   TrendingUp,
@@ -390,6 +391,10 @@ export function ClinicalVoicePage() {
   };
 
   const handleOrbActivate = () => {
+    if (phase === "LISTENING") {
+      submitSpeech();
+      return;
+    }
     if (phase !== "IDLE" && phase !== "RESPONDING") return;
     if (startSpeech()) return;
     if (!effectiveQuery) {
@@ -401,6 +406,10 @@ export function ClinicalVoicePage() {
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (phase === "LISTENING") {
+      submitSpeech();
+      return;
+    }
     if (phase !== "IDLE") return;
     if (!effectiveQuery) {
       setError("Escribe una consulta o pulsa un paciente asignado.");
@@ -513,7 +522,7 @@ export function ClinicalVoicePage() {
           <VoiceOrb
             state={phase}
             onActivate={handleOrbActivate}
-            disabled={phase === "LISTENING" || phase === "PROCESSING"}
+            disabled={phase === "PROCESSING"}
           />
 
           <div
@@ -584,16 +593,22 @@ export function ClinicalVoicePage() {
               placeholder="Escribe o di: DoctorIA, dame el resumen de… / anota en la historia de PAC-001 que…"
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
-              disabled={phase === "LISTENING" || phase === "PROCESSING"}
+              disabled={phase === "PROCESSING"}
             />
             <Button
               type="button"
               size="icon"
-              aria-label="Hablar"
-              disabled={phase !== "IDLE"}
+              aria-label={phase === "LISTENING" ? "Detener y consultar" : "Hablar"}
+              disabled={phase === "PROCESSING"}
               onClick={handleOrbActivate}
+              variant={phase === "LISTENING" ? "destructive" : "default"}
+              className={phase === "LISTENING" ? "animate-pulse ring-2 ring-destructive/50" : ""}
             >
-              <Mic className="size-4" />
+              {phase === "LISTENING" ? (
+                <Square className="size-4" />
+              ) : (
+                <Mic className="size-4" />
+              )}
             </Button>
           </form>
 

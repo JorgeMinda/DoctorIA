@@ -58,9 +58,11 @@ export function VoiceOrb({ state, onActivate, disabled, className }: VoiceOrbPro
         aria-label={
           state === "IDLE"
             ? "Activar asistente de voz"
-            : isBusy
-              ? "Procesando consulta"
-              : "Estado del asistente de voz"
+            : state === "LISTENING"
+              ? "Detener y procesar voz"
+              : isBusy
+                ? "Procesando consulta"
+                : "Nueva consulta"
         }
         className={cn(
           "group relative flex size-56 items-center justify-center rounded-full outline-none sm:size-64 md:size-72",
@@ -158,15 +160,15 @@ export function VoiceOrb({ state, onActivate, disabled, className }: VoiceOrbPro
           className={cn(
             "absolute -bottom-2 right-0 flex size-11 items-center justify-center rounded-full transition-all duration-300",
             "bg-background/90 shadow-lg ring-1 ring-border backdrop-blur",
-            state === "IDLE" && "group-hover:bg-primary group-hover:text-primary-foreground",
-            state === "IDLE" && "text-primary",
+            state === "IDLE" && "group-hover:bg-primary group-hover:text-primary-foreground text-primary",
+            state === "LISTENING" && "text-destructive ring-destructive/50 animate-pulse",
             isBusy && "animate-pulse",
           )}
         >
           {state === "IDLE" || state === "RESPONDING" ? (
             <Mic className="size-5" />
           ) : (
-            <Square className="size-4" />
+            <Square className="size-4 text-destructive" />
           )}
         </span>
       </button>
