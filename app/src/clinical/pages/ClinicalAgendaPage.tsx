@@ -47,9 +47,9 @@ function CitaBadge({ status }: { status: string }) {
 
 function metricTile(value: number | string, label: string) {
   return (
-    <div className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-center">
-      <p className="text-lg font-semibold text-foreground">{value}</p>
-      <p className="mono-label text-[10px] uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-xl border border-outline-variant/60 bg-surface/50 p-3.5 text-center backdrop-blur-md shadow-sm transition-all hover:border-outline hover:bg-surface/70">
+      <p className="text-xl font-bold text-foreground">{value}</p>
+      <p className="mono-label text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
         {label}
       </p>
     </div>
@@ -152,8 +152,8 @@ export function ClinicalAgendaPage() {
           <p className="text-sm text-muted-foreground">Cargando agenda de citas…</p>
         )}
 
-        <Card className="overflow-hidden border-outline-variant">
-          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+        <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md shadow-sm">
+          <CardHeader className="border-b border-outline-variant/40 bg-surface-container/30">
             <CardTitle className="flex items-center justify-between text-base font-semibold">
               <span className="flex items-center gap-2">
                 <CalendarClock className="size-4 text-primary" />
@@ -171,7 +171,7 @@ export function ClinicalAgendaPage() {
               {activeCitas.map((cita) => (
                 <div
                   key={cita.id}
-                  className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-surface-container/20"
+                  className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 transition-all hover:bg-surface-high/30"
                 >
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -282,8 +282,8 @@ export function ClinicalAgendaPage() {
         </Card>
 
         {historyCitas.length > 0 && (
-          <Card className="overflow-hidden border-outline-variant">
-            <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+          <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md shadow-sm">
+            <CardHeader className="border-b border-outline-variant/40 bg-surface-container/30">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
                 <CheckCircle2 className="size-4 text-primary" />
                 Historial reciente de citas ({historyCitas.length})
@@ -401,8 +401,8 @@ export function ClinicalAgendaPage() {
         <p className="text-sm text-muted-foreground">Cargando agenda…</p>
       )}
 
-      <Card className="overflow-hidden border-outline-variant">
-        <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+      <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md shadow-sm">
+        <CardHeader className="border-b border-outline-variant/40 bg-surface-container/30">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <CalendarClock className="size-4 text-primary" />
             Próximas citas
@@ -419,7 +419,7 @@ export function ClinicalAgendaPage() {
               {upcoming.map((cita) => (
                 <div
                   key={cita.id}
-                  className="flex flex-wrap items-center gap-4 px-5 py-4"
+                  className="flex flex-wrap items-center gap-4 px-5 py-4 transition-all hover:bg-surface-high/30"
                 >
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
                     <CalendarDays className="size-5 text-primary" />
@@ -486,6 +486,7 @@ export function ClinicalAgendaPage() {
                               "Cita cancelada",
                             )
                           }
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
                           <XCircle className="size-4" />
                           Cancelar
@@ -512,8 +513,8 @@ export function ClinicalAgendaPage() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-outline-variant">
-        <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+      <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md shadow-sm">
+        <CardHeader className="border-b border-outline-variant/40 bg-surface-container/30">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <CheckCircle2 className="size-4 text-primary" />
             Historial de citas
