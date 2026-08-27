@@ -31,30 +31,8 @@ import {
 } from "../services/voiceAssistant";
 import { ttsService } from "../services/tts.service";
 
-type VoiceEnableState = "enabled" | "disabled";
-
-const DEFAULT_VOICE_ENABLE: VoiceEnableState = "disabled";
-
 // Consulta de ejemplo (modo demo / placeholder). Los datos de la respuesta son SINTÉTICOS.
 const DEMO_QUERY = "DoctorIA, dame el resumen de María González antes de mi cita.";
-
-const DEFAULT_VOICE_ENABLE: VoiceEnableState = "disabled";
-
-export function ClinicalVoicePage() {
-  const { isFetching } = useQuery(
-    getVoiceAssistantResponse,
-    { query: transcript },
-    { enabled: false, refetchOnWindowFocus: false },
-  );
-
-  const [isVoiceEnabled, setVoiceEnabled] = useState<VoiceEnableState>(
-    DEFAULT_VOICE_ENABLE,
-  );
-
-  const toggleVoice = (): void => {
-    const newState: VoiceEnableState = isVoiceEnabled === "enabled" ? "disabled" : "enabled";
-    setVoiceEnabled(newState);
-  };
 
 // Respuesta demo embebida (misma forma que la query, pero sin red) para probar los estados.
 const DEMO_RESPONSE: VoiceAssistantResponse = {
