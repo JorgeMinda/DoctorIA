@@ -63,18 +63,18 @@ export function PatientFormModal({
   const [form, setForm] = useState(
     initialPatient
       ? {
-          firstName: initialPatient.firstName ?? "",
-          lastName: initialPatient.lastName ?? "",
-          birthDate: initialPatient.birthDate
-            ? new Date(initialPatient.birthDate).toISOString().slice(0, 10)
-            : "",
-          sex: initialPatient.sex ?? "",
-          documento: initialPatient.documento ?? "",
-          phone: initialPatient.phone ?? "",
-          medicalHistory: initialPatient.medicalHistory ?? "",
-          allergies: initialPatient.allergies ?? "",
-          nationality: initialPatient.nationality ?? "",
-        }
+        firstName: initialPatient.firstName ?? "",
+        lastName: initialPatient.lastName ?? "",
+        birthDate: initialPatient.birthDate
+          ? new Date(initialPatient.birthDate).toISOString().slice(0, 10)
+          : "",
+        sex: initialPatient.sex ?? "",
+        documento: initialPatient.documento ?? "",
+        phone: initialPatient.phone ?? "",
+        medicalHistory: initialPatient.medicalHistory ?? "",
+        allergies: initialPatient.allergies ?? "",
+        nationality: initialPatient.nationality ?? "",
+      }
       : empty,
   );
   const [saving, setSaving] = useState(false);
@@ -186,7 +186,7 @@ export function PatientFormModal({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="pf-doc">Documento</Label>
+            <Label htmlFor="pf-doc">Documento de identidad</Label>
             <Input
               id="pf-doc"
               value={form.documento}
