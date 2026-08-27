@@ -8,7 +8,17 @@ import {
   getVoiceAssistantResponse,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
-import { Mic, Sparkles, TrendingDown, TrendingUp, Minus, ShieldAlert, FilePlus2 } from "lucide-react";
+import {
+  Mic,
+  Sparkles,
+  TrendingDown,
+  TrendingUp,
+  Minus,
+  ShieldAlert,
+  FilePlus2,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { Button } from "../../client/components/ui/button";
 import { Input } from "../../client/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../../client/components/ui/card";
@@ -19,9 +29,32 @@ import {
   parseVoiceCommand,
   type VoiceAssistantResponse,
 } from "../services/voiceAssistant";
+import { ttsService } from "../services/tts.service";
+
+type VoiceEnableState = "enabled" | "disabled";
+
+const DEFAULT_VOICE_ENABLE: VoiceEnableState = "disabled";
 
 // Consulta de ejemplo (modo demo / placeholder). Los datos de la respuesta son SINTÉTICOS.
 const DEMO_QUERY = "DoctorIA, dame el resumen de María González antes de mi cita.";
+
+const DEFAULT_VOICE_ENABLE: VoiceEnableState = "disabled";
+
+export function ClinicalVoicePage() {
+  const { isFetching } = useQuery(
+    getVoiceAssistantResponse,
+    { query: transcript },
+    { enabled: false, refetchOnWindowFocus: false },
+  );
+
+  const [isVoiceEnabled, setVoiceEnabled] = useState<VoiceEnableState>(
+    DEFAULT_VOICE_ENABLE,
+  );
+
+  const toggleVoice = (): void => {
+    const newState: VoiceEnableState = isVoiceEnabled === "enabled" ? "disabled" : "enabled";
+    setVoiceEnabled(newState);
+  };
 
 // Respuesta demo embebida (misma forma que la query, pero sin red) para probar los estados.
 const DEMO_RESPONSE: VoiceAssistantResponse = {
@@ -80,6 +113,7 @@ export function ClinicalVoicePage() {
   const [phase, setPhase] = useState<VoiceAssistantState>("IDLE");
   const [queryInput, setQueryInput] = useState("");
   const [demoMode, setDemoMode] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState<
     VoiceAssistantResponse | VoiceNoteCreatedResponse | null
@@ -112,6 +146,7 @@ export function ClinicalVoicePage() {
   useEffect(() => clearTimers, [clearTimers]);
   useEffect(
     () => () => {
+      ttsService.stop();
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
@@ -141,9 +176,12 @@ export function ClinicalVoicePage() {
         title: "Borrador creado por voz",
         description: `Se guardó una nota para ${response.patientName} (${response.syntheticId}). Abriendo el editor para revisión…`,
       });
+      if (isVoiceEnabled) {
+        ttsService.speak(`Borrador de nota creado para ${response.patientName}. Abriendo el editor.`);
+      }
       setCreatedNote(response);
     }
-  }, [response, toast]);
+  }, [response, toast, isVoiceEnabled]);
 
   if (!user?.isMedico || user.isAdmin) {
     return (
@@ -198,6 +236,9 @@ export function ClinicalVoicePage() {
       timersRef.current.push(
         window.setTimeout(() => {
           setResponse({ ...DEMO_RESPONSE, query: text });
+          if (isVoiceEnabled) {
+            ttsService.speak("Resumen demo de María González listo.");
+          }
           setPhase("RESPONDING");
         }, 700),
       );
@@ -219,10 +260,25 @@ export function ClinicalVoicePage() {
           throw new Error("Sin respuesta del asistente");
         }
         setResponse(res);
+        if (isVoiceEnabled) {
+          if (res.patient) {
+            ttsService.speak(
+              `Resumen clínico de ${res.patient.firstName} ${res.patient.lastName} listo.`,
+            );
+          } else {
+            ttsService.speak("No encontré ningún paciente con ese nombre.");
+          }
+        }
       }
       setPhase("RESPONDING");
     } catch (err: any) {
-      setError(err?.message ?? "No se pudo completar la consulta");
+      const msg = err?.message ?? "No se pudo completar la consulta";
+      setError(msg);
+      if (isVoiceEnabled) {
+        ttsService.speak(
+          msg.length < 80 ? msg : "No se pudo completar la consulta.",
+        );
+      }
       setPhase("IDLE");
     }
   };
@@ -376,6 +432,7 @@ export function ClinicalVoicePage() {
   };
 
   const handleReset = () => {
+    ttsService.stop();
     stopSpeech();
     clearTimers();
     setPhase("IDLE");
@@ -417,6 +474,45 @@ export function ClinicalVoicePage() {
               Consulta clínica asistida por IA sobre tus pacientes asignados.
             </p>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Toggle de Respuesta por Voz (TTS) */}
+            <Button
+              variant={isVoiceEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                const next = !isVoiceEnabled;
+                setIsVoiceEnabled(next);
+                if (!next) {
+                  ttsService.stop();
+                } else {
+                  ttsService.speak("Respuesta por voz activada.");
+                }
+              }}
+              className={`rounded-full h-8 gap-1.5 px-3 text-xs transition-colors ${
+                isVoiceEnabled
+                  ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(0,218,243,0.3)]"
+                  : "border-outline-variant bg-surface text-muted-foreground hover:text-foreground"
+              }`}
+              title={
+                isVoiceEnabled
+                  ? "Desactivar respuesta por voz"
+                  : "Activar respuesta por voz (TTS)"
+              }
+            >
+              {isVoiceEnabled ? (
+                <>
+                  <Volume2 className="size-3.5" />
+                  <span>Voz activa</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="size-3.5" />
+                  <span>Voz silenciada</span>
+                </>
+              )}
+            </Button>
+
+            {/* Selector Modo demo/real */}
             <div className="flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3 py-1.5">
               <Sparkles className="size-4 text-primary" />
               <label htmlFor="demo-mode" className="text-sm font-medium">
@@ -430,6 +526,7 @@ export function ClinicalVoicePage() {
                   handleReset();
                 }}
               />
+            </div>
           </div>
         </div>
 
