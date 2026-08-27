@@ -9,6 +9,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock,
+  Edit3,
   ExternalLink,
   FileCheck2,
   PhoneMissed,
@@ -29,6 +30,7 @@ import { Badge } from "../../client/components/ui/badge";
 import { toast } from "../../client/hooks/use-toast";
 import { citaStatusLabel } from "../services/statusLabels";
 import { NewAppointmentModal } from "../components/NewAppointmentModal";
+import { EditAppointmentModal } from "../components/EditAppointmentModal";
 
 function citaBadgeVariant(status: string) {
   if (status === "COMPLETED") return "success";
@@ -60,6 +62,7 @@ export function ClinicalAgendaPage() {
   const { data: user } = useAuth();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showNewCita, setShowNewCita] = useState(false);
+  const [editingCita, setEditingCita] = useState<any | null>(null);
 
   const { data: agenda, isLoading, refetch } = useQuery(getAgenda, {});
   const updateStatusFn = useAction(updateCitaStatus);
@@ -220,6 +223,16 @@ export function ClinicalAgendaPage() {
                       <>
                         <Button
                           size="sm"
+                          variant="outline"
+                          disabled={busyId === cita.id}
+                          onClick={() => setEditingCita(cita)}
+                          className="gap-1 text-xs"
+                        >
+                          <Edit3 className="size-3.5" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
                           disabled={busyId === cita.id}
                           onClick={() =>
                             runTransition(cita.id, "IN_PROGRESS", "Cita iniciada / Asistió")
@@ -329,6 +342,15 @@ export function ClinicalAgendaPage() {
           <NewAppointmentModal
             open={showNewCita}
             onOpenChange={setShowNewCita}
+            onDone={() => refetch()}
+          />
+        )}
+
+        {editingCita && (
+          <EditAppointmentModal
+            open={Boolean(editingCita)}
+            onOpenChange={(v) => !v && setEditingCita(null)}
+            cita={editingCita}
             onDone={() => refetch()}
           />
         )}
@@ -448,6 +470,16 @@ export function ClinicalAgendaPage() {
                       <>
                         <Button
                           size="sm"
+                          variant="outline"
+                          disabled={busyId === cita.id}
+                          onClick={() => setEditingCita(cita)}
+                          className="gap-1 text-xs"
+                        >
+                          <Edit3 className="size-3.5" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
                           disabled={busyId === cita.id}
                           onClick={() =>
                             runTransition(
@@ -561,6 +593,15 @@ export function ClinicalAgendaPage() {
           )}
         </CardContent>
       </Card>
+
+      {editingCita && (
+        <EditAppointmentModal
+          open={Boolean(editingCita)}
+          onOpenChange={(v) => !v && setEditingCita(null)}
+          cita={editingCita}
+          onDone={() => refetch()}
+        />
+      )}
     </div>
   );
 }

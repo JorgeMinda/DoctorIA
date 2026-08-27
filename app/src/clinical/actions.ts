@@ -1836,6 +1836,20 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
   if (existing.status === "COMPLETED") {
     throw new HttpError(409, "No se puede eliminar una cita completada");
   }
+
+  // Desvincular referencias foráneas para evitar error 500 de clave foránea
+  await context.entities.AuditLog.updateMany({
+    where: { citaId },
+    data: { citaId: null },
+  });
+  await context.entities.VitalSign.updateMany({
+    where: { citaId },
+    data: { citaId: null },
+  });
+  await context.entities.PreClinicalRecord.deleteMany({
+    where: { citaId },
+  });
+
   await context.entities.Cita.delete({ where: { id: citaId } });
   await createAuditEntry({
     userId: user.id,
@@ -1843,12 +1857,12 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
     resourceType: "CITA",
     resourceId: citaId,
     patientId: existing.patientId,
-    citaId,
-      metadata: {
-        action: "DELETE",
-        status: existing.status,
-        doctorName: await resolveMedicoName(context, existing.medicoId),
-      },
+    citaId: null,
+    metadata: {
+      action: "DELETE",
+      status: existing.status,
+      doctorName: await resolveMedicoName(context, existing.medicoId),
+    },
   });
   return existing;
 };

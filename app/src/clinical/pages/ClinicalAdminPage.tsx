@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock,
+  Edit3,
   KeyRound,
   Pencil,
   PhoneMissed,
@@ -47,6 +48,7 @@ import { Badge } from "../../client/components/ui/badge";
 import { patientAge, sexLabel } from "../services/clinicalFormat";
 import { citaStatusLabel } from "../services/statusLabels";
 import { MedicoAgendaPanel } from "../components/MedicoAgendaPanel";
+import { EditAppointmentModal } from "../components/EditAppointmentModal";
 
 type Notice = (message: string) => void;
 type ReportError = (message: string) => void;
@@ -1369,9 +1371,11 @@ function AdminScheduleForm({
       : undefined;
   const { data: agendaData } = useQuery(getAgenda, agendaArgs);
   const [time, setTime] = useState("08:00");
-  const [durationMinutes, setDurationMinutes] = useState("30");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Duración estándar fijada a 30 minutos
+  const DURATION_MINUTES = 30;
 
   // Horario de atención 24h: slots cada 30 minutos, 00:00 a 23:30.
   const SLOTS: string[] = [];
@@ -1393,7 +1397,7 @@ function AdminScheduleForm({
     const at = buildScheduledAt();
     if (!medicoId || !patientId || !at) return;
     const startMs = at.getTime();
-    const durMin = Number(durationMinutes) || 30;
+    const durMin = DURATION_MINUTES;
     const endMs = startMs + durMin * 60_000;
     const conflicto = (agendaData?.citas ?? [])
       .filter((c) => c.status !== "CANCELLED")
@@ -1433,7 +1437,7 @@ function AdminScheduleForm({
   const patientOptions = patientsData?.patients ?? [];
 
   return (
-    <Card className="overflow-hidden border-outline-variant">
+    <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md">
       <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <CalendarClock className="size-4 text-primary" />
@@ -1468,17 +1472,17 @@ function AdminScheduleForm({
             ))}
           </select>
           <Input
-            className="border-outline-variant bg-surface"
+            className="border-outline-variant bg-surface sm:col-span-2"
             type="date"
             min={new Date().toISOString().slice(0, 10)}
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
-          <div>
+          <div className="sm:col-span-2">
             <p className="mono-label mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-              Horario disponible
+              Horario disponible (30 min por turno)
             </p>
-            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8 max-h-36 overflow-y-auto p-1">
               {SLOTS.map((s) => {
                 const past = isSlotPast(s);
                 const selected = time === s;
@@ -1489,7 +1493,7 @@ function AdminScheduleForm({
                     disabled={past}
                     onClick={() => setTime(s)}
                     className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${selected
-                        ? "border-primary bg-primary text-primary-foreground"
+                        ? "border-primary bg-primary text-primary-foreground shadow-[0_0_10px_rgba(0,218,243,0.3)]"
                         : past
                           ? "cursor-not-allowed border-outline-variant/40 bg-surface text-muted-foreground/40"
                           : "border-outline-variant bg-surface text-foreground hover:border-primary"
@@ -1499,23 +1503,6 @@ function AdminScheduleForm({
                   </button>
                 );
               })}
-            </div>
-          </div>
-          <div>
-            <p className="mono-label mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-              Duración de la cita
-            </p>
-            <div className="flex items-center gap-2">
-              <Input
-                className="border-outline-variant bg-surface"
-                type="number"
-                min={5}
-                max={240}
-                placeholder="30"
-                value={durationMinutes}
-                onChange={(e) => setDurationMinutes(e.target.value)}
-              />
-              <span className="text-sm text-muted-foreground">min</span>
             </div>
           </div>
           <Input
@@ -1544,10 +1531,11 @@ function AdminCitasTab({
   notice: Notice;
   reportError: ReportError;
 }) {
-  const { data: agenda, isLoading } = useQuery(getAgenda, {});
+  const { data: agenda, isLoading, refetch } = useQuery(getAgenda, {});
   const manageCitaFn = useAction(manageCita);
   const updateStatusFn = useAction(updateCitaStatus);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [editingCita, setEditingCita] = useState<any | null>(null);
 
   const runTransition = async (
     citaId: string,
@@ -1558,6 +1546,7 @@ function AdminCitasTab({
     try {
       await updateStatusFn({ citaId, status });
       notice(label);
+      await refetch();
     } catch (err: any) {
       reportError(err?.message ?? "No se pudo actualizar la cita");
     } finally {
@@ -1570,6 +1559,7 @@ function AdminCitasTab({
     try {
       await manageCitaFn({ action: "DELETE", citaId: cita.id });
       notice("Cita eliminada");
+      await refetch();
     } catch (err: any) {
       reportError(err?.message ?? "No se pudo eliminar la cita");
     } finally {
@@ -1586,7 +1576,7 @@ function AdminCitasTab({
     <div className="space-y-4">
       <AdminScheduleForm notice={notice} reportError={reportError} />
 
-      <Card className="overflow-hidden border-outline-variant">
+      <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md">
         <div className="flex items-center justify-between border-b border-outline-variant/50 bg-surface-container/60 px-5 py-3">
           <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
             Citas de todos los médicos
@@ -1647,6 +1637,16 @@ function AdminCitasTab({
                         size="sm"
                         variant="outline"
                         disabled={busyId === cita.id}
+                        onClick={() => setEditingCita(cita)}
+                        className="gap-1 text-xs"
+                      >
+                        <Edit3 className="size-3.5" />
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === cita.id}
                         onClick={() =>
                           runTransition(cita.id, "IN_PROGRESS", "Cita iniciada")
                         }
@@ -1697,7 +1697,7 @@ function AdminCitasTab({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-destructive"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                       disabled={busyId === cita.id}
                       onClick={() => handleDelete(cita)}
                     >
@@ -1710,6 +1710,15 @@ function AdminCitasTab({
             ))}
         </div>
       </Card>
+
+      {editingCita && (
+        <EditAppointmentModal
+          open={Boolean(editingCita)}
+          onOpenChange={(v) => !v && setEditingCita(null)}
+          cita={editingCita}
+          onDone={() => refetch()}
+        />
+      )}
     </div>
   );
 }

@@ -65,7 +65,7 @@ export function App() {
           </div>
         )}
       </div>
-      <Toaster position="bottom-right" />
+      <Toaster position="top-center" />
       <CookieConsentBanner />
     </>
   );
