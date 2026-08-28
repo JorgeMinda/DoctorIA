@@ -73,6 +73,8 @@ export function ClinicalPatientDetailPage() {
     !(user as any)?.isAdmin
   );
 
+  const canEditPatient = Boolean(user?.isSecretaria || user?.isAdmin);
+
   const { data: printableEpicrises } = useQuery(getPrintableEpicrises, {
     patientId: patientId ?? "",
   });
@@ -230,15 +232,17 @@ export function ClinicalPatientDetailPage() {
           noteCount={detail.noteCount}
           epicrisisCount={detail.epicrisisCount}
         />
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setShowEdit(true)}
-        >
-          <Pencil className="size-3.5" />
-          Editar paciente
-        </Button>
+        {canEditPatient && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setShowEdit(true)}
+          >
+            <Pencil className="size-3.5" />
+            Editar paciente
+          </Button>
+        )}
       </div>
 
       {isSecretariaView ? (
@@ -301,12 +305,14 @@ export function ClinicalPatientDetailPage() {
         </>
       )}
 
-      <PatientFormModal
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        initialPatient={patient}
-        onDone={() => refetch()}
-      />
+      {canEditPatient && (
+        <PatientFormModal
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          initialPatient={patient}
+          onDone={() => refetch()}
+        />
+      )}
 
       {showNewCita && (
         <NewAppointmentModal

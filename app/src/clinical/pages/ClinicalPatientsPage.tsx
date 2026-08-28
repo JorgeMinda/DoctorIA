@@ -35,9 +35,7 @@ export function ClinicalPatientsPage() {
     pageSize: 20,
   });
 
-  const canManage = Boolean(
-    user?.isMedico || user?.isSecretaria || user?.isAdmin,
-  );
+  const canCreatePatient = Boolean(user?.isSecretaria || user?.isAdmin);
 
   if (!(user?.isMedico || user?.isSecretaria || user?.isAdmin)) {
     return (
@@ -69,7 +67,7 @@ export function ClinicalPatientsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {canManage && (
+          {canCreatePatient && (
             <Button
               variant="outline"
               onClick={() => setShowCreate(true)}
@@ -266,11 +264,13 @@ export function ClinicalPatientsPage() {
         )}
       </Card>
 
-      <PatientFormModal
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        onDone={() => refetch()}
-      />
+      {canCreatePatient && (
+        <PatientFormModal
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          onDone={() => refetch()}
+        />
+      )}
     </div>
   );
 }
