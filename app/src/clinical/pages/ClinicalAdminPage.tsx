@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { useQuery, useAction } from "wasp/client/operations";
 import {
   adminCreateMedicoUser,
@@ -6,6 +6,7 @@ import {
   adminGetPatients,
   adminUpdateMedicoUser,
   getAgenda,
+  getAvailableSlots,
   getDoctorsAgenda,
   getPaginatedUsers,
   manageCita,
@@ -78,21 +79,40 @@ function run(
 function StatusBanner({
   error,
   notice,
+  onDismiss,
 }: {
   error: string | null;
   notice: string | null;
+  onDismiss?: () => void;
 }) {
   if (!error && !notice) return null;
+  const isError = Boolean(error);
   return (
-    <Card className={error ? "border-destructive/50" : "border-success/50"}>
-      <CardContent
-        className={`flex items-start gap-2 p-4 text-sm ${error ? "text-destructive" : "text-success"
-          }`}
-      >
-        <AlertCircle className="mt-0.5 size-4 shrink-0" />
-        {error ?? notice}
-      </CardContent>
-    </Card>
+    <div
+      className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm shadow-sm transition-all animate-in fade-in slide-in-from-top-1 ${isError
+          ? "border-destructive/40 bg-destructive/10 text-destructive"
+          : "border-success/40 bg-success/10 text-success"
+        }`}
+    >
+      <div className="flex items-center gap-2.5">
+        {isError ? (
+          <AlertCircle className="size-4 shrink-0" />
+        ) : (
+          <CheckCircle2 className="size-4 shrink-0" />
+        )}
+        <span className="font-medium">{error ?? notice}</span>
+      </div>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="rounded p-0.5 opacity-70 transition-opacity hover:opacity-100"
+          title="Cerrar notificación"
+        >
+          <XCircle className="size-4" />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -1501,21 +1521,20 @@ function AdminScheduleForm({
   const [medicoId, setMedicoId] = useState("");
   const [patientId, setPatientId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const agendaArgs =
-    medicoId && date
-      ? {
-        medicoId,
-        from: new Date(`${date}T00:00:00`),
-        to: new Date(`${date}T23:59:59`),
-      }
-      : undefined;
-  const { data: agendaData } = useQuery(getAgenda, agendaArgs);
-  const [time, setTime] = useState("08:00");
-  const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
 
   // Duración estándar fijada a 30 minutos
   const DURATION_MINUTES = 30;
+
+  const { data: slotsData, isLoading: loadingSlots } = useQuery(
+    getAvailableSlots,
+    medicoId && date
+      ? { medicoId, date, durationMinutes: DURATION_MINUTES }
+      : undefined,
+  );
+
+  const [time, setTime] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
 
   // Horario de atención 24h: slots cada 30 minutos, 00:00 a 23:30.
   const SLOTS: string[] = [];
@@ -1533,25 +1552,31 @@ function AdminScheduleForm({
   const isSlotPast = (slotTime: string) =>
     new Date(`${date}T${slotTime}:00`).getTime() <= Date.now();
 
+  const isSlotBusy = (slotTime: string) => {
+    if (!medicoId || !date) return false;
+    if (slotsData) {
+      return !slotsData.freeSlots.includes(slotTime);
+    }
+    return false;
+  };
+
   const handleCreate = async () => {
     const at = buildScheduledAt();
-    if (!medicoId || !patientId || !at) return;
-    const startMs = at.getTime();
-    const durMin = DURATION_MINUTES;
-    const endMs = startMs + durMin * 60_000;
-    const conflicto = (agendaData?.citas ?? [])
-      .filter((c) => c.status !== "CANCELLED")
-      .some((c) => {
-        const cStart = new Date(c.scheduledAt).getTime();
-        const cEnd = cStart + c.durationMinutes * 60_000;
-        return cStart < endMs && cEnd > startMs;
-      });
-    if (conflicto) {
+    if (!medicoId || !patientId || !at || !time) {
+      reportError("Por favor complete médico, paciente, fecha y hora de la cita.");
+      return;
+    }
+    if (isSlotPast(time)) {
+      reportError("No se puede programar una cita en el pasado.");
+      return;
+    }
+    if (isSlotBusy(time)) {
       reportError(
-        "El horario seleccionado no está disponible para este médico. Elige otro horario.",
+        "El horario seleccionado ya está ocupado por este médico. Elige otro horario disponible.",
       );
       return;
     }
+
     setBusy(true);
     try {
       await manageCitaFn({
@@ -1560,12 +1585,13 @@ function AdminScheduleForm({
           medicoId,
           patientId,
           scheduledAt: at,
-          durationMinutes: durMin,
-          reason: reason || undefined,
+          durationMinutes: DURATION_MINUTES,
+          reason: reason.trim() || undefined,
         },
       });
       notice("Cita programada correctamente");
       setPatientId("");
+      setTime("");
       setReason("");
     } catch (err: any) {
       reportError(err?.message ?? "No se pudo programar la cita");
@@ -1589,7 +1615,10 @@ function AdminScheduleForm({
           <select
             className="flex h-9 w-full rounded-md border border-outline-variant bg-surface px-3 py-1 text-sm"
             value={medicoId}
-            onChange={(e) => setMedicoId(e.target.value)}
+            onChange={(e) => {
+              setMedicoId(e.target.value);
+              setTime("");
+            }}
           >
             <option value="">Seleccione el médico…</option>
             {medicos?.users.map((m: any) => (
@@ -1616,27 +1645,50 @@ function AdminScheduleForm({
             type="date"
             min={new Date().toISOString().slice(0, 10)}
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => {
+              setDate(e.target.value);
+              setTime("");
+            }}
           />
           <div className="sm:col-span-2">
-            <p className="mono-label mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-              Horario disponible (30 min por turno)
-            </p>
-            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8 max-h-36 overflow-y-auto p-1">
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
+                Horarios de atención (30 min por turno)
+              </p>
+              {medicoId && date && (
+                <span className="text-[11px] text-muted-foreground">
+                  {loadingSlots
+                    ? "Consultando disponibilidad…"
+                    : `${slotsData?.freeSlots.length ?? 0} horarios libres`}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8 max-h-40 overflow-y-auto p-1">
               {SLOTS.map((s) => {
                 const past = isSlotPast(s);
+                const busySlot = isSlotBusy(s);
+                const isUnavailable = past || busySlot;
                 const selected = time === s;
                 return (
                   <button
                     key={s}
                     type="button"
-                    disabled={past}
+                    disabled={isUnavailable}
                     onClick={() => setTime(s)}
-                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${selected
-                        ? "border-primary bg-primary text-primary-foreground shadow-[0_0_10px_rgba(0,218,243,0.3)]"
+                    title={
+                      busySlot
+                        ? "Horario ocupado por otra cita"
                         : past
-                          ? "cursor-not-allowed border-outline-variant/40 bg-surface text-muted-foreground/40"
-                          : "border-outline-variant bg-surface text-foreground hover:border-primary"
+                          ? "Horario pasado"
+                          : "Disponible"
+                    }
+                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${selected
+                        ? "border-primary bg-primary text-primary-foreground shadow-[0_0_10px_rgba(0,218,243,0.3)] font-bold"
+                        : busySlot
+                          ? "cursor-not-allowed border-destructive/40 bg-destructive/10 text-destructive/70 line-through"
+                          : past
+                            ? "cursor-not-allowed border-outline-variant/40 bg-surface/30 text-muted-foreground/40"
+                            : "border-outline-variant bg-surface text-foreground hover:border-primary"
                       }`}
                   >
                     {s}
@@ -1657,7 +1709,7 @@ function AdminScheduleForm({
           disabled={busy || !medicoId || !patientId || !time}
         >
           <Plus className="size-4" />
-          Programar cita
+          {busy ? "Programando…" : "Programar cita"}
         </Button>
       </CardContent>
     </Card>
@@ -1874,15 +1926,44 @@ export function ClinicalAdminPage() {
   const [tab, setTab] = useState<TabKey>("pacientes");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
 
   const reportError = (message: string) => {
+    clearTimer();
     setNotice(null);
     setError(message);
+    timerRef.current = setTimeout(() => {
+      setError(null);
+    }, 5000);
   };
+
   const showNotice = (message: string) => {
+    clearTimer();
     setError(null);
     setNotice(message);
+    timerRef.current = setTimeout(() => {
+      setNotice(null);
+    }, 4000);
   };
+
+  const handleDismissBanner = () => {
+    clearTimer();
+    setError(null);
+    setNotice(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTimer();
+    };
+  }, []);
 
   if (!user?.isAdmin || user.isMedico) {
     return (
@@ -1941,7 +2022,10 @@ export function ClinicalAdminPage() {
             type="button"
             className={`${TAB_CLASS} ${tab === t.key ? TAB_ACTIVE : TAB_IDLE
               } inline-flex items-center gap-1.5`}
-            onClick={() => setTab(t.key)}
+            onClick={() => {
+              handleDismissBanner();
+              setTab(t.key);
+            }}
           >
             {t.icon}
             {t.label}
@@ -1949,7 +2033,11 @@ export function ClinicalAdminPage() {
         ))}
       </div>
 
-      <StatusBanner error={error} notice={notice} />
+      <StatusBanner
+        error={error}
+        notice={notice}
+        onDismiss={handleDismissBanner}
+      />
 
       {tab === "pacientes" && (
         <PatientsTab notice={showNotice} reportError={reportError} />
