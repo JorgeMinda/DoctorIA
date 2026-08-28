@@ -705,15 +705,18 @@ function PatientsTab({
 function CreateMedicoForm({
   notice,
   reportError,
+  onSuccess,
 }: {
   notice: Notice;
   reportError: ReportError;
+  onSuccess?: () => void;
 }) {
   const createMedicoFn = useAction(adminCreateMedicoUser);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [specialty, setSpecialty] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const passwordRules = [
     { label: "Mínimo 8 caracteres", ok: password.length >= 8 },
@@ -722,17 +725,27 @@ function CreateMedicoForm({
   ];
   const passwordValid = passwordRules.every((r) => r.ok);
 
-  const handleCreate = run(
-    () =>
-      createMedicoFn({
+  const handleCreate = async () => {
+    setBusy(true);
+    try {
+      await createMedicoFn({
         email,
         password,
         fullName: fullName || undefined,
         specialty: specialty || undefined,
-      }),
-    notice,
-    reportError,
-  );
+      });
+      notice("Médico creado exitosamente");
+      setEmail("");
+      setPassword("");
+      setFullName("");
+      setSpecialty("");
+      onSuccess?.();
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo crear el médico");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
@@ -778,10 +791,10 @@ function CreateMedicoForm({
       <div className="mt-3">
         <Button
           onClick={handleCreate}
-          disabled={!email || !passwordValid}
+          disabled={busy || !email || !passwordValid}
         >
           <Stethoscope className="size-4" />
-          Crear médico
+          {busy ? "Creando médico…" : "Crear médico"}
         </Button>
       </div>
     </div>
@@ -793,26 +806,35 @@ function EditMedicoForm({
   onCancel,
   notice,
   reportError,
+  onSuccess,
 }: {
   medico: any;
   onCancel: () => void;
   notice: Notice;
   reportError: ReportError;
+  onSuccess?: () => void;
 }) {
   const updateMedicoFn = useAction(adminUpdateMedicoUser);
   const [fullName, setFullName] = useState(medico.fullName ?? "");
   const [specialty, setSpecialty] = useState(medico.specialty ?? "");
+  const [busy, setBusy] = useState(false);
 
-  const handleSave = run(
-    () =>
-      updateMedicoFn({
+  const handleSave = async () => {
+    setBusy(true);
+    try {
+      await updateMedicoFn({
         id: medico.id,
         fullName: fullName || undefined,
         specialty: specialty || undefined,
-      }),
-    notice,
-    reportError,
-  );
+      });
+      notice("Médico actualizado correctamente");
+      onSuccess?.();
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo actualizar el médico");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
@@ -831,8 +853,10 @@ function EditMedicoForm({
         />
       </div>
       <div className="mt-3 flex gap-2">
-        <Button onClick={handleSave}>Guardar cambios</Button>
-        <Button variant="outline" onClick={onCancel}>
+        <Button onClick={handleSave} disabled={busy}>
+          {busy ? "Guardando…" : "Guardar cambios"}
+        </Button>
+        <Button variant="outline" onClick={onCancel} disabled={busy}>
           Cancelar
         </Button>
       </div>
@@ -856,12 +880,19 @@ function MedicosTab({
 
   const deleteMedicoFn = useAction(adminDeleteMedicoUser);
 
-  const { data, isLoading } = useQuery(getPaginatedUsers, {
+  const { data, isLoading, refetch } = useQuery(getPaginatedUsers, {
     skipPages,
     filter: { isMedico: true },
   });
 
-  const { data: doctorsData } = useQuery(getDoctorsAgenda, {});
+  const { data: doctorsData, refetch: refetchDoctors } = useQuery(
+    getDoctorsAgenda,
+    {},
+  );
+
+  const reloadData = async () => {
+    await Promise.all([refetch(), refetchDoctors()]);
+  };
 
   const { data: patientsData } = useQuery(adminGetPatients, {
     page: 1,
@@ -885,7 +916,14 @@ function MedicosTab({
       </div>
 
       {creating && (
-        <CreateMedicoForm notice={notice} reportError={reportError} />
+        <CreateMedicoForm
+          notice={notice}
+          reportError={reportError}
+          onSuccess={() => {
+            setCreating(false);
+            reloadData();
+          }}
+        />
       )}
 
       <Card className="overflow-hidden border-outline-variant">
@@ -1023,6 +1061,7 @@ function MedicosTab({
                                 await deleteMedicoFn({ id: medico.id });
                                 setDeletingId(null);
                                 notice("Médico eliminado correctamente");
+                                await reloadData();
                               } catch (err: any) {
                                 reportError(
                                   err?.message ?? "No se pudo eliminar",
@@ -1060,7 +1099,7 @@ function MedicosTab({
                   {patientsForId === medico.id && (
                     <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
                       <p className="mono-label mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Pacientes asignados
+                         Pacientes asignados
                       </p>
                       {patientsData && patientsData.patients.length === 0 && (
                         <p className="text-sm text-muted-foreground">
@@ -1088,6 +1127,10 @@ function MedicosTab({
                       onCancel={() => setEditingId(null)}
                       notice={notice}
                       reportError={reportError}
+                      onSuccess={() => {
+                        setEditingId(null);
+                        reloadData();
+                      }}
                     />
                   )}
                 </div>

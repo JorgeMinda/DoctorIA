@@ -1058,7 +1058,7 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
   ensureRole(context.user, "admin", "secretaria");
 
   const medicos = await context.entities.User.findMany({
-    where: { isMedico: true, isAdmin: false },
+    where: { isMedico: true, isAdmin: false, isActive: true },
     select: { id: true, fullName: true, email: true, specialty: true },
   });
 

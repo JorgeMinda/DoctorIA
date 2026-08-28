@@ -1560,11 +1560,15 @@ export const adminDeleteMedicoUser: AdminDeleteMedicoUser<
     );
   }
 
-  // R4 (soft delete): NUNCA se eliminan notas, epicrises, citas ni auditoría
-  // del médico — se preserva la historia clínica y la trazabilidad.
+  // Eliminar accesos paciente-médico activos asociados
+  await context.entities.MedicoPatientAccess.deleteMany({
+    where: { medicoId: id },
+  });
+
+  // R4 (soft delete): Se desactiva y se retira el rol médico para preservar notas, epicrisis y auditoría.
   const deactivated = await context.entities.User.update({
     where: { id },
-    data: { isActive: false },
+    data: { isActive: false, isMedico: false },
   });
 
   await createAuditEntry({
@@ -1573,7 +1577,7 @@ export const adminDeleteMedicoUser: AdminDeleteMedicoUser<
     resourceType: "USER",
     resourceId: id,
     metadata: {
-      adminAction: "DEACTIVATE_MEDICO",
+      adminAction: "DELETE_MEDICO",
       email: deactivated.email ?? "",
     },
   });

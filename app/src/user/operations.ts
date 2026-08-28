@@ -99,6 +99,7 @@ export const getPaginatedUsers: GetPaginatedUsers<
           },
           isAdmin,
           isMedico,
+          isActive: true,
         },
       ],
     },
