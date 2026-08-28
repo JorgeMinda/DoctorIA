@@ -83,6 +83,7 @@ export function NewAppointmentModal({
 
   const resetForm = () => {
     setPatientId(defaultPatientId ?? "");
+    setMedicoId("");
     setDate("");
     setTime("");
     setReason("");
@@ -94,11 +95,7 @@ export function NewAppointmentModal({
     if (open) {
       resetForm();
     }
-  }, [defaultPatientId, open]);
-
-  useEffect(() => {
-    setTime("");
-  }, [date, medicoId, slots]);
+  }, [open, defaultPatientId]);
 
   const allMedicos = medicosData?.medicos ?? [];
   const allPatients = patientsData?.patients ?? [];
@@ -115,19 +112,30 @@ export function NewAppointmentModal({
     ? allMedicos.filter((m: any) => authorizedMedicoIds.includes(m.id))
     : allMedicos;
 
-  // Si el médico seleccionado ya no es válido para este paciente, resetearlo
-  useEffect(() => {
-    if (patientId && medicoId && !authorizedMedicoIds.includes(medicoId)) {
+  const handlePatientChange = (newPatientId: string) => {
+    setPatientId(newPatientId);
+    setTime("");
+    const targetPatient = allPatients.find((p: any) => p.id === newPatientId);
+    const authIds = (targetPatient?.authorizedMedicos ?? []).map(
+      (a: any) => a.medicoId,
+    );
+    const validMedicos = allMedicos.filter((m: any) => authIds.includes(m.id));
+    if (validMedicos.length === 1) {
+      setMedicoId(validMedicos[0].id);
+    } else if (!authIds.includes(medicoId)) {
       setMedicoId("");
     }
-  }, [patientId, authorizedMedicoIds, medicoId]);
+  };
 
-  // Si el paciente solo tiene un médico asignado, auto-seleccionarlo para agilizar
-  useEffect(() => {
-    if (patientId && availableMedicos.length === 1 && !medicoId) {
-      setMedicoId(availableMedicos[0].id);
-    }
-  }, [patientId, availableMedicos, medicoId]);
+  const handleMedicoChange = (newMedicoId: string) => {
+    setMedicoId(newMedicoId);
+    setTime("");
+  };
+
+  const handleDateChange = (newDate: string) => {
+    setDate(newDate);
+    setTime("");
+  };
 
   const handleCreate = async () => {
     if (!medicoId || !patientId || !date || !time) {
@@ -288,11 +296,8 @@ export function NewAppointmentModal({
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Paciente</Label>
               <Select
-                value={patientId}
-                onValueChange={(val) => {
-                  setPatientId(val);
-                  setMedicoId("");
-                }}
+                value={patientId || undefined}
+                onValueChange={handlePatientChange}
                 disabled={loadingPatients}
               >
                 <SelectTrigger className="border-outline-variant bg-surface/70 backdrop-blur-sm">
@@ -328,8 +333,8 @@ export function NewAppointmentModal({
                 )}
               </Label>
               <Select
-                value={medicoId}
-                onValueChange={setMedicoId}
+                value={medicoId || undefined}
+                onValueChange={handleMedicoChange}
                 disabled={
                   !patientId ||
                   loadingMedicos ||
@@ -380,7 +385,7 @@ export function NewAppointmentModal({
                 id="na-date"
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => handleDateChange(e.target.value)}
                 className="border-outline-variant bg-surface/70 font-mono backdrop-blur-sm"
               />
             </div>

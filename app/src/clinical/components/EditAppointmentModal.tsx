@@ -170,7 +170,7 @@ export function EditAppointmentModal({
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Médico asignado</Label>
             <Select
-              value={medicoId}
+              value={medicoId || undefined}
               onValueChange={(val) => {
                 setMedicoId(val);
                 setTime("");
