@@ -27,6 +27,7 @@ import {
   Pencil,
   PhoneMissed,
   Plus,
+  RotateCcw,
   Search,
   ShieldAlert,
   Stethoscope,
@@ -138,25 +139,37 @@ function EditPatientForm({
   const setProfileField = (field: keyof typeof profile, value: string) =>
     setProfile((p) => ({ ...p, [field]: value }));
 
-  const handleSave = run(
-    () =>
-      managePatientsFn({
+  const handleSave = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      reportError("Nombre y apellido son requeridos");
+      return;
+    }
+    if (!birthDate || !sex) {
+      reportError("Fecha de nacimiento y sexo son requeridos");
+      return;
+    }
+    const cleanDoc = documento.trim() ? documento.trim().slice(0, 10) : null;
+    try {
+      await managePatientsFn({
         action: "UPDATE",
         patientId: patient.id,
         data: {
-          firstName,
-          lastName,
-          birthDate: new Date(birthDate),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          birthDate: new Date(`${birthDate}T00:00:00`),
           sex,
-          documento: documento || null,
-          medicalHistory: medicalHistory || null,
-          allergies: allergies || null,
+          documento: cleanDoc,
+          medicalHistory: medicalHistory.trim() || null,
+          allergies: allergies.trim() || null,
           ...patientProfilePayload(profile),
         },
-      }),
-    notice,
-    reportError,
-  );
+      });
+      notice("Paciente actualizado correctamente");
+      onCancel();
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo actualizar el paciente");
+    }
+  };
 
   return (
     <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
@@ -241,21 +254,19 @@ function patientProfilePayload(data: {
   emergencyPhone: string;
   insurance: string;
 }) {
+  const h = data.heightCm?.trim() ? Number(data.heightCm) : null;
+  const w = data.weightKg?.trim() ? Number(data.weightKg) : null;
   return {
-    nationality: data.nationality.trim() ? data.nationality.trim() : null,
-    heightCm: data.heightCm ? Number(data.heightCm) : null,
-    weightKg: data.weightKg ? Number(data.weightKg) : null,
-    ethnicity: data.ethnicity.trim() ? data.ethnicity.trim() : null,
+    nationality: data.nationality?.trim() || null,
+    heightCm: h !== null && !isNaN(h) && h > 0 ? Math.round(h) : null,
+    weightKg: w !== null && !isNaN(w) && w > 0 ? Math.round(w) : null,
+    ethnicity: data.ethnicity?.trim() || null,
     bloodType: data.bloodType || null,
-    address: data.address.trim() ? data.address.trim() : null,
-    phone: data.phone.trim() ? data.phone.trim() : null,
-    emergencyName: data.emergencyName.trim()
-      ? data.emergencyName.trim()
-      : null,
-    emergencyPhone: data.emergencyPhone.trim()
-      ? data.emergencyPhone.trim()
-      : null,
-    insurance: data.insurance.trim() ? data.insurance.trim() : null,
+    address: data.address?.trim() || null,
+    phone: data.phone?.trim() || null,
+    emergencyName: data.emergencyName?.trim() || null,
+    emergencyPhone: data.emergencyPhone?.trim() || null,
+    insurance: data.insurance?.trim() || null,
   };
 }
 
@@ -390,18 +401,26 @@ function CreatePatientForm({
     setProfile((p) => ({ ...p, [field]: value }));
 
   const handleCreate = async () => {
-    if (!firstName || !lastName || !birthDate) return;
+    if (!firstName.trim() || !lastName.trim()) {
+      reportError("Nombre y apellido son obligatorios");
+      return;
+    }
+    if (!birthDate || !sex) {
+      reportError("Fecha de nacimiento y sexo son obligatorios");
+      return;
+    }
+    const cleanDoc = documento.trim() ? documento.trim().slice(0, 10) : null;
     try {
       await managePatientsFn({
         action: "CREATE",
         data: {
-          firstName,
-          lastName,
-          birthDate: new Date(birthDate),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          birthDate: new Date(`${birthDate}T00:00:00`),
           sex,
-          documento: documento || null,
-          medicalHistory: medicalHistory || null,
-          allergies: allergies || null,
+          documento: cleanDoc,
+          medicalHistory: medicalHistory.trim() || null,
+          allergies: allergies.trim() || null,
           ...patientProfilePayload(profile),
         },
       });
@@ -872,17 +891,23 @@ function MedicosTab({
   reportError: ReportError;
 }) {
   const [skipPages, setSkipPages] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE">("ACTIVE");
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [patientsForId, setPatientsForId] = useState<string | null>(null);
   const [agendaForId, setAgendaForId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
 
   const deleteMedicoFn = useAction(adminDeleteMedicoUser);
+  const updateMedicoFn = useAction(adminUpdateMedicoUser);
 
   const { data, isLoading, refetch } = useQuery(getPaginatedUsers, {
     skipPages,
-    filter: { isMedico: true },
+    filter: {
+      isActive: statusFilter === "ACTIVE",
+      isMedico: statusFilter === "ACTIVE" ? true : undefined,
+    },
   });
 
   const { data: doctorsData, refetch: refetchDoctors } = useQuery(
@@ -892,6 +917,22 @@ function MedicosTab({
 
   const reloadData = async () => {
     await Promise.all([refetch(), refetchDoctors()]);
+  };
+
+  const handleReactivate = async (medico: any) => {
+    setReactivatingId(medico.id);
+    try {
+      await updateMedicoFn({
+        id: medico.id,
+        isActive: true,
+      });
+      notice(`Médico ${medico.fullName || medico.email} reactivado correctamente`);
+      await reloadData();
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo reactivar el médico");
+    } finally {
+      setReactivatingId(null);
+    }
   };
 
   const { data: patientsData } = useQuery(adminGetPatients, {
@@ -908,7 +949,36 @@ function MedicosTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1 rounded-lg border border-outline-variant/60 bg-surface/50 p-1">
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("ACTIVE");
+              setSkipPages(0);
+            }}
+            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${statusFilter === "ACTIVE"
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : "text-muted-foreground hover:text-foreground"
+              }`}
+          >
+            Médicos Activos
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("INACTIVE");
+              setSkipPages(0);
+            }}
+            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${statusFilter === "INACTIVE"
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : "text-muted-foreground hover:text-foreground"
+              }`}
+          >
+            Inactivos / Por reactivar
+          </button>
+        </div>
+
         <Button onClick={() => setCreating((c) => !c)}>
           <UserPlus className="size-4" />
           Nuevo médico
@@ -929,7 +999,9 @@ function MedicosTab({
       <Card className="overflow-hidden border-outline-variant">
         <div className="flex items-center justify-between border-b border-outline-variant/50 bg-surface-container/60 px-5 py-3">
           <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
-            Usuarios con rol Médico
+            {statusFilter === "ACTIVE"
+              ? "Usuarios activos con rol Médico"
+              : "Médicos inactivos / dados de baja"}
           </p>
           <Badge variant="outline" className="mono-label">
             {data ? `${data.users.length} resultado(s)` : "—"}
@@ -944,7 +1016,9 @@ function MedicosTab({
           )}
           {data && data.users.length === 0 && (
             <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-              No hay médicos registrados.
+              {statusFilter === "ACTIVE"
+                ? "No hay médicos registrados activos."
+                : "No hay médicos inactivos actualmente."}
             </div>
           )}
           {data &&
@@ -952,6 +1026,8 @@ function MedicosTab({
             data.users.map((medico: any) => {
               const doctor = doctorRows[medico.id];
               const enCita = doctor?.currentStatus === "EN_CITA";
+              const isInactive = !medico.isActive || statusFilter === "INACTIVE";
+
               return (
                 <div key={medico.id}>
                   <div className="group flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/40">
@@ -965,8 +1041,12 @@ function MedicosTab({
                         <span className="truncate text-sm font-semibold text-foreground">
                           {medico.fullName ?? medico.username ?? medico.email}
                         </span>
-                        <Badge variant="success">Médico</Badge>
-                        {doctor && (
+                        {isInactive ? (
+                          <Badge variant="destructive">Inactivo</Badge>
+                        ) : (
+                          <Badge variant="success">Médico</Badge>
+                        )}
+                        {!isInactive && doctor && (
                           <span
                             className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${enCita
                                 ? "border-warning/40 bg-warning/10 text-warning"
@@ -989,7 +1069,7 @@ function MedicosTab({
                             <span>{medico.specialty}</span>
                           </>
                         )}
-                        {doctor && (
+                        {!isInactive && doctor && (
                           <>
                             <span>·</span>
                             <span>
@@ -1000,7 +1080,7 @@ function MedicosTab({
                             <span>{doctor.atencionesHoy} de hoy</span>
                           </>
                         )}
-                        {doctor && doctor.proximaCita && (
+                        {!isInactive && doctor && doctor.proximaCita && (
                           <>
                             <span>·</span>
                             <span>
@@ -1012,84 +1092,101 @@ function MedicosTab({
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={() =>
-                          setAgendaForId(
-                            agendaForId === medico.id ? null : medico.id,
-                          )
-                        }
-                      >
-                        <CalendarClock className="size-3.5" />
-                        Estadística
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={() =>
-                          setPatientsForId(
-                            patientsForId === medico.id ? null : medico.id,
-                          )
-                        }
-                      >
-                        <ClipboardList className="size-3.5" />
-                        Pacientes
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={() =>
-                          setEditingId(
-                            editingId === medico.id ? null : medico.id,
-                          )
-                        }
-                      >
-                        <Pencil className="size-3.5" />
-                        Editar
-                      </Button>
-                      {deletingId === medico.id ? (
-                        <>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                await deleteMedicoFn({ id: medico.id });
-                                setDeletingId(null);
-                                notice("Médico eliminado correctamente");
-                                await reloadData();
-                              } catch (err: any) {
-                                reportError(
-                                  err?.message ?? "No se pudo eliminar",
-                                );
-                                setDeletingId(null);
-                              }
-                            }}
-                          >
-                            Confirmar
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeletingId(null)}
-                          >
-                            Cancelar
-                          </Button>
-                        </>
-                      ) : (
+                      {isInactive ? (
                         <Button
                           variant="outline"
                           size="sm"
-                          className="gap-1.5 text-destructive"
-                          onClick={() => setDeletingId(medico.id)}
+                          className="gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
+                          disabled={reactivatingId === medico.id}
+                          onClick={() => handleReactivate(medico)}
                         >
-                          <Trash2 className="size-3.5" />
-                          Eliminar
+                          <RotateCcw className="size-3.5" />
+                          {reactivatingId === medico.id
+                            ? "Reactivando…"
+                            : "Reactivar cuenta"}
                         </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() =>
+                              setAgendaForId(
+                                agendaForId === medico.id ? null : medico.id,
+                              )
+                            }
+                          >
+                            <CalendarClock className="size-3.5" />
+                            Estadística
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() =>
+                              setPatientsForId(
+                                patientsForId === medico.id ? null : medico.id,
+                              )
+                            }
+                          >
+                            <ClipboardList className="size-3.5" />
+                            Pacientes
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() =>
+                              setEditingId(
+                                editingId === medico.id ? null : medico.id,
+                              )
+                            }
+                          >
+                            <Pencil className="size-3.5" />
+                            Editar
+                          </Button>
+                          {deletingId === medico.id ? (
+                            <>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await deleteMedicoFn({ id: medico.id });
+                                    setDeletingId(null);
+                                    notice("Médico eliminado correctamente");
+                                    await reloadData();
+                                  } catch (err: any) {
+                                    reportError(
+                                      err?.message ?? "No se pudo eliminar",
+                                    );
+                                    setDeletingId(null);
+                                  }
+                                }}
+                              >
+                                Confirmar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeletingId(null)}
+                              >
+                                Cancelar
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 text-destructive"
+                              onClick={() => setDeletingId(medico.id)}
+                            >
+                              <Trash2 className="size-3.5" />
+                              Eliminar
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -1099,7 +1196,7 @@ function MedicosTab({
                   {patientsForId === medico.id && (
                     <div className="border-b border-outline-variant/40 bg-surface/40 px-6 py-4">
                       <p className="mono-label mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-                         Pacientes asignados
+                        Pacientes asignados
                       </p>
                       {patientsData && patientsData.patients.length === 0 && (
                         <p className="text-sm text-muted-foreground">

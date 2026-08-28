@@ -44,10 +44,10 @@ export const updateIsUserAdminById: UpdateIsUserAdminById<
 };
 
 type GetPaginatedUsersOutput = {
-  users: Pick<
+  users: (Pick<
     User,
-    "id" | "email" | "username" | "fullName" | "specialty" | "isAdmin" | "isMedico"
-  >[];
+    "id" | "email" | "username" | "fullName" | "specialty" | "isAdmin" | "isMedico" | "isActive"
+  >)[];
   totalPages: number;
 };
 
@@ -57,6 +57,7 @@ const getPaginatorArgsSchema = z.object({
     emailContains: z.string().nonempty().optional(),
     isAdmin: z.boolean().optional(),
     isMedico: z.boolean().optional(),
+    isActive: z.boolean().optional(),
   }),
 });
 
@@ -82,7 +83,7 @@ export const getPaginatedUsers: GetPaginatedUsers<
 
   const {
     skipPages,
-    filter: { emailContains, isAdmin, isMedico },
+    filter: { emailContains, isAdmin, isMedico, isActive },
   } = ensureArgsSchemaOrThrowHttpError(getPaginatorArgsSchema, rawArgs);
 
   const pageSize = 10;
@@ -99,7 +100,7 @@ export const getPaginatedUsers: GetPaginatedUsers<
           },
           isAdmin,
           isMedico,
-          isActive: true,
+          isActive: isActive !== undefined ? isActive : true,
         },
       ],
     },
@@ -111,6 +112,7 @@ export const getPaginatedUsers: GetPaginatedUsers<
       specialty: true,
       isAdmin: true,
       isMedico: true,
+      isActive: true,
     },
     orderBy: {
       username: "asc" as const,

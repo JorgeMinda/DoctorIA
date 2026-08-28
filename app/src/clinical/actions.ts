@@ -890,26 +890,32 @@ export const createEpicrisisAddendum: CreateEpicrisisAddendum<
 
 const manageSyntheticPatientsInputSchema = z.object({
   action: z.enum(["CREATE", "UPDATE", "DELETE", "SET_ACTIVE"]),
-  data: z.object({
-    syntheticId: z.string().optional(),
-    firstName: z.string().optional(),
-    lastName: z.string().optional(),
-    birthDate: z.coerce.date().optional(),
-    sex: z.string().optional(),
-    documento: z.string().max(10, "MÃ¡ximo 10 caracteres").nullable().optional(),
-    medicalHistory: z.string().nullable().optional(),
-    allergies: z.string().nullable().optional(),
-    nationality: z.string().nullable().optional(),
-    heightCm: z.number().int().min(1).max(300).nullable().optional(),
-    weightKg: z.number().int().min(1).max(500).nullable().optional(),
-    ethnicity: z.string().nullable().optional(),
-    bloodType: z.string().nullable().optional(),
-    address: z.string().nullable().optional(),
-    phone: z.string().nullable().optional(),
-    emergencyName: z.string().max(200).nullable().optional(),
-    emergencyPhone: z.string().nullable().optional(),
-    insurance: z.string().nullable().optional(),
-  }),
+  data: z
+    .object({
+      syntheticId: z.string().optional(),
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      birthDate: z
+        .union([z.date(), z.string(), z.number()])
+        .pipe(z.coerce.date())
+        .optional(),
+      sex: z.string().optional(),
+      documento: z.string().nullable().optional(),
+      medicalHistory: z.string().nullable().optional(),
+      allergies: z.string().nullable().optional(),
+      nationality: z.string().nullable().optional(),
+      heightCm: z.coerce.number().min(1).max(300).nullable().optional(),
+      weightKg: z.coerce.number().min(1).max(500).nullable().optional(),
+      ethnicity: z.string().nullable().optional(),
+      bloodType: z.string().nullable().optional(),
+      address: z.string().nullable().optional(),
+      phone: z.string().nullable().optional(),
+      emergencyName: z.string().max(200).nullable().optional(),
+      emergencyPhone: z.string().nullable().optional(),
+      insurance: z.string().nullable().optional(),
+    })
+    .optional()
+    .default({}),
   patientId: z.string().optional(),
   // Solo para SET_ACTIVE (R3: reactivar/desactivar es exclusivo de admin).
   isActive: z.boolean().optional(),
@@ -1240,7 +1246,34 @@ export const adminCreateMedicoUser: AdminCreateMedicoUser<
     where: { email },
   });
   if (existingUser) {
-    throw new HttpError(409, "Ya existe un usuario con ese correo");
+    if (!existingUser.isActive) {
+      // El usuario existía previamente pero estaba inactivo: lo reactivamos con el rol solicitado
+      const updated = await context.entities.User.update({
+        where: { id: existingUser.id },
+        data: {
+          fullName: fullName ?? existingUser.fullName,
+          specialty: role === "medico" ? specialty ?? existingUser.specialty : null,
+          isMedico: role === "medico",
+          isAdmin: false,
+          isSecretaria: role === "secretaria",
+          isActive: true,
+        },
+      });
+
+      await createAuditEntry({
+        userId: user.id,
+        action: "ADMIN_MANAGE_USER",
+        resourceType: "USER",
+        resourceId: updated.id,
+        metadata: {
+          adminAction: `REACTIVATE_${role.toUpperCase()}`,
+          email,
+        },
+      });
+
+      return updated;
+    }
+    throw new HttpError(409, "Ya existe un usuario activo con ese correo");
   }
 
   const serializedProviderData =
@@ -1373,6 +1406,7 @@ const adminUpdateMedicoUserInputSchema = z.object({
   id: z.string().min(1),
   fullName: z.string().min(1).optional(),
   specialty: z.string().min(1).optional(),
+  isActive: z.boolean().optional(),
 });
 
 type AdminUpdateMedicoUserInput = z.infer<
@@ -1486,7 +1520,7 @@ export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
 > = async (rawArgs, context) => {
   const user = ensureAdmin(context.user);
 
-  const { id, fullName, specialty } = ensureArgsSchemaOrThrowHttpError(
+  const { id, fullName, specialty, isActive } = ensureArgsSchemaOrThrowHttpError(
     adminUpdateMedicoUserInputSchema,
     rawArgs,
   );
@@ -1495,10 +1529,10 @@ export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
   if (!target) {
     throw new HttpError(404, "Usuario no encontrado");
   }
-  if (!target.isMedico || target.isAdmin) {
+  if (target.isAdmin) {
     throw new HttpError(
       400,
-      "Solo se pueden editar perfiles de usuarios con rol MÃ©dico",
+      "No se pueden modificar perfiles de usuarios con rol Administrador desde esta sección",
     );
   }
 
@@ -1507,6 +1541,12 @@ export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
     data: {
       fullName: fullName ?? target.fullName,
       specialty: specialty ?? target.specialty,
+      ...(typeof isActive === "boolean"
+        ? {
+            isActive,
+            isMedico: isActive ? true : target.isMedico,
+          }
+        : {}),
     },
   });
 
@@ -1515,7 +1555,13 @@ export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
     action: "ADMIN_MANAGE_USER",
     resourceType: "USER",
     resourceId: id,
-    metadata: { adminAction: "UPDATE_MEDICO", email: target.email ?? "" },
+    metadata: {
+      adminAction:
+        typeof isActive === "boolean" && isActive
+          ? "REACTIVATE_MEDICO"
+          : "UPDATE_MEDICO",
+      email: target.email ?? "",
+    },
   });
 
   return updated;

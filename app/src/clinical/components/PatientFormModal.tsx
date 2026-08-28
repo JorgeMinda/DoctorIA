@@ -109,13 +109,15 @@ export function PatientFormModal({
         data: {
           firstName: form.firstName.trim(),
           lastName: form.lastName.trim(),
-          birthDate: new Date(form.birthDate),
+          birthDate: new Date(`${form.birthDate}T00:00:00`),
           sex: form.sex,
-          documento: form.documento || null,
-          phone: form.phone || null,
-          medicalHistory: form.medicalHistory || null,
-          allergies: form.allergies || null,
-          nationality: form.nationality || null,
+          documento: form.documento?.trim()
+            ? form.documento.trim().slice(0, 10)
+            : null,
+          phone: form.phone?.trim() || null,
+          medicalHistory: form.medicalHistory?.trim() || null,
+          allergies: form.allergies?.trim() || null,
+          nationality: form.nationality?.trim() || null,
         },
       });
       toast({
