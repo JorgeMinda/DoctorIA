@@ -922,6 +922,7 @@ function MedicosTab({
   const [patientsForId, setPatientsForId] = useState<string | null>(null);
   const [agendaForId, setAgendaForId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
   const deleteMedicoFn = useAction(adminDeleteMedicoUser);
   const updateMedicoFn = useAction(adminUpdateMedicoUser);

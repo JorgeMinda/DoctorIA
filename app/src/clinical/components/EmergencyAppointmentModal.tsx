@@ -68,7 +68,7 @@ export function EmergencyAppointmentModal({
 
     setBusy(true);
     try {
-      const res = await createEmergencyFn({
+      const res: any = await createEmergencyFn({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         sex,
@@ -80,7 +80,7 @@ export function EmergencyAppointmentModal({
 
       toast({
         title: "🚨 Cita Emergente Programada",
-        description: `Paciente ${res.patient.syntheticId} asignado a ${res.cita.medico?.fullName || "médico de turno"}.`,
+        description: `Paciente ${res?.patient?.syntheticId || ""} asignado a ${res?.cita?.medico?.fullName || "médico de turno"}.`,
       });
 
       onOpenChange(false);

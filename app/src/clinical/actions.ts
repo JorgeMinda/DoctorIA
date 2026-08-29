@@ -1704,7 +1704,7 @@ export const createEmergencyAssignment: any = async (
     citaId: cita.id,
     metadata: {
       adminAction: "CREATE_EMERGENCY_ASSIGNMENT",
-      medicoId,
+      medicoId: medicoId ?? null,
       patientId: patient.id,
       syntheticId,
     },
