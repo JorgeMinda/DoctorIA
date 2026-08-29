@@ -18,6 +18,8 @@ export interface ClinicalNavGroup {
   items: ClinicalNavItem[];
 }
 
+import type { ClinicalRole } from "../../hooks/useRole";
+
 export const clinicalNavGroups: ClinicalNavGroup[] = [
   {
     label: "Clínica",
@@ -35,6 +37,61 @@ export const clinicalNavGroups: ClinicalNavGroup[] = [
     ],
   },
 ];
+
+export function getNavGroupsForRole(role: ClinicalRole | null): ClinicalNavGroup[] {
+  if (!role) return [];
+
+  if (role === "medico") {
+    return [
+      {
+        label: "Clínica",
+        items: [
+          { name: "Pacientes", to: "/clinical/patients", icon: Users },
+          { name: "Mi agenda", to: "/clinical/agenda", icon: CalendarDays },
+          { name: "Asistente de voz", to: "/clinical/voice", icon: Mic },
+        ],
+      },
+      {
+        label: "Gestión",
+        items: [{ name: "Auditoría", to: "/clinical/audit", icon: ScrollText }],
+      },
+    ];
+  }
+
+  if (role === "secretaria") {
+    return [
+      {
+        label: "Atención",
+        items: [
+          { name: "Pacientes", to: "/clinical/patients", icon: Users },
+          { name: "Gestión de citas", to: "/clinical/agenda", icon: CalendarDays },
+        ],
+      },
+      {
+        label: "Gestión",
+        items: [{ name: "Auditoría", to: "/clinical/audit", icon: ScrollText }],
+      },
+    ];
+  }
+
+  // Admin
+  return [
+    {
+      label: "Clínica",
+      items: [
+        { name: "Pacientes", to: "/clinical/patients", icon: Users },
+        { name: "Gestión de citas", to: "/clinical/agenda", icon: CalendarDays },
+      ],
+    },
+    {
+      label: "Gestión",
+      items: [
+        { name: "Auditoría", to: "/clinical/audit", icon: ScrollText },
+        { name: "Administración", to: "/clinical/admin", icon: Settings },
+      ],
+    },
+  ];
+}
 
 export function isClinicalNavItemActive(pathname: string, to: string): boolean {
   if (to === "/clinical/patients") {

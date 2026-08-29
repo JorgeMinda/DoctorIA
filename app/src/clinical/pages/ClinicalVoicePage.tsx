@@ -85,7 +85,17 @@ type VoiceNoteCreatedResponse = {
   syntheticId: string;
 };
 
+import { RoleGuard } from "../../client/components/RoleGuard";
+
 export function ClinicalVoicePage() {
+  return (
+    <RoleGuard allowedRoles={["medico"]} fallbackTo="/clinical/patients">
+      <ClinicalVoicePageContent />
+    </RoleGuard>
+  );
+}
+
+function ClinicalVoicePageContent() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: user } = useAuth();

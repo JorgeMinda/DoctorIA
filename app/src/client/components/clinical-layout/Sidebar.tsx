@@ -1,15 +1,17 @@
 import { Link, useLocation } from "react-router";
-import { useAuth } from "wasp/client/auth";
+import { useRole } from "../../hooks/useRole";
 import logo from "../../static/logo.jpeg";
 import { cn } from "../../utils";
 import {
-  clinicalNavGroups,
+  getNavGroupsForRole,
   isClinicalNavItemActive,
 } from "./nav-items";
 
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const location = useLocation();
-  const { data: user } = useAuth();
+  const { user, role } = useRole();
+
+  const navGroups = getNavGroupsForRole(role);
 
   return (
     <div className="flex h-full flex-col">
@@ -24,7 +26,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-        {clinicalNavGroups.map((group) => (
+        {navGroups.map((group) => (
           <div key={group.label}>
             <p className="mono-label text-muted-foreground/70 px-3 pb-2 text-[10px] font-medium uppercase tracking-widest">
               {group.label}

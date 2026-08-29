@@ -61,7 +61,7 @@ export interface AIService {
   ): Promise<AIAddendumOutput>;
 }
 
-const AI_TIMEOUT_MS = 30_000; // RNF-011
+const AI_TIMEOUT_MS = 25_000; // Presupuesto de tiempo seguro (< 45s acumulado) para evitar timeout 504 en Render (RNF-011)
 
 // Maps empty/null/"null" strings to a real TypeScript null (RNF-004: original preserved as-is).
 function cleanResponseString(val: unknown): string | null {
@@ -156,8 +156,8 @@ function buildMessages(userPrompt: string): ChatMessage[] {
   ];
 }
 
-// Reintenta ante 429/5xx con backoff respetando Retry-After (resiliencia en producción).
-const AI_MAX_RETRIES = 2;
+// Reintenta ante 429/5xx con backoff respetando Retry-After (resiliencia en producción con tope de tiempo total).
+const AI_MAX_RETRIES = 1;
 
 async function callOpenRouterOnce(messages: ChatMessage[]): Promise<any> {
   const apiKey = env.OPENROUTER_API_KEY;

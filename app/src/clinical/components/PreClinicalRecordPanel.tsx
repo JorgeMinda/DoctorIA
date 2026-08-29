@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useAction, useQuery } from "wasp/client/operations";
-import { getPreClinicalRecord, createPreClinicalRecord } from "wasp/client/operations";
+import {
+  getPreClinicalRecord,
+  createPreClinicalRecord,
+  updatePreClinicalRecord,
+} from "wasp/client/operations";
+import { useAuth } from "wasp/client/auth";
 import { toast } from "../../client/hooks/use-toast";
 import { Button } from "../../client/components/ui/button";
 import { Input } from "../../client/components/ui/input";
@@ -13,6 +18,7 @@ import {
   CardTitle,
 } from "../../client/components/ui/card";
 import { Badge } from "../../client/components/ui/badge";
+import { Pencil, Save, X } from "lucide-react";
 
 const VITAL_FIELDS = [
   { key: "systolicBP", label: "TA sistólica (mmHg)", min: 50, max: 300 },
@@ -48,8 +54,10 @@ export function PreClinicalRecordPanel({
   readOnly?: boolean;
   onSaved?: () => void;
 }) {
+  const { data: user } = useAuth();
   const [motivo, setMotivo] = useState("");
   const [vitals, setVitals] = useState<Record<string, string>>({});
+  const [isEditing, setIsEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,10 +65,37 @@ export function PreClinicalRecordPanel({
     data: existing,
     isLoading,
     refetch,
-  } = useQuery(getPreClinicalRecord, {
-    citaId,
-  });
+  } = useQuery(
+    getPreClinicalRecord,
+    {
+      citaId,
+    },
+    { enabled: Boolean(user && citaId) },
+  );
   const createFn = useAction(createPreClinicalRecord);
+  const updateFn = useAction(updatePreClinicalRecord);
+
+  // La edición está estrictamente habilitada SOLO para el rol Secretaría
+  const isSecretaria = Boolean(user?.isSecretaria && !user?.isAdmin && !user?.isMedico);
+  const canEdit = isSecretaria && !readOnly;
+
+  const handleStartEdit = () => {
+    if (!existing) return;
+    setMotivo(existing.motivoConsulta ?? "");
+    const initialVitals: Record<string, string> = {};
+    for (const f of VITAL_FIELDS) {
+      const val = (existing as any)[f.key];
+      initialVitals[f.key] = val !== undefined && val !== null ? String(val) : "";
+    }
+    setVitals(initialVitals);
+    setError(null);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setError(null);
+  };
 
   if (isLoading) {
     return (
@@ -72,18 +107,32 @@ export function PreClinicalRecordPanel({
     );
   }
 
-  if (existing) {
+  // Vista de registro existente (Modo Lectura)
+  if (existing && !isEditing) {
     return (
       <Card className="overflow-hidden border-outline-variant">
         <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Badge variant="outline" className="mono-label">
-              📊 Registro Pre-Clínico
-            </Badge>
-            <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
-              Registrado por secretaría
-            </span>
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Badge variant="outline" className="mono-label">
+                📊 Registro Pre-Clínico
+              </Badge>
+              <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
+                Registrado por secretaría
+              </span>
+            </CardTitle>
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={handleStartEdit}
+              >
+                <Pencil className="size-3.5" />
+                Editar registro
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4 p-5">
           <div>
@@ -113,7 +162,9 @@ export function PreClinicalRecordPanel({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Registro administrativo previo completado · Bloqueado para edición clínica.
+            {canEdit
+              ? "Registro previo completado · Puede editar los valores según sea necesario."
+              : "Registro administrativo previo completado · Bloqueado para edición clínica."}
           </p>
         </CardContent>
       </Card>
@@ -121,7 +172,7 @@ export function PreClinicalRecordPanel({
   }
 
   // Si no hay registro y la vista es de solo lectura (Médico)
-  if (readOnly) {
+  if (!existing && readOnly) {
     return (
       <Card className="overflow-hidden border-outline-variant bg-surface">
         <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
@@ -163,18 +214,30 @@ export function PreClinicalRecordPanel({
     }
     setBusy(true);
     try {
-      await createFn({
-        citaId,
-        patientId,
-        motivoConsulta: motivo.trim(),
-        ...(parsed as Record<VitalKey, number>),
-      });
-      toast({ title: "Registro pre-clínico guardado" });
+      if (existing) {
+        // Actualización de registro existente (exclusivo secretaría)
+        await updateFn({
+          citaId,
+          motivoConsulta: motivo.trim(),
+          ...(parsed as Record<VitalKey, number>),
+        });
+        toast({ title: "Registro pre-clínico actualizado correctamente" });
+        setIsEditing(false);
+      } else {
+        // Creación inicial
+        await createFn({
+          citaId,
+          patientId,
+          motivoConsulta: motivo.trim(),
+          ...(parsed as Record<VitalKey, number>),
+        });
+        toast({ title: "Registro pre-clínico guardado" });
+      }
       await refetch();
       onSaved?.();
     } catch (err: any) {
       toast({
-        title: "No se pudo guardar",
+        title: existing ? "No se pudo actualizar" : "No se pudo guardar",
         description: err?.message,
         variant: "destructive",
       });
@@ -188,10 +251,10 @@ export function PreClinicalRecordPanel({
       <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Badge variant="outline" className="mono-label">
-            📋 Registro Pre-Clínico
+            📋 {existing ? "Editar Registro Pre-Clínico" : "Registro Pre-Clínico"}
           </Badge>
           <span className="text-xs font-normal text-muted-foreground">
-            Ingreso por secretaría
+            {existing ? "Edición por secretaría" : "Ingreso por secretaría"}
           </span>
         </CardTitle>
       </CardHeader>
@@ -225,9 +288,27 @@ export function PreClinicalRecordPanel({
         {error && (
           <p className="text-xs text-destructive">{error}</p>
         )}
-        <Button onClick={handleSubmit} disabled={busy}>
-          {busy ? "Guardando…" : "Guardar registro pre-clínico"}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleSubmit} disabled={busy} className="gap-1.5">
+            {existing && <Save className="size-4" />}
+            {busy
+              ? "Guardando…"
+              : existing
+                ? "Guardar cambios"
+                : "Guardar registro pre-clínico"}
+          </Button>
+          {existing && isEditing && (
+            <Button
+              variant="outline"
+              onClick={handleCancelEdit}
+              disabled={busy}
+              className="gap-1.5"
+            >
+              <X className="size-4" />
+              Cancelar
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

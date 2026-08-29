@@ -44,10 +44,18 @@ import {
 } from "../components/SectionEditor";
 import { StatusBadge } from "../components/StatusBadge";
 import { CIE11SearchDialog, type CIE11Result } from "../components/CIE11SearchDialog";
-import type { SectionKey } from "../services/noteValidation";
+import { RoleGuard } from "../../client/components/RoleGuard";
 import { toast } from "../../client/hooks/use-toast";
 
 export function ClinicalNotePage() {
+  return (
+    <RoleGuard allowedRoles={["medico"]} fallbackTo="/clinical/patients">
+      <ClinicalNotePageContent />
+    </RoleGuard>
+  );
+}
+
+function ClinicalNotePageContent() {
   const { noteId } = useParams();
   const navigate = useNavigate();
   const { data: user } = useAuth();

@@ -62,7 +62,17 @@ const EPICRISIS_FIELDS: [EpicrisisFieldKey, string][] = [
   ["followUpInstructions", "Instrucciones de seguimiento"],
 ];
 
+import { RoleGuard } from "../../client/components/RoleGuard";
+
 export function ClinicalEpicrisisPage() {
+  return (
+    <RoleGuard allowedRoles={["medico"]} fallbackTo="/clinical/patients">
+      <ClinicalEpicrisisPageContent />
+    </RoleGuard>
+  );
+}
+
+function ClinicalEpicrisisPageContent() {
   const { epicrisisId } = useParams();
   const navigate = useNavigate();
   const { data: user } = useAuth();

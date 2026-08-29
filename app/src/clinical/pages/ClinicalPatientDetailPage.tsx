@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useAction, useQuery } from "wasp/client/operations";
@@ -45,6 +45,14 @@ export function ClinicalPatientDetailPage() {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const { data: user } = useAuth();
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const [newNoteText, setNewNoteText] = useState("");
   const [creating, setCreating] = useState(false);
@@ -54,14 +62,21 @@ export function ClinicalPatientDetailPage() {
   const [printEpicrisisId, setPrintEpicrisisId] = useState<string | null>(null);
   const [busyCitaId, setBusyCitaId] = useState<string | null>(null);
 
+  const isAuthResolved = Boolean(user && patientId);
+
   const { data: detail, isLoading: loadingDetail, refetch } = useQuery(
     getPatientById,
     {
       patientId: patientId ?? "",
     },
+    { enabled: isAuthResolved },
   );
   const { data: history, isLoading: loadingHistory, refetch: refetchHistory } =
-    useQuery(getPatientHistory, { patientId: patientId ?? "" });
+    useQuery(
+      getPatientHistory,
+      { patientId: patientId ?? "" },
+      { enabled: isAuthResolved },
+    );
 
   const createNoteFn = useAction(createClinicalNote);
   const generateEpicrisisFn = useAction(generateEpicrisisDraft);
@@ -75,9 +90,13 @@ export function ClinicalPatientDetailPage() {
 
   const canEditPatient = Boolean(user?.isSecretaria || user?.isAdmin);
 
-  const { data: printableEpicrises } = useQuery(getPrintableEpicrises, {
-    patientId: patientId ?? "",
-  });
+  const { data: printableEpicrises } = useQuery(
+    getPrintableEpicrises,
+    {
+      patientId: patientId ?? "",
+    },
+    { enabled: isAuthResolved },
+  );
 
   if (!(user?.isMedico || user?.isSecretaria || user?.isAdmin)) {
     return (
@@ -134,7 +153,9 @@ export function ClinicalPatientDetailPage() {
         variant: "destructive",
       });
     } finally {
-      setCreating(false);
+      if (isMountedRef.current) {
+        setCreating(false);
+      }
     }
   };
 
@@ -184,7 +205,9 @@ export function ClinicalPatientDetailPage() {
         variant: "destructive",
       });
     } finally {
-      setGeneratingEpicrisis(false);
+      if (isMountedRef.current) {
+        setGeneratingEpicrisis(false);
+      }
     }
   };
 

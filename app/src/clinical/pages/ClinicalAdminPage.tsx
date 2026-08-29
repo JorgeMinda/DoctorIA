@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { useQuery, useAction } from "wasp/client/operations";
+import { useConfirm } from "../../client/hooks/use-confirm";
+import { RoleGuard } from "../../client/components/RoleGuard";
 import {
   adminCreateMedicoUser,
   adminDeleteMedicoUser,
@@ -537,15 +539,17 @@ function PatientsTab({
     pageSize: 20,
   });
   const managePatientsFn = useAction(manageSyntheticPatients);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const handleDelete = async (id: string, label: string) => {
-    if (
-      !window.confirm(
-        `¿Eliminar a ${label}? Esta acción no se puede deshacer.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "¿Eliminar paciente sintético?",
+      description: `Se desactivará a ${label} de las vistas clínicas. Esta acción no se puede deshacer.`,
+      confirmText: "Sí, eliminar",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
     try {
       await managePatientsFn({ action: "DELETE", patientId: id, data: {} });
       notice("Paciente eliminado correctamente");
@@ -733,6 +737,7 @@ function PatientsTab({
           </div>
         )}
       </Card>
+      {ConfirmDialog}
     </div>
   );
 }
@@ -917,8 +922,7 @@ function MedicosTab({
   const [patientsForId, setPatientsForId] = useState<string | null>(null);
   const [agendaForId, setAgendaForId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
-
+  const { confirm, ConfirmDialog } = useConfirm();
   const deleteMedicoFn = useAction(adminDeleteMedicoUser);
   const updateMedicoFn = useAction(adminUpdateMedicoUser);
 
@@ -1166,46 +1170,33 @@ function MedicosTab({
                             <Pencil className="size-3.5" />
                             Editar
                           </Button>
-                          {deletingId === medico.id ? (
-                            <>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={async () => {
-                                  try {
-                                    await deleteMedicoFn({ id: medico.id });
-                                    setDeletingId(null);
-                                    notice("Médico eliminado correctamente");
-                                    await reloadData();
-                                  } catch (err: any) {
-                                    reportError(
-                                      err?.message ?? "No se pudo eliminar",
-                                    );
-                                    setDeletingId(null);
-                                  }
-                                }}
-                              >
-                                Confirmar
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeletingId(null)}
-                              >
-                                Cancelar
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1.5 text-destructive"
-                              onClick={() => setDeletingId(medico.id)}
-                            >
-                              <Trash2 className="size-3.5" />
-                              Eliminar
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={async () => {
+                              const ok = await confirm({
+                                title: "¿Desactivar cuenta médica?",
+                                description: `Se retirará el acceso clínico de ${medico.fullName || medico.email}. Sus notas históricas se conservarán intactas.`,
+                                confirmText: "Desactivar médico",
+                                variant: "destructive",
+                              });
+                              if (!ok) return;
+
+                              try {
+                                await deleteMedicoFn({ id: medico.id });
+                                notice("Médico desactivado correctamente");
+                                await reloadData();
+                              } catch (err: any) {
+                                reportError(
+                                  err?.message ?? "No se pudo desactivar el médico",
+                                );
+                              }
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                            Eliminar
+                          </Button>
                         </>
                       )}
                     </div>
@@ -1279,6 +1270,7 @@ function MedicosTab({
           </div>
         )}
       </Card>
+      {ConfirmDialog}
     </div>
   );
 }
@@ -1295,6 +1287,7 @@ function AssignmentsTab({
   reportError: ReportError;
 }) {
   const manageAccessFn = useAction(manageMedicoPatientAccess);
+  const { confirm, ConfirmDialog } = useConfirm();
   const [medicoId, setMedicoId] = useState("");
   const [accessPatientId, setAccessPatientId] = useState("");
   const [accessAction, setAccessAction] = useState<"GRANT" | "REVOKE">("GRANT");
@@ -1334,6 +1327,14 @@ function AssignmentsTab({
     patientIdValue: string,
     label: string,
   ) => {
+    const ok = await confirm({
+      title: "¿Revocar acceso médico?",
+      description: `Se revocará el acceso clínico de ${label}. El médico ya no podrá registrar nuevas notas para este paciente.`,
+      confirmText: "Revocar acceso",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
     try {
       await manageAccessFn({
         action: "REVOKE",
@@ -1478,6 +1479,7 @@ function AssignmentsTab({
               </div>
             ))}
         </div>
+        {ConfirmDialog}
       </Card>
     </div>
   );
@@ -1726,6 +1728,7 @@ function AdminCitasTab({
   const { data: agenda, isLoading, refetch } = useQuery(getAgenda, {});
   const manageCitaFn = useAction(manageCita);
   const updateStatusFn = useAction(updateCitaStatus);
+  const { confirm, ConfirmDialog } = useConfirm();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingCita, setEditingCita] = useState<any | null>(null);
 
@@ -1747,6 +1750,14 @@ function AdminCitasTab({
   };
 
   const handleDelete = async (cita: any) => {
+    const ok = await confirm({
+      title: "¿Eliminar esta cita?",
+      description: `Se eliminará la cita de ${cita.patient?.firstName} ${cita.patient?.lastName} (${new Date(cita.scheduledAt).toLocaleString()}).`,
+      confirmText: "Eliminar cita",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
     setBusyId(cita.id);
     try {
       await manageCitaFn({ action: "DELETE", citaId: cita.id });
@@ -1911,6 +1922,8 @@ function AdminCitasTab({
           onDone={() => refetch()}
         />
       )}
+
+      {ConfirmDialog}
     </div>
   );
 }
@@ -1919,9 +1932,17 @@ function AdminCitasTab({
 // Página principal
 // ---------------------------------------------------------------------------
 
+export function ClinicalAdminPage() {
+  return (
+    <RoleGuard allowedRoles={["admin"]} fallbackTo="/clinical/patients">
+      <ClinicalAdminPageContent />
+    </RoleGuard>
+  );
+}
+
 type TabKey = "pacientes" | "medicos" | "asignaciones" | "citas";
 
-export function ClinicalAdminPage() {
+function ClinicalAdminPageContent() {
   const { data: user } = useAuth();
   const [tab, setTab] = useState<TabKey>("pacientes");
   const [error, setError] = useState<string | null>(null);
