@@ -32,11 +32,15 @@ export function ClinicalPatientsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
 
-  const { data, isLoading, error, refetch } = useQuery(getPatients, {
-    search: search || undefined,
-    page,
-    pageSize: 20,
-  });
+  const { data, isLoading, error, refetch } = useQuery(
+    getPatients,
+    {
+      search: search || undefined,
+      page,
+      pageSize: 20,
+    },
+    { enabled: Boolean(user) },
+  );
 
   const canCreatePatient = Boolean(user?.isSecretaria || user?.isAdmin);
 

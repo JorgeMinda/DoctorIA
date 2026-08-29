@@ -18,9 +18,13 @@ export function ClinicalAuditPage() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery(getAuditLog, {
-    page,
-  });
+  const { data, isLoading, error } = useQuery(
+    getAuditLog,
+    {
+      page,
+    },
+    { enabled: Boolean(user) },
+  );
 
   if (!user) {
     return (

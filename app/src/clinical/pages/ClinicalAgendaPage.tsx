@@ -102,7 +102,11 @@ export function ClinicalAgendaPage() {
 
   const { confirm, ConfirmDialog } = useConfirm();
 
-  const { data: agenda, isLoading, refetch } = useQuery(getAgenda, {});
+  const { data: agenda, isLoading, refetch } = useQuery(
+    getAgenda,
+    {},
+    { enabled: Boolean(user) },
+  );
   const updateStatusFn = useAction(updateCitaStatus);
 
   const runTransition = async (

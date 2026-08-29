@@ -157,9 +157,16 @@ function buildMessages(userPrompt: string): ChatMessage[] {
 }
 
 // Reintenta ante 429/5xx con backoff respetando Retry-After (resiliencia en producción con tope de tiempo total).
-const AI_MAX_RETRIES = 1;
+const FALLBACK_MODELS = [
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemini-2.0-flash-exp:free",
+  "qwen/qwen-2.5-72b-instruct:free",
+];
 
-async function callOpenRouterOnce(messages: ChatMessage[]): Promise<any> {
+async function callOpenRouterOnce(
+  messages: ChatMessage[],
+  modelName: string,
+): Promise<any> {
   const apiKey = env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY no está configurada.");
@@ -168,7 +175,7 @@ async function callOpenRouterOnce(messages: ChatMessage[]): Promise<any> {
   const url = "https://openrouter.ai/api/v1/chat/completions";
 
   const body = {
-    model: env.OPENROUTER_MODEL || "openai/gpt-oss-20b:free",
+    model: modelName,
     messages,
     response_format: { type: "json_object" },
     temperature: 0,
@@ -183,6 +190,8 @@ async function callOpenRouterOnce(messages: ChatMessage[]): Promise<any> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://doctoria.onrender.com",
+        "X-Title": "DoctorIA",
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -192,12 +201,18 @@ async function callOpenRouterOnce(messages: ChatMessage[]): Promise<any> {
 
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
-      const retryable = response.status === 429 || response.status >= 500;
+      const retryable =
+        response.status === 429 ||
+        response.status >= 500 ||
+        response.status === 404; // 404 permite probar el siguiente modelo fallback
       const retryAfterHeader = response.headers.get("Retry-After");
-      const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : undefined;
+      const retryAfterMs = retryAfterHeader
+        ? Number(retryAfterHeader) * 1000
+        : undefined;
       const err: any = new Error(
-        `La API de OpenRouter retornó un código de error ${response.status}: ${errText}`,
+        `La API de OpenRouter retornó código ${response.status} para ${modelName}: ${errText}`,
       );
+      err.status = response.status;
       err.retryable = retryable;
       err.retryAfterMs = Number.isFinite(retryAfterMs) ? retryAfterMs : undefined;
       throw err;
@@ -217,26 +232,44 @@ async function callOpenRouterOnce(messages: ChatMessage[]): Promise<any> {
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === "AbortError") {
-      throw new Error(`Timeout al llamar al asistente de IA (${AI_TIMEOUT_MS / 1000}s superados).`);
+      throw new Error(
+        `Timeout al llamar al asistente de IA (${AI_TIMEOUT_MS / 1000}s superados).`,
+      );
     }
     throw error;
   }
 }
 
 async function callOpenRouter(messages: ChatMessage[]): Promise<any> {
+  const preferredModel =
+    env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
+  const modelQueue = Array.from(
+    new Set([preferredModel, ...FALLBACK_MODELS]),
+  );
+
   let lastError: any;
-  for (let attempt = 0; attempt <= AI_MAX_RETRIES; attempt++) {
-    try {
-      return await callOpenRouterOnce(messages);
-    } catch (error: any) {
-      lastError = error;
-      if (error?.retryable && attempt < AI_MAX_RETRIES) {
-        const base = error.retryAfterMs ?? 1000 * (attempt + 1);
-        const wait = Math.min(base, 15_000);
-        await new Promise((resolve) => setTimeout(resolve, wait));
-        continue;
+
+  for (const model of modelQueue) {
+    for (let attempt = 0; attempt <= AI_MAX_RETRIES; attempt++) {
+      try {
+        return await callOpenRouterOnce(messages, model);
+      } catch (error: any) {
+        lastError = error;
+        // Si el modelo da 404 (modelo descontinuado/no disponible), pasar al siguiente modelo inmediatamente
+        if (error?.status === 404) {
+          console.warn(
+            `[aiService] Modelo ${model} no disponible (404), probando fallback...`,
+          );
+          break;
+        }
+        if (error?.retryable && attempt < AI_MAX_RETRIES) {
+          const base = error.retryAfterMs ?? 1000 * (attempt + 1);
+          const wait = Math.min(base, 5000);
+          await new Promise((resolve) => setTimeout(resolve, wait));
+          continue;
+        }
+        break;
       }
-      throw error;
     }
   }
   throw lastError;
