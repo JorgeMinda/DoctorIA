@@ -61,9 +61,13 @@ function ClinicalNotePageContent() {
   const navigate = useNavigate();
   const { data: user } = useAuth();
 
-  const { data: note, isLoading, refetch } = useQuery(getClinicalNote, {
-    noteId: noteId ?? "",
-  });
+  const { data: note, isLoading, refetch } = useQuery(
+    getClinicalNote,
+    {
+      noteId: noteId ?? "",
+    },
+    { enabled: Boolean(user && noteId) },
+  );
 
   const updateDraftFn = useAction(updateClinicalNoteDraft);
   const requestAIFn = useAction(requestAIStructuring);

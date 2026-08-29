@@ -160,9 +160,11 @@ function buildMessages(userPrompt: string): ChatMessage[] {
 const AI_MAX_RETRIES = 1;
 
 const FALLBACK_MODELS = [
- process.env.OPENROUTER_MODEL || "openai/gpt-oss-20b:free",
   "meta-llama/llama-3.3-70b-instruct:free",
+  "openrouter/free",
   "google/gemini-2.0-flash-exp:free",
+  "qwen/qwen-2.5-72b-instruct:free",
+  "mistralai/mistral-small-24b-instruct-2501:free",
 ];
 
 async function callOpenRouterOnce(

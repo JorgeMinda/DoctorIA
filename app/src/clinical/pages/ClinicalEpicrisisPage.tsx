@@ -77,9 +77,13 @@ function ClinicalEpicrisisPageContent() {
   const navigate = useNavigate();
   const { data: user } = useAuth();
 
-  const { data: epicrisis, isLoading, refetch } = useQuery(getEpicrisis, {
-    epicrisisId: epicrisisId ?? "",
-  });
+  const { data: epicrisis, isLoading, refetch } = useQuery(
+    getEpicrisis,
+    {
+      epicrisisId: epicrisisId ?? "",
+    },
+    { enabled: Boolean(user && epicrisisId) },
+  );
 
   const updateDraftFn = useAction(updateEpicrisisDraft);
   const confirmFn = useAction(confirmEpicrisis);
