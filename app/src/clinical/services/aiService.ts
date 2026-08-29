@@ -157,6 +157,8 @@ function buildMessages(userPrompt: string): ChatMessage[] {
 }
 
 // Reintenta ante 429/5xx con backoff respetando Retry-After (resiliencia en producción con tope de tiempo total).
+const AI_MAX_RETRIES = 1;
+
 const FALLBACK_MODELS = [
   "meta-llama/llama-3.3-70b-instruct:free",
   "google/gemini-2.0-flash-exp:free",
