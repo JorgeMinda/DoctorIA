@@ -1514,6 +1514,205 @@ export const createPreClinicalRecord: CreatePreClinicalRecord<
   return created;
 };
 
+// updatePreClinicalRecord (Secretaria) - Edición completa del registro pre-clínico (exclusivo para rol secretaria).
+const updatePreClinicalRecordInputSchema = vitalSignInputSchema.extend({
+  citaId: z.string().min(1),
+  motivoConsulta: z.string().min(1).max(500),
+});
+
+type UpdatePreClinicalRecordInput = z.infer<typeof updatePreClinicalRecordInputSchema>;
+
+export const updatePreClinicalRecord: any = async (
+  rawArgs: any,
+  context: any,
+) => {
+  const user = ensureSecretaria(context.user);
+
+  const args = ensureArgsSchemaOrThrowHttpError(
+    updatePreClinicalRecordInputSchema,
+    rawArgs,
+  );
+  validateVitalSignRanges(args);
+
+  const existing = await context.entities.PreClinicalRecord.findUnique({
+    where: { citaId: args.citaId },
+    include: {
+      cita: {
+        select: {
+          id: true,
+          status: true,
+          medico: { select: { fullName: true } },
+        },
+      },
+    },
+  });
+
+  if (!existing) {
+    throw new HttpError(404, "Registro pre-clínico no encontrado");
+  }
+
+  const updated = await context.entities.PreClinicalRecord.update({
+    where: { id: existing.id },
+    data: {
+      motivoConsulta: args.motivoConsulta,
+      systolicBP: args.systolicBP,
+      diastolicBP: args.diastolicBP,
+      heartRate: args.heartRate,
+      temperature: args.temperature,
+      respiratoryRate: args.respiratoryRate,
+      oxygenSaturation: args.oxygenSaturation,
+      weight: args.weight,
+      height: args.height,
+    },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "REGISTER_PRE_CLINICAL_DATA",
+    resourceType: "CITA",
+    resourceId: updated.id,
+    patientId: updated.patientId,
+    citaId: updated.citaId,
+    metadata: {
+      updatedByRole: "secretaria",
+      adminAction: "UPDATE_PRE_CLINICAL_RECORD",
+      doctorName: existing.cita?.medico?.fullName ?? null,
+    },
+  });
+
+  return updated;
+};
+
+// createEmergencyAssignment (Secretaria / Admin) - Cita y asignación de emergencia express
+const createEmergencyAssignmentInputSchema = z.object({
+  firstName: z.string().min(1, "El nombre es requerido"),
+  lastName: z.string().min(1, "El apellido es requerido"),
+  sex: z.string().min(1, "El sexo es requerido"),
+  birthDate: z.coerce.date().optional(),
+  documento: z.string().max(20).nullable().optional(),
+  motivoConsulta: z.string().max(500).optional(),
+  medicoId: z.string().optional(),
+});
+
+type CreateEmergencyAssignmentInput = z.infer<
+  typeof createEmergencyAssignmentInputSchema
+>;
+
+export const createEmergencyAssignment: any = async (
+  rawArgs: any,
+  context: any,
+) => {
+  const user = ensureRole(context.user, "secretaria", "admin");
+
+  const args = ensureArgsSchemaOrThrowHttpError(
+    createEmergencyAssignmentInputSchema,
+    rawArgs,
+  );
+
+  // 1. Resolver médico asignado
+  let medicoId = args.medicoId;
+  if (!medicoId) {
+    const medicos = await context.entities.User.findMany({
+      where: { isMedico: true, isActive: true },
+      take: 10,
+    });
+    if (medicos.length === 0) {
+      throw new HttpError(
+        409,
+        "No hay médicos activos disponibles en el sistema para la emergencia",
+      );
+    }
+    medicoId = medicos[0].id;
+  } else {
+    const m = await context.entities.User.findUnique({ where: { id: medicoId } });
+    if (!m || !m.isMedico || !m.isActive) {
+      throw new HttpError(404, "El médico seleccionado no está activo o disponible");
+    }
+  }
+
+  // 2. Generar identificador sintético PAC-NNN
+  const existingPatients = await context.entities.SyntheticPatient.findMany({
+    where: { syntheticId: { startsWith: "PAC-" } },
+    select: { syntheticId: true },
+  });
+  const nums = existingPatients.map((e: { syntheticId: string }) => {
+    const match = /^PAC-(\d+)$/.exec(e.syntheticId);
+    return match ? parseInt(match[1], 10) : 0;
+  });
+  const nextNum = (nums.length ? Math.max(...nums) : 0) + 1;
+  const syntheticId = "PAC-" + String(nextNum).padStart(3, "0");
+
+  const birthDate = args.birthDate ?? new Date("1990-01-01T00:00:00.000Z");
+
+  // 3. Crear Paciente Sintético Express
+  const patient = await context.entities.SyntheticPatient.create({
+    data: {
+      syntheticId,
+      firstName: args.firstName.trim(),
+      lastName: args.lastName.trim(),
+      sex: args.sex,
+      birthDate,
+      documento: args.documento?.trim()
+        ? args.documento.trim().slice(0, 10)
+        : null,
+      medicalHistory: "Ingreso por Cita de Emergencia.",
+    },
+  });
+
+  // 4. Asignación inmediata MedicoPatientAccess
+  await context.entities.MedicoPatientAccess.upsert({
+    where: {
+      medicoId_patientId: {
+        medicoId,
+        patientId: patient.id,
+      },
+    },
+    create: {
+      medicoId,
+      patientId: patient.id,
+      grantedById: user.id,
+    },
+    update: {},
+  });
+
+  // 5. Crear Cita Inmediata (SCHEDULED)
+  const scheduledAt = new Date();
+  const cita = await context.entities.Cita.create({
+    data: {
+      patientId: patient.id,
+      medicoId,
+      scheduledAt,
+      durationMinutes: 30,
+      status: "SCHEDULED",
+      reason: args.motivoConsulta?.trim() || "🚨 Atención de Emergencia",
+    },
+    include: {
+      medico: { select: { id: true, fullName: true, email: true } },
+      patient: {
+        select: { id: true, firstName: true, lastName: true, syntheticId: true },
+      },
+    },
+  });
+
+  // 6. Registro en Auditoría (RNF-002)
+  await createAuditEntry({
+    userId: user.id,
+    action: "ADMIN_MANAGE_DATA",
+    resourceType: "CITA",
+    resourceId: cita.id,
+    patientId: patient.id,
+    citaId: cita.id,
+    metadata: {
+      adminAction: "CREATE_EMERGENCY_ASSIGNMENT",
+      medicoId,
+      patientId: patient.id,
+      syntheticId,
+    },
+  });
+
+  return { patient, cita };
+};
+
 export const adminUpdateMedicoUser: AdminUpdateMedicoUser<
   AdminUpdateMedicoUserInput,
   User

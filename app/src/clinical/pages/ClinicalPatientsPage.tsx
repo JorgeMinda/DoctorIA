@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  Siren,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -22,12 +23,14 @@ import {
   sexLabel,
 } from "../services/clinicalFormat";
 import { PatientFormModal } from "../components/PatientFormModal";
+import { EmergencyAppointmentModal } from "../components/EmergencyAppointmentModal";
 
 export function ClinicalPatientsPage() {
   const { data: user } = useAuth();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
+  const [showEmergency, setShowEmergency] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery(getPatients, {
     search: search || undefined,
@@ -77,12 +80,23 @@ export function ClinicalPatientsPage() {
               Nuevo paciente
             </Button>
           )}
-          <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
-            <Button className="shadow-[0_0_20px_rgba(0,218,243,0.25)]">
-              <Mic className="size-4" />
-              Asistente de voz
+          {user?.isSecretaria ? (
+            <Button
+              variant="destructive"
+              onClick={() => setShowEmergency(true)}
+              className="gap-1.5 border-destructive/40 bg-destructive/15 text-destructive shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-destructive/25 hover:border-destructive/60"
+            >
+              <Siren className="size-4 animate-pulse" />
+              🚨 Cita Emergente
             </Button>
-          </WaspRouterLink>
+          ) : (
+            <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
+              <Button className="shadow-[0_0_20px_rgba(0,218,243,0.25)]">
+                <Mic className="size-4" />
+                Asistente de voz
+              </Button>
+            </WaspRouterLink>
+          )}
         </div>
       </div>
 
@@ -268,6 +282,14 @@ export function ClinicalPatientsPage() {
         <PatientFormModal
           open={showCreate}
           onOpenChange={setShowCreate}
+          onDone={() => refetch()}
+        />
+      )}
+
+      {user?.isSecretaria && (
+        <EmergencyAppointmentModal
+          open={showEmergency}
+          onOpenChange={setShowEmergency}
           onDone={() => refetch()}
         />
       )}

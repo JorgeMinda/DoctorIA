@@ -22,6 +22,8 @@ import {
   recordEpicrisisExport,
   createVitalSignAction,
   createPreClinicalRecord,
+  updatePreClinicalRecord,
+  createEmergencyAssignment,
   updateNoteCIE11,
   updateEpicrisisCIE11,
   requestAIStructuring,
@@ -162,6 +164,18 @@ export const clinicalSpec: Spec = [
   }),
   action(createPreClinicalRecord, {
     entities: ["PreClinicalRecord", "Cita", "SyntheticPatient", "User", "AuditLog"],
+  }),
+  action(updatePreClinicalRecord, {
+    entities: ["PreClinicalRecord", "Cita", "SyntheticPatient", "User", "AuditLog"],
+  }),
+  action(createEmergencyAssignment, {
+    entities: [
+      "SyntheticPatient",
+      "MedicoPatientAccess",
+      "Cita",
+      "User",
+      "AuditLog",
+    ],
   }),
   action(updateNoteCIE11, {
     entities: ["ClinicalNote", "MedicoPatientAccess", "AuditLog"],

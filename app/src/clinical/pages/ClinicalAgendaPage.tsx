@@ -47,14 +47,47 @@ function CitaBadge({ status }: { status: string }) {
   );
 }
 
-function metricTile(value: number | string, label: string) {
+import { useConfirm } from "../../client/hooks/use-confirm";
+
+function MetricTile({
+  value,
+  label,
+  color,
+  active,
+  onClick,
+}: {
+  value: number | string;
+  label: string;
+  color: "sky" | "amber" | "blue" | "emerald";
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  const colorStyles = {
+    sky: active
+      ? "border-sky-400/70 bg-sky-500/20 text-sky-300 shadow-[0_0_18px_rgba(56,189,248,0.25)] ring-1 ring-sky-400/50"
+      : "border-outline-variant/60 bg-surface/50 hover:border-sky-400/50 hover:bg-sky-500/10",
+    amber: active
+      ? "border-amber-400/70 bg-amber-500/20 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.25)] ring-1 ring-amber-400/50"
+      : "border-outline-variant/60 bg-surface/50 hover:border-amber-400/50 hover:bg-amber-500/10",
+    blue: active
+      ? "border-cyan-400/70 bg-cyan-500/20 text-cyan-300 shadow-[0_0_18px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/50"
+      : "border-outline-variant/60 bg-surface/50 hover:border-cyan-400/50 hover:bg-cyan-500/10",
+    emerald: active
+      ? "border-emerald-400/70 bg-emerald-500/20 text-emerald-300 shadow-[0_0_18px_rgba(52,211,153,0.25)] ring-1 ring-emerald-400/50"
+      : "border-outline-variant/60 bg-surface/50 hover:border-emerald-400/50 hover:bg-emerald-500/10",
+  };
+
   return (
-    <div className="rounded-xl border border-outline-variant/60 bg-surface/50 p-3.5 text-center backdrop-blur-md shadow-sm transition-all hover:border-outline hover:bg-surface/70">
-      <p className="text-xl font-bold text-foreground">{value}</p>
-      <p className="mono-label text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group w-full rounded-xl border p-3.5 text-center backdrop-blur-md shadow-sm transition-all duration-200 cursor-pointer active:scale-[0.98] ${colorStyles[color]}`}
+    >
+      <p className="text-2xl font-bold tracking-tight text-foreground">{value}</p>
+      <p className="mono-label text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5 group-hover:text-foreground">
         {label}
       </p>
-    </div>
+    </button>
   );
 }
 
@@ -63,6 +96,11 @@ export function ClinicalAgendaPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showNewCita, setShowNewCita] = useState(false);
   const [editingCita, setEditingCita] = useState<any | null>(null);
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED"
+  >("ALL");
+
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const { data: agenda, isLoading, refetch } = useQuery(getAgenda, {});
   const updateStatusFn = useAction(updateCitaStatus);
@@ -105,12 +143,19 @@ export function ClinicalAgendaPage() {
 
   // Secretaria/admin gestionan citas desde el panel de gestión.
   if (!isMedicoView) {
-    const activeCitas = (agenda?.citas ?? []).filter(
+    const rawActiveCitas = (agenda?.citas ?? []).filter(
       (c) => c.status === "SCHEDULED" || c.status === "IN_PROGRESS",
     );
     const historyCitas = (agenda?.citas ?? []).filter(
       (c) => c.status !== "SCHEDULED" && c.status !== "IN_PROGRESS",
     );
+
+    const activeCitas =
+      statusFilter === "ALL"
+        ? rawActiveCitas
+        : statusFilter === "COMPLETED"
+          ? historyCitas.filter((c) => c.status === "COMPLETED")
+          : rawActiveCitas.filter((c) => c.status === statusFilter);
 
     return (
       <div className="mx-auto max-w-4xl space-y-6">
@@ -136,19 +181,40 @@ export function ClinicalAgendaPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {metricTile(agenda?.metrics.citasHoy ?? 0, "Citas hoy")}
-          {metricTile(
-            activeCitas.filter((c) => c.status === "SCHEDULED").length,
-            "Programadas",
-          )}
-          {metricTile(
-            activeCitas.filter((c) => c.status === "IN_PROGRESS").length,
-            "En curso",
-          )}
-          {metricTile(
-            agenda?.metrics.citasCompletadasHoy ?? 0,
-            "Completadas hoy",
-          )}
+          <MetricTile
+            value={agenda?.metrics.citasHoy ?? 0}
+            label="Citas hoy (Ver todas)"
+            color="sky"
+            active={statusFilter === "ALL"}
+            onClick={() => setStatusFilter("ALL")}
+          />
+          <MetricTile
+            value={rawActiveCitas.filter((c) => c.status === "SCHEDULED").length}
+            label="Programadas"
+            color="amber"
+            active={statusFilter === "SCHEDULED"}
+            onClick={() =>
+              setStatusFilter((f) => (f === "SCHEDULED" ? "ALL" : "SCHEDULED"))
+            }
+          />
+          <MetricTile
+            value={rawActiveCitas.filter((c) => c.status === "IN_PROGRESS").length}
+            label="En curso"
+            color="blue"
+            active={statusFilter === "IN_PROGRESS"}
+            onClick={() =>
+              setStatusFilter((f) => (f === "IN_PROGRESS" ? "ALL" : "IN_PROGRESS"))
+            }
+          />
+          <MetricTile
+            value={agenda?.metrics.citasCompletadasHoy ?? 0}
+            label="Completadas hoy"
+            color="emerald"
+            active={statusFilter === "COMPLETED"}
+            onClick={() =>
+              setStatusFilter((f) => (f === "COMPLETED" ? "ALL" : "COMPLETED"))
+            }
+          />
         </div>
 
         {isLoading && (
@@ -160,8 +226,21 @@ export function ClinicalAgendaPage() {
             <CardTitle className="flex items-center justify-between text-base font-semibold">
               <span className="flex items-center gap-2">
                 <CalendarClock className="size-4 text-primary" />
-                Citas activas y agendadas ({activeCitas.length})
+                {statusFilter === "ALL"
+                  ? `Citas activas y agendadas (${activeCitas.length})`
+                  : statusFilter === "COMPLETED"
+                    ? `Citas completadas filtradas (${activeCitas.length})`
+                    : `Citas filtradas: ${citaStatusLabel(statusFilter)} (${activeCitas.length})`}
               </span>
+              {statusFilter !== "ALL" && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("ALL")}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Ver todas
+                </button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -262,9 +341,21 @@ export function ClinicalAgendaPage() {
                           size="sm"
                           variant="outline"
                           disabled={busyId === cita.id}
-                          onClick={() =>
-                            runTransition(cita.id, "CANCELLED", "Cita cancelada (horario liberado)")
-                          }
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "¿Cancelar esta cita?",
+                              description: `Se cancelará la cita de ${cita.patient.firstName} ${cita.patient.lastName} y se liberará el horario del médico.`,
+                              confirmText: "Sí, cancelar cita",
+                              variant: "destructive",
+                            });
+                            if (ok) {
+                              await runTransition(
+                                cita.id,
+                                "CANCELLED",
+                                "Cita cancelada (horario liberado)",
+                              );
+                            }
+                          }}
                           className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
                           <XCircle className="size-3.5" />
@@ -278,9 +369,17 @@ export function ClinicalAgendaPage() {
                         size="sm"
                         variant="outline"
                         disabled={busyId === cita.id}
-                        onClick={() =>
-                          runTransition(cita.id, "CANCELLED", "Cita cancelada")
-                        }
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "¿Cancelar cita en curso?",
+                            description: `Se cancelará la cita en curso de ${cita.patient.firstName} ${cita.patient.lastName}.`,
+                            confirmText: "Sí, cancelar",
+                            variant: "destructive",
+                          });
+                          if (ok) {
+                            await runTransition(cita.id, "CANCELLED", "Cita cancelada");
+                          }
+                        }}
                         className="gap-1 text-xs text-destructive"
                       >
                         <XCircle className="size-3.5" />
@@ -354,6 +453,8 @@ export function ClinicalAgendaPage() {
             onDone={() => refetch()}
           />
         )}
+
+        {ConfirmDialog}
       </div>
     );
   }
@@ -407,16 +508,26 @@ export function ClinicalAgendaPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {metricTile(
-          agenda?.metrics.pacientesAtendidos ?? "—",
-          "Pacientes atendidos",
-        )}
-        {metricTile(agenda?.metrics.atencionesHoy ?? "—", "Atenciones hoy")}
-        {metricTile(agenda?.metrics.citasHoy ?? "—", "Citas hoy")}
-        {metricTile(
-          agenda?.metrics.citasCompletadasHoy ?? "—",
-          "Citas completadas hoy",
-        )}
+        <MetricTile
+          value={agenda?.metrics.pacientesAtendidos ?? "—"}
+          label="Pacientes atendidos"
+          color="sky"
+        />
+        <MetricTile
+          value={agenda?.metrics.atencionesHoy ?? "—"}
+          label="Atenciones hoy"
+          color="blue"
+        />
+        <MetricTile
+          value={agenda?.metrics.citasHoy ?? "—"}
+          label="Citas hoy"
+          color="amber"
+        />
+        <MetricTile
+          value={agenda?.metrics.citasCompletadasHoy ?? "—"}
+          label="Citas completadas hoy"
+          color="emerald"
+        />
       </div>
 
       {isLoading && (
@@ -602,6 +713,8 @@ export function ClinicalAgendaPage() {
           onDone={() => refetch()}
         />
       )}
+
+      {ConfirmDialog}
     </div>
   );
 }
