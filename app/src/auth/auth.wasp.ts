@@ -20,7 +20,7 @@ import { getEmailUserFields } from "./userSignupFields" with { type: "ref" };
 const emailAuthMethod: NonNullable<AuthMethods["email"]> = {
   fromField: {
     name: "DoctorIA",
-    email: "me@example.com",
+    email: "onboarding@resend.dev",
   },
   emailVerification: {
     clientRoute: "EmailVerificationRoute",
