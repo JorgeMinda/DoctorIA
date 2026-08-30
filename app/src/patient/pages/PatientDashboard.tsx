@@ -64,7 +64,10 @@ function PatientDashboardContent() {
     );
   }
 
-  if (apptData && !apptData.linked) {
+  const dataAppts = apptData as any;
+  const dataHistory = historyData as any;
+
+  if (dataAppts && !dataAppts.linked) {
     return (
       <div className="mx-auto max-w-xl p-6 text-center">
         <Card className="border-outline-variant bg-surface/90">
@@ -83,10 +86,10 @@ function PatientDashboardContent() {
     );
   }
 
-  const patient = apptData?.patient;
-  const citas = apptData?.citas || [];
-  const notes = historyData?.notes || [];
-  const epicrises = historyData?.epicrises || [];
+  const patient = dataAppts?.patient;
+  const citas = dataAppts?.citas || [];
+  const notes = dataHistory?.notes || [];
+  const epicrises = dataHistory?.epicrises || [];
 
   const now = new Date();
   const upcomingCita = citas.find(

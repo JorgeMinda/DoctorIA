@@ -23,5 +23,4 @@ export const getEmailUserFields = defineUserSignupFields({
     const emailData = emailDataSchema.parse(data);
     return isAdminEmail(emailData.email);
   },
-  isPaciente: () => false,
 });

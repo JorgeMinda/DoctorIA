@@ -2717,7 +2717,12 @@ export const manageCitaByMedico: any = async (rawArgs: any, context: any) => {
   switch (args.action) {
     case "CREATE": {
       const scheduledDate = new Date(args.scheduledAt);
-      await validateNoOverlap(context, user.id, scheduledDate, args.durationMinutes);
+      await validateNoOverlap({
+        citaDelegate: context.entities.Cita,
+        medicoId: user.id,
+        scheduledAt: scheduledDate,
+        durationMinutes: args.durationMinutes,
+      });
 
       const cita = await context.entities.Cita.create({
         data: {
@@ -2732,12 +2737,13 @@ export const manageCitaByMedico: any = async (rawArgs: any, context: any) => {
 
       await createAuditEntry({
         userId: user.id,
-        action: "CREATE_CITA",
+        action: "MANAGE_CITA",
         resourceType: "CITA",
         resourceId: cita.id,
         patientId: args.patientId,
         citaId: cita.id,
         metadata: {
+          operation: "CREATE",
           scheduledAt: args.scheduledAt,
           durationMinutes: String(args.durationMinutes),
         },
@@ -2763,13 +2769,13 @@ export const manageCitaByMedico: any = async (rawArgs: any, context: any) => {
 
       const scheduledDate = new Date(args.scheduledAt);
       if (scheduledDate.getTime() !== existing.scheduledAt.getTime()) {
-        await validateNoOverlap(
-          context,
-          user.id,
-          scheduledDate,
-          args.durationMinutes,
-          args.citaId,
-        );
+        await validateNoOverlap({
+          citaDelegate: context.entities.Cita,
+          medicoId: user.id,
+          scheduledAt: scheduledDate,
+          durationMinutes: args.durationMinutes,
+          excludeCitaId: args.citaId,
+        });
       }
 
       const updated = await context.entities.Cita.update({
@@ -2783,12 +2789,12 @@ export const manageCitaByMedico: any = async (rawArgs: any, context: any) => {
 
       await createAuditEntry({
         userId: user.id,
-        action: "UPDATE_CITA",
+        action: "MANAGE_CITA",
         resourceType: "CITA",
         resourceId: args.citaId,
         patientId: existing.patientId,
         citaId: args.citaId,
-        metadata: { changes: "rescheduled_by_medico" },
+        metadata: { operation: "UPDATE", changes: "rescheduled_by_medico" },
       });
 
       return updated;
@@ -2810,7 +2816,7 @@ export const manageCitaByMedico: any = async (rawArgs: any, context: any) => {
 
       await createAuditEntry({
         userId: user.id,
-        action: "CANCEL_CITA",
+        action: "CANCEL_APPOINTMENT",
         resourceType: "CITA",
         resourceId: args.citaId,
         patientId: existing.patientId,
