@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "wasp/client/auth";
 
-export function useRedirectIfLoggedIn(redirectTo = "/clinical/patients") {
+export function useRedirectIfLoggedIn(redirectTo = "/patient/link") {
   const { data: user } = useAuth();
   const navigate = useNavigate();
 

@@ -45,7 +45,7 @@ export function LoginFormES() {
     setLoading(true);
     try {
       await login({ email, password });
-      navigate("/clinical/patients");
+      navigate("/patient/link");
     } catch (err: any) {
       setError(err?.message ?? "No se pudo iniciar sesión. Verifica tus credenciales.");
     } finally {
