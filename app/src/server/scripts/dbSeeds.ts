@@ -214,46 +214,71 @@ export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
     }
   }
 
-  // 5. Usuarios Pacientes Demo (Fase B.8): paciente1@doctoria.com y paciente2@doctoria.com
-  const DEMO_PACIENTES = [
-    { email: "paciente1@doctoria.com", syntheticId: "PAC-001", fullName: "Ana Paredes" },
-    { email: "paciente2@doctoria.com", syntheticId: "PAC-002", fullName: "Jorge Ramírez" },
+  // 5. Usuarios Pacientes Demo (Fase B.8): Vinculación dinámica para pacientes existentes
+  const allCurrentPatients = await prismaClient.syntheticPatient.findMany({
+    orderBy: { syntheticId: "asc" },
+  });
+
+  const patientAccounts = [
+    { email: "paciente1@doctoria.com", patientIndex: 0 },
+    { email: "paciente2@doctoria.com", patientIndex: 1 },
+    { email: "ana.benalcazar@doctoria.com", syntheticIdMatch: "PAC-011", name: "Ana Lucía Benalcázar" },
+    { email: "carlos.torres@doctoria.com", syntheticIdMatch: "PAC-013", name: "Carlos Torres" },
+    { email: "carlos.morales@doctoria.com", syntheticIdMatch: "PAC-008", name: "Carlos Eduardo Morales" },
+    { email: "jorge.minda@doctoria.com", syntheticIdMatch: "PAC-012", name: "Jorge Leonardo Minda" },
+    { email: "kevin.simbana@doctoria.com", syntheticIdMatch: "PAC-010", name: "Kevin Alexander Simbaña" },
+    { email: "maria.jaramillo@doctoria.com", syntheticIdMatch: "PAC-009", name: "María Fernanda Jaramillo" },
   ];
 
-  for (const demoP of DEMO_PACIENTES) {
+  for (const acct of patientAccounts) {
     try {
+      let targetPatient: any = null;
+      if (acct.syntheticIdMatch) {
+        targetPatient = allCurrentPatients.find((p) => p.syntheticId === acct.syntheticIdMatch);
+      } else if (typeof acct.patientIndex === "number" && allCurrentPatients[acct.patientIndex]) {
+        targetPatient = allCurrentPatients[acct.patientIndex];
+      }
+
+      const fullName = targetPatient
+        ? `${targetPatient.firstName} ${targetPatient.lastName}`
+        : (acct.name || "Paciente Demo");
+
       const userPaciente = await prismaClient.user.upsert({
-        where: { email: demoP.email },
+        where: { email: acct.email },
         update: {
           isPaciente: true,
           isAdmin: false,
           isMedico: false,
           isSecretaria: false,
-          fullName: demoP.fullName,
+          isActive: true,
+          fullName,
         },
         create: {
-          email: demoP.email,
-          username: demoP.email.split("@")[0],
+          email: acct.email,
+          username: acct.email.split("@")[0],
           isPaciente: true,
           isAdmin: false,
           isMedico: false,
           isSecretaria: false,
-          fullName: demoP.fullName,
+          isActive: true,
+          fullName,
         },
       });
-      await ensureAuthLogin(prismaClient, userPaciente.id, demoP.email, DEMO_PASSWORD);
 
-      // Vincular al syntheticPatient correspondiente
-      await prismaClient.syntheticPatient.updateMany({
-        where: { syntheticId: demoP.syntheticId },
-        data: { userId: userPaciente.id },
-      });
+      await ensureAuthLogin(prismaClient, userPaciente.id, acct.email, DEMO_PASSWORD);
+
+      if (targetPatient) {
+        await prismaClient.syntheticPatient.updateMany({
+          where: { id: targetPatient.id },
+          data: { userId: userPaciente.id },
+        });
+      }
     } catch (err) {
-      console.warn(`[seed] Aviso al inicializar paciente demo ${demoP.email}:`, err);
+      console.warn(`[seed] Aviso al inicializar paciente demo ${acct.email}:`, err);
     }
   }
 
   console.log(
-    `[seed] ${medicos.length} médicos, ${patients.length} pacientes sintéticos, ${DEMO_PACIENTES.length} cuentas de paciente vinculadas`,
+    `[seed] ${medicos.length} médicos, ${allCurrentPatients.length} pacientes sintéticos, ${patientAccounts.length} cuentas de paciente configuradas`,
   );
 }
