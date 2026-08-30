@@ -127,8 +127,6 @@ export function SignupFormES() {
       const res = await signup({
         email,
         password,
-        username: email,
-        isAdmin: false,
       });
       if (res.success) {
         setSuccess(

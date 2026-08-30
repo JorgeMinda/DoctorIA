@@ -2442,6 +2442,62 @@ export const deleteClinicalNote: DeleteClinicalNote<
 };
 
 // ---------------------------------------------------------------------------
+// deleteEpicrisis: elimina borradores de epicrisis (DRAFT_AI_ASSISTED / REVIEWED).
+// Las confirmadas son inmutables (409).
+// ---------------------------------------------------------------------------
+
+const deleteEpicrisisInputSchema = z.object({
+  epicrisisId: z.string().min(1),
+});
+
+export const deleteEpicrisis: any = async (rawArgs: any, context: any) => {
+  const user = ensureMedico(context.user);
+  const { epicrisisId } = ensureArgsSchemaOrThrowHttpError(
+    deleteEpicrisisInputSchema,
+    rawArgs,
+  );
+
+  const epicrisis = await context.entities.Epicrisis.findUnique({
+    where: { id: epicrisisId },
+    include: { childEpicrises: true },
+  });
+  if (!epicrisis) {
+    throw new HttpError(404, "Epicrisis no encontrada");
+  }
+
+  await assertMedicoPatientAccess(user.id, epicrisis.patientId);
+
+  if (epicrisis.status === "CONFIRMED") {
+    throw new HttpError(
+      409,
+      "Registro confirmado: la epicrisis es inmutable y no se puede eliminar. Solo se permite crear adenda.",
+    );
+  }
+  if (epicrisis.childEpicrises && epicrisis.childEpicrises.length > 0) {
+    throw new HttpError(
+      409,
+      "La epicrisis tiene adendas asociadas; no se puede eliminar.",
+    );
+  }
+
+  await context.entities.AuditLog.deleteMany({
+    where: { epicrisisId: epicrisis.id },
+  });
+  await context.entities.Epicrisis.delete({ where: { id: epicrisis.id } });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "DELETE_NOTE",
+    resourceType: "EPICRISIS",
+    resourceId: epicrisis.id,
+    patientId: epicrisis.patientId,
+    metadata: { status: epicrisis.status, noteType: epicrisis.noteType },
+  });
+
+  return { ok: true };
+};
+
+// ---------------------------------------------------------------------------
 // recordEpicrisisExport (solo auditorÃ­a: EXPORT_EPICRISIS_PDF, RF-019)
 // El PDF se genera Ã­ntegramente en el cliente (@react-pdf/renderer); el
 // servidor Ãºnicamente registra la acciÃ³n y verifica acceso (R-10).

@@ -8,8 +8,9 @@ import {
   createEpicrisisAddendum,
   updateEpicrisisDraft,
   updateEpicrisisCIE11,
+  deleteEpicrisis,
+  recordEpicrisisExport,
 } from "wasp/client/operations";
-import { recordEpicrisisExport } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
 import { pdf } from "@react-pdf/renderer";
 import {
@@ -22,8 +23,10 @@ import {
   Save,
   ShieldCheck,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
+import { useConfirm } from "../../client/hooks/use-confirm";
 import { Button } from "../../client/components/ui/button";
 import { Textarea } from "../../client/components/ui/textarea";
 import {
@@ -88,7 +91,9 @@ function ClinicalEpicrisisPageContent() {
   const updateDraftFn = useAction(updateEpicrisisDraft);
   const confirmFn = useAction(confirmEpicrisis);
   const addendumFn = useAction(createEpicrisisAddendum);
+  const deleteEpicrisisFn = useAction(deleteEpicrisis);
   const exportAuditFn = useAction(recordEpicrisisExport);
+  const confirm = useConfirm();
 
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -393,6 +398,41 @@ function ClinicalEpicrisisPageContent() {
               <Button onClick={handleConfirm} disabled={saving}>
                 <ShieldCheck className="size-4" />
                 Confirmar epicrisis
+              </Button>
+              <Button
+                variant="outline"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "¿Eliminar este borrador de epicrisis?",
+                    description: "Esta acción descartará el borrador asistido por IA permanentemente.",
+                    confirmText: "Sí, eliminar borrador",
+                    variant: "destructive",
+                  });
+                  if (!ok) return;
+                  try {
+                    setSaving(true);
+                    await deleteEpicrisisFn({ epicrisisId: epicrisis.id });
+                    toast({ title: "Borrador de epicrisis eliminado" });
+                    navigate(
+                      routes.ClinicalPatientDetailRoute.build({
+                        params: { patientId: epicrisis.patient.id },
+                      }),
+                    );
+                  } catch (err: any) {
+                    toast({
+                      title: "No se pudo eliminar el borrador",
+                      description: err?.message,
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving}
+              >
+                <Trash2 className="size-4" />
+                Eliminar borrador
               </Button>
             </div>
           )}

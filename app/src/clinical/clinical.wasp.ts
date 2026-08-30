@@ -13,6 +13,7 @@ import {
   generateAddendumDraftAction,
   createNoteFromVoice,
   deleteClinicalNote,
+  deleteEpicrisis,
   confirmClinicalNote,
   confirmEpicrisis,
   generateEpicrisisDraft,
@@ -242,6 +243,9 @@ export const clinicalSpec: Spec = [
   }),
   action(deleteClinicalNote, {
     entities: ["ClinicalNote", "MedicoPatientAccess", "AuditLog"],
+  }),
+  action(deleteEpicrisis, {
+    entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],
   }),
   action(linkPatientAccount, {
     entities: ["SyntheticPatient", "User", "AuditLog"],

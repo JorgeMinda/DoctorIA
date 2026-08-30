@@ -8,6 +8,8 @@ import {
   createClinicalNote,
   generateEpicrisisDraft,
   updateCitaStatus,
+  manageCitaByMedico,
+  deleteEpicrisis,
   getPrintableEpicrises,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
@@ -17,6 +19,8 @@ import {
   CalendarClock,
   CalendarDays,
   Clock,
+  Download,
+  Edit3,
   ExternalLink,
   Pencil,
   PhoneMissed,
@@ -24,11 +28,14 @@ import {
   Plus,
   Printer,
   ShieldAlert,
+  Trash2,
   XCircle,
 } from "lucide-react";
 import { Card, CardContent } from "../../client/components/ui/card";
 import { Button } from "../../client/components/ui/button";
 import { toast } from "../../client/hooks/use-toast";
+import { useConfirm } from "../../client/hooks/use-confirm";
+import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
 import { citaStatusLabel } from "../services/statusLabels";
 import { PatientProfileHeader } from "../components/PatientProfileHeader";
 import { PatientClinicalSummary } from "../components/PatientClinicalSummary";
@@ -36,6 +43,7 @@ import { PatientQuickActions } from "../components/PatientQuickActions";
 import { PatientHistoryTimeline } from "../components/PatientHistoryTimeline";
 import { PatientFormModal } from "../components/PatientFormModal";
 import { NewAppointmentModal } from "../components/NewAppointmentModal";
+import { EditAppointmentModal } from "../components/EditAppointmentModal";
 import { PreClinicalRecordPanel } from "../components/PreClinicalRecordPanel";
 import { EpicrisisPrintView } from "../components/EpicrisisPrintView";
 import { CardHeader, CardTitle } from "../../client/components/ui/card";
@@ -59,6 +67,7 @@ export function ClinicalPatientDetailPage() {
   const [generatingEpicrisis, setGeneratingEpicrisis] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showNewCita, setShowNewCita] = useState(false);
+  const [editingCita, setEditingCita] = useState<any>(null);
   const [printEpicrisisId, setPrintEpicrisisId] = useState<string | null>(null);
   const [busyCitaId, setBusyCitaId] = useState<string | null>(null);
 
@@ -81,6 +90,9 @@ export function ClinicalPatientDetailPage() {
   const createNoteFn = useAction(createClinicalNote);
   const generateEpicrisisFn = useAction(generateEpicrisisDraft);
   const updateStatusFn = useAction(updateCitaStatus);
+  const manageCitaByMedicoFn = useAction(manageCitaByMedico);
+  const deleteEpicrisisFn = useAction(deleteEpicrisis);
+  const confirm = useConfirm();
 
   const isSecretariaView = !!(
     (user as any)?.isSecretaria &&
@@ -321,6 +333,183 @@ export function ClinicalPatientDetailPage() {
             onGenerateEpicrisis={handleGenerateEpicrisis}
           />
 
+          {/* Gestión de citas para el Médico */}
+          <Card className="overflow-hidden border-outline-variant shadow-sm">
+            <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60 pb-3">
+              <CardTitle className="flex items-center justify-between text-base font-semibold">
+                <span className="flex items-center gap-2">
+                  <CalendarClock className="size-4 text-primary" />
+                  Citas del paciente ({detail.latestCitas?.length ?? 0})
+                </span>
+                <Button
+                  size="sm"
+                  className="gap-1.5 shadow-sm"
+                  onClick={() => setShowNewCita(true)}
+                >
+                  <Plus className="size-4" />
+                  Nueva cita
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {(!detail.latestCitas || detail.latestCitas.length === 0) ? (
+                <div className="p-6 text-center text-xs text-muted-foreground">
+                  No hay citas agendadas para este paciente. Presiona &quot;Nueva cita&quot; para programar una.
+                </div>
+              ) : (
+                <div className="divide-y divide-outline-variant/40">
+                  {detail.latestCitas.map((cita: any) => (
+                    <div
+                      key={cita.id}
+                      className="flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-accent/20 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground">
+                            {new Date(cita.scheduledAt).toLocaleDateString("es-ES", {
+                              weekday: "short",
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          <Badge
+                            variant={
+                              cita.status === "COMPLETED"
+                                ? "success"
+                                : cita.status === "IN_PROGRESS"
+                                  ? "warning"
+                                  : cita.status === "CANCELLED"
+                                    ? "destructive"
+                                    : "outline"
+                            }
+                            className="mono-label"
+                          >
+                            {citaStatusLabel(cita.status)}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+                          <span>{cita.durationMinutes ?? 30} min</span>
+                          {cita.medico && (
+                            <span>· Profesional: {cita.medico.fullName || cita.medico.username}</span>
+                          )}
+                          {cita.reason && <span>· Motivo: {cita.reason}</span>}
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        {/* Botón .ics */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="size-8 p-0"
+                          title="Exportar a calendario (.ics)"
+                          onClick={() => {
+                            const start = new Date(cita.scheduledAt);
+                            const end = new Date(start.getTime() + (cita.durationMinutes ?? 30) * 60000);
+                            const ics = generateIcsFile({
+                              summary: `Consulta Médica: ${patient.firstName} ${patient.lastName}`,
+                              description: `Cita Médica en DoctorIA. Motivo: ${cita.reason || "Consulta médica"}`,
+                              startTime: start,
+                              endTime: end,
+                              organizer: cita.medico?.fullName || user?.fullName || "Médico Tratante",
+                            });
+                            const dateStr = start.toISOString().split("T")[0];
+                            downloadIcsFile(`Cita_${patient.syntheticId}_${dateStr}`, ics);
+                            toast({ title: "📅 Cita exportada a .ics" });
+                          }}
+                        >
+                          <Download className="size-3.5 text-muted-foreground hover:text-primary" />
+                        </Button>
+
+                        {cita.status === "SCHEDULED" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingCita(cita)}
+                              className="gap-1 text-xs"
+                            >
+                              <Edit3 className="size-3.5" />
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={busyCitaId === cita.id}
+                              onClick={() =>
+                                handleUpdateCitaStatus(
+                                  cita.id,
+                                  "IN_PROGRESS",
+                                  "Cita iniciada / Asistió",
+                                )
+                              }
+                              className="gap-1 text-xs"
+                            >
+                              <Play className="size-3.5" />
+                              Iniciar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={busyCitaId === cita.id}
+                              onClick={async () => {
+                                const ok = await confirm({
+                                  title: "¿Cancelar cita médica?",
+                                  description: `Se cancelará la cita de ${patient.firstName} ${patient.lastName} y se liberará el cupo en la agenda.`,
+                                  confirmText: "Sí, cancelar cita",
+                                  variant: "destructive",
+                                });
+                                if (ok) {
+                                  await handleUpdateCitaStatus(
+                                    cita.id,
+                                    "CANCELLED",
+                                    "Cita cancelada",
+                                  );
+                                }
+                              }}
+                              className="gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <XCircle className="size-3.5" />
+                              Cancelar
+                            </Button>
+                          </>
+                        )}
+
+                        {cita.status === "IN_PROGRESS" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busyCitaId === cita.id}
+                            onClick={async () => {
+                              const ok = await confirm({
+                                title: "¿Completar o cancelar consulta en curso?",
+                                description: "Puedes marcar la cita como completada una vez atendido el paciente.",
+                                confirmText: "Completar atención",
+                              });
+                              if (ok) {
+                                await handleUpdateCitaStatus(
+                                  cita.id,
+                                  "COMPLETED",
+                                  "Consulta completada con éxito",
+                                );
+                              }
+                            }}
+                            className="gap-1 text-xs text-primary"
+                          >
+                            <Activity className="size-3.5" />
+                            Completar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <PatientHistoryTimeline
             notes={history?.notes ?? []}
             epicrises={history?.epicrises ?? []}
@@ -343,6 +532,18 @@ export function ClinicalPatientDetailPage() {
           onOpenChange={setShowNewCita}
           defaultPatientId={patient.id}
           onDone={() => refetch()}
+        />
+      )}
+
+      {editingCita && (
+        <EditAppointmentModal
+          open={!!editingCita}
+          onOpenChange={(v) => !v && setEditingCita(null)}
+          cita={editingCita}
+          onDone={() => {
+            setEditingCita(null);
+            refetch();
+          }}
         />
       )}
 

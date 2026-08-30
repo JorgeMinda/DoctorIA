@@ -15,6 +15,7 @@ async function ensureAuthLogin(
   email: string,
   password: string,
 ) {
+  const normalizedEmail = email.trim().toLowerCase();
   const hashedPassword = await hashPassword(password);
   const existingAuth = await prismaClient.auth.findUnique({ where: { userId } });
   const authId = existingAuth?.id ?? crypto.randomUUID();
@@ -22,7 +23,7 @@ async function ensureAuthLogin(
     await prismaClient.auth.create({ data: { id: authId, userId } });
   }
   await prismaClient.authIdentity.upsert({
-    where: { providerName_providerUserId: { providerName: "email", providerUserId: email } },
+    where: { providerName_providerUserId: { providerName: "email", providerUserId: normalizedEmail } },
     update: {
       providerData: JSON.stringify({
         hashedPassword,
@@ -33,7 +34,7 @@ async function ensureAuthLogin(
     },
     create: {
       providerName: "email",
-      providerUserId: email,
+      providerUserId: normalizedEmail,
       providerData: JSON.stringify({
         hashedPassword,
         isEmailVerified: true,
