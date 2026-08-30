@@ -220,32 +220,36 @@ export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
   ];
 
   for (const demoP of DEMO_PACIENTES) {
-    const userPaciente = await prismaClient.user.upsert({
-      where: { email: demoP.email },
-      update: {
-        isPaciente: true,
-        isAdmin: false,
-        isMedico: false,
-        isSecretaria: false,
-        fullName: demoP.fullName,
-      },
-      create: {
-        email: demoP.email,
-        username: demoP.email.split("@")[0],
-        isPaciente: true,
-        isAdmin: false,
-        isMedico: false,
-        isSecretaria: false,
-        fullName: demoP.fullName,
-      },
-    });
-    await ensureAuthLogin(prismaClient, userPaciente.id, demoP.email, DEMO_PASSWORD);
+    try {
+      const userPaciente = await prismaClient.user.upsert({
+        where: { email: demoP.email },
+        update: {
+          isPaciente: true,
+          isAdmin: false,
+          isMedico: false,
+          isSecretaria: false,
+          fullName: demoP.fullName,
+        },
+        create: {
+          email: demoP.email,
+          username: demoP.email.split("@")[0],
+          isPaciente: true,
+          isAdmin: false,
+          isMedico: false,
+          isSecretaria: false,
+          fullName: demoP.fullName,
+        },
+      });
+      await ensureAuthLogin(prismaClient, userPaciente.id, demoP.email, DEMO_PASSWORD);
 
-    // Vincular al syntheticPatient correspondiente
-    await prismaClient.syntheticPatient.update({
-      where: { syntheticId: demoP.syntheticId },
-      data: { userId: userPaciente.id },
-    });
+      // Vincular al syntheticPatient correspondiente
+      await prismaClient.syntheticPatient.updateMany({
+        where: { syntheticId: demoP.syntheticId },
+        data: { userId: userPaciente.id },
+      });
+    } catch (err) {
+      console.warn(`[seed] Aviso al inicializar paciente demo ${demoP.email}:`, err);
+    }
   }
 
   console.log(

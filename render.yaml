@@ -16,9 +16,7 @@ services:
       npm install &&
       npx prisma generate --schema=../db/schema.prisma &&
        npm run bundle
-     # db push sincroniza el esquema directamente desde schema.prisma (robusto ante
-     # cache de migraciones de Render). migrate deploy quedó como respaldo.
-     startCommand: cd .wasp/out/server && (npm run db-migrate-prod || true) && npx prisma db push --accept-data-loss --skip-generate --schema=../db/schema.prisma && WASP_DB_SEED_NAME=seedSyntheticClinicalData node --enable-source-maps -r dotenv/config bundle/dbSeed.js && NODE_ENV=production npm run start
+     startCommand: cd .wasp/out/server && npx prisma db push --accept-data-loss --schema=../db/schema.prisma && (WASP_DB_SEED_NAME=seedSyntheticClinicalData node --enable-source-maps -r dotenv/config bundle/dbSeed.js || true) && NODE_ENV=production npm run start
     envVars:
       - key: DATABASE_URL
         fromDatabase:
