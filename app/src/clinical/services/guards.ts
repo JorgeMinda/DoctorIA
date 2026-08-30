@@ -12,7 +12,7 @@ import type { AuthUser } from "wasp/auth";
 // R2 (soft delete): un usuario con isActive=false PUEDE autenticar, pero todos
 // los guards clínicos lo rechazan con 403 hasta que el admin lo reactive.
 
-export type ClinicalRole = "admin" | "medico" | "secretaria";
+export type ClinicalRole = "admin" | "medico" | "secretaria" | "paciente";
 
 const INACTIVE_MESSAGE =
   "Usuario inactivo. Contacte al administrador para reactivar su cuenta.";
@@ -41,6 +41,7 @@ export function getActiveClinicalRole(
   if (user.isAdmin) roles.push("admin");
   if (user.isMedico) roles.push("medico");
   if ((user as any).isSecretaria) roles.push("secretaria");
+  if ((user as any).isPaciente) roles.push("paciente");
   if (roles.length !== 1) return null;
   return roles[0];
 }
@@ -64,7 +65,8 @@ export function ensureMedico(user: AuthUser | null | undefined): AuthUser {
   if (
     !u.isMedico ||
     u.isAdmin ||
-    (u as any).isSecretaria
+    (u as any).isSecretaria ||
+    (u as any).isPaciente
   ) {
     throw new HttpError(
       403,
@@ -84,7 +86,7 @@ export function ensurePatientViewer(
 
 export function ensureAdmin(user: AuthUser | null | undefined): AuthUser {
   const u = requireActiveAuthenticated(user);
-  if (!u.isAdmin || u.isMedico || (u as any).isSecretaria) {
+  if (!u.isAdmin || u.isMedico || (u as any).isSecretaria || (u as any).isPaciente) {
     throw new HttpError(403, "Solo administradores pueden ejecutar esta operación");
   }
   return u;
@@ -92,10 +94,21 @@ export function ensureAdmin(user: AuthUser | null | undefined): AuthUser {
 
 export function ensureSecretaria(user: AuthUser | null | undefined): AuthUser {
   const u = requireActiveAuthenticated(user);
-  if (!(u as any).isSecretaria || u.isAdmin || u.isMedico) {
+  if (!(u as any).isSecretaria || u.isAdmin || u.isMedico || (u as any).isPaciente) {
     throw new HttpError(
       403,
       "Solo personal de secretaría puede ejecutar esta operación",
+    );
+  }
+  return u;
+}
+
+export function ensurePaciente(user: AuthUser | null | undefined): AuthUser {
+  const u = requireActiveAuthenticated(user);
+  if (!(u as any).isPaciente || u.isAdmin || u.isMedico || (u as any).isSecretaria) {
+    throw new HttpError(
+      403,
+      "Acceso restringido al portal del paciente",
     );
   }
   return u;

@@ -24,3 +24,19 @@ export const getPasswordResetEmailContent: GetPasswordResetEmailContentFn = ({
         <a href="${passwordResetLink}">Reset password</a>
     `,
 });
+
+export const getPatientLinkEmailContent = ({
+  patientName,
+  syntheticId,
+}: {
+  patientName: string;
+  syntheticId: string;
+}) => ({
+  subject: "Cuenta de paciente vinculada - DoctorIA",
+  text: `Tu cuenta ha sido vinculada exitosamente al paciente ${patientName} (${syntheticId}). Ya puedes acceder a DoctorIA para consultar tu historial clínico confirmado y próximas citas.`,
+  html: `
+    <h2>¡Cuenta de Paciente Vinculada!</h2>
+    <p>Tu cuenta ha sido vinculada exitosamente al paciente <strong>${patientName}</strong> (<code>${syntheticId}</code>).</p>
+    <p>Ya puedes acceder a DoctorIA para consultar tu historial clínico confirmado y tus próximas citas médicas.</p>
+  `,
+});

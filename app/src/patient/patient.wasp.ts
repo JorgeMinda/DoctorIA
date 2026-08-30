@@ -1,0 +1,29 @@
+import { page, query, route, type Spec } from "@wasp.sh/spec";
+
+import { PatientDashboard } from "./pages/PatientDashboard" with { type: "ref" };
+import { LinkPatientPage } from "./pages/LinkPatientPage" with { type: "ref" };
+
+import {
+  getPatientAppointments,
+  getPatientClinicalHistory,
+} from "./queries" with { type: "ref" };
+
+export const patientSpec: Spec = [
+  query(getPatientAppointments, {
+    entities: ["SyntheticPatient", "Cita", "User"],
+  }),
+  query(getPatientClinicalHistory, {
+    entities: ["SyntheticPatient", "ClinicalNote", "Epicrisis", "User"],
+  }),
+
+  route(
+    "PatientDashboardRoute",
+    "/patient/dashboard",
+    page(PatientDashboard, { authRequired: true }),
+  ),
+  route(
+    "PatientLinkRoute",
+    "/patient/link",
+    page(LinkPatientPage, { authRequired: true }),
+  ),
+];

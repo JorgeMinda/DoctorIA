@@ -30,6 +30,8 @@ import {
   updateClinicalNoteDraft,
   updateCitaStatus,
   updateEpicrisisDraft,
+  linkPatientAccount,
+  manageCitaByMedico,
 } from "./actions" with { type: "ref" };
 import {
   adminGetPatients,
@@ -240,6 +242,18 @@ export const clinicalSpec: Spec = [
   }),
   action(deleteClinicalNote, {
     entities: ["ClinicalNote", "MedicoPatientAccess", "AuditLog"],
+  }),
+  action(linkPatientAccount, {
+    entities: ["SyntheticPatient", "User", "AuditLog"],
+  }),
+  action(manageCitaByMedico, {
+    entities: [
+      "Cita",
+      "User",
+      "SyntheticPatient",
+      "MedicoPatientAccess",
+      "AuditLog",
+    ],
   }),
 
   // Rutas / páginas clínicas

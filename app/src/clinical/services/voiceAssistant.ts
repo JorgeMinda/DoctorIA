@@ -13,7 +13,11 @@ export type VoiceQueryParseResult = {
   tokens: string[];
 };
 
-export type VoiceCommandIntent = "RETRIEVE" | "CREATE_NOTE";
+export type VoiceCommandIntent =
+  | "RETRIEVE"
+  | "CREATE_NOTE"
+  | "GET_NEXT_APPOINTMENT"
+  | "GET_MY_DIAGNOSIS";
 
 // Comando de voz parseado: intención detectada + datos extraídos.
 // - patientQuery: nombre o syntheticId del paciente citado.

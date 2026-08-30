@@ -213,7 +213,42 @@ export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
     }
   }
 
+  // 5. Usuarios Pacientes Demo (Fase B.8): paciente1@doctoria.com y paciente2@doctoria.com
+  const DEMO_PACIENTES = [
+    { email: "paciente1@doctoria.com", syntheticId: "PAC-001", fullName: "Ana Paredes" },
+    { email: "paciente2@doctoria.com", syntheticId: "PAC-002", fullName: "Jorge Ramírez" },
+  ];
+
+  for (const demoP of DEMO_PACIENTES) {
+    const userPaciente = await prismaClient.user.upsert({
+      where: { email: demoP.email },
+      update: {
+        isPaciente: true,
+        isAdmin: false,
+        isMedico: false,
+        isSecretaria: false,
+        fullName: demoP.fullName,
+      },
+      create: {
+        email: demoP.email,
+        username: demoP.email.split("@")[0],
+        isPaciente: true,
+        isAdmin: false,
+        isMedico: false,
+        isSecretaria: false,
+        fullName: demoP.fullName,
+      },
+    });
+    await ensureAuthLogin(prismaClient, userPaciente.id, demoP.email, DEMO_PASSWORD);
+
+    // Vincular al syntheticPatient correspondiente
+    await prismaClient.syntheticPatient.update({
+      where: { syntheticId: demoP.syntheticId },
+      data: { userId: userPaciente.id },
+    });
+  }
+
   console.log(
-    `[seed] ${medicos.length} médicos, ${patients.length} pacientes sintéticos, ${medicos.length * patients.length} accesos`,
+    `[seed] ${medicos.length} médicos, ${patients.length} pacientes sintéticos, ${DEMO_PACIENTES.length} cuentas de paciente vinculadas`,
   );
 }

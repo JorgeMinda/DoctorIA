@@ -30,6 +30,10 @@ model User {
   // roles — bloqueado por guards.
   isSecretaria Boolean @default(false)
 
+  // Rol paciente: acceso a su propio historial clínico confirmado y próximas citas.
+  // Mutuamente excluyente con los otros roles — bloqueado por guards.
+  isPaciente Boolean @default(false)
+
   // Soft delete (R4): usuarios con historial nunca se borran físicamente;
   // se desactivan. Autentican, pero los guards clínicos los rechazan (R2).
   isActive Boolean @default(true)
@@ -46,6 +50,7 @@ model User {
   credits                        Int       @default(3)
 
   // Relaciones DoctorIA (data-model.md §1)
+  patientProfile       SyntheticPatient?
   authoredNotes        ClinicalNote[] @relation("NoteAuthor")
   confirmedNotes       ClinicalNote[] @relation("NoteConfirmer")
   authoredEpicrises    Epicrisis[]    @relation("EpicrisisAuthor")
@@ -64,6 +69,10 @@ model SyntheticPatient {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Vínculo opcional con la cuenta de usuario del paciente autenticado
+  userId      String?  @unique
+  user        User?    @relation(fields: [userId], references: [id])
 
   syntheticId String  @unique // formato "PAC-NNN", ej. "PAC-001"
   firstName   String

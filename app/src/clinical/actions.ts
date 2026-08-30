@@ -2627,3 +2627,198 @@ export const updateEpicrisisCIE11 = async (
 
   return updated;
 };
+
+// ---------------------------------------------------------------------------
+// linkPatientAccount (Fase B): Vinculación de usuario con paciente sintético
+// ---------------------------------------------------------------------------
+
+const linkPatientAccountInputSchema = z.object({
+  syntheticId: z.string().regex(/^PAC-\d{3,}$/i, "Formato esperado: PAC-XXX"),
+});
+
+export const linkPatientAccount: any = async (rawArgs: any, context: any) => {
+  const user = context.user;
+  if (!user) throw new HttpError(401, "Debe iniciar sesión");
+
+  const args = ensureArgsSchemaOrThrowHttpError(
+    linkPatientAccountInputSchema,
+    rawArgs,
+  );
+  const normalizedId = args.syntheticId.toUpperCase();
+
+  const patient = await context.entities.SyntheticPatient.findUnique({
+    where: { syntheticId: normalizedId },
+  });
+  if (!patient) {
+    throw new HttpError(404, "Paciente no encontrado con ese código");
+  }
+
+  if (patient.userId) {
+    throw new HttpError(409, "Este perfil de paciente ya está vinculado a una cuenta");
+  }
+
+  const existingLink = await context.entities.SyntheticPatient.findFirst({
+    where: { userId: user.id },
+  });
+  if (existingLink) {
+    throw new HttpError(
+      409,
+      "Tu cuenta ya se encuentra vinculada a un perfil de paciente",
+    );
+  }
+
+  await context.entities.SyntheticPatient.update({
+    where: { id: patient.id },
+    data: { userId: user.id },
+  });
+
+  await context.entities.User.update({
+    where: { id: user.id },
+    data: { isPaciente: true },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "ADMIN_MANAGE_DATA",
+    resourceType: "PATIENT",
+    resourceId: patient.id,
+    patientId: patient.id,
+    metadata: {
+      action: "LINK_PATIENT_ACCOUNT",
+      syntheticId: normalizedId,
+    },
+  });
+
+  return { success: true, patientId: patient.id, syntheticId: normalizedId };
+};
+
+// ---------------------------------------------------------------------------
+// manageCitaByMedico (Fase C): CRUD de citas exclusivo para el médico tratante
+// ---------------------------------------------------------------------------
+
+const manageCitaByMedicoInputSchema = z.object({
+  action: z.enum(["CREATE", "UPDATE", "CANCEL"]),
+  citaId: z.string().optional(),
+  patientId: z.string().min(1),
+  scheduledAt: z.string(),
+  durationMinutes: z.number().min(15).max(480).default(30),
+  reason: z.string().max(500).optional(),
+});
+
+export const manageCitaByMedico: any = async (rawArgs: any, context: any) => {
+  const user = ensureMedico(context.user);
+  const args = ensureArgsSchemaOrThrowHttpError(
+    manageCitaByMedicoInputSchema,
+    rawArgs,
+  );
+
+  await assertMedicoPatientAccess(user.id, args.patientId);
+
+  switch (args.action) {
+    case "CREATE": {
+      const scheduledDate = new Date(args.scheduledAt);
+      await validateNoOverlap(context, user.id, scheduledDate, args.durationMinutes);
+
+      const cita = await context.entities.Cita.create({
+        data: {
+          patientId: args.patientId,
+          medicoId: user.id,
+          scheduledAt: scheduledDate,
+          durationMinutes: args.durationMinutes,
+          reason: args.reason ?? null,
+          status: "SCHEDULED",
+        },
+      });
+
+      await createAuditEntry({
+        userId: user.id,
+        action: "CREATE_CITA",
+        resourceType: "CITA",
+        resourceId: cita.id,
+        patientId: args.patientId,
+        citaId: cita.id,
+        metadata: {
+          scheduledAt: args.scheduledAt,
+          durationMinutes: String(args.durationMinutes),
+        },
+      });
+
+      return cita;
+    }
+    case "UPDATE": {
+      if (!args.citaId) throw new HttpError(400, "citaId es requerido");
+      const existing = await context.entities.Cita.findUnique({
+        where: { id: args.citaId },
+      });
+      if (!existing) throw new HttpError(404, "Cita no encontrada");
+      if (existing.medicoId !== user.id) {
+        throw new HttpError(403, "No puedes editar citas de otro profesional");
+      }
+      if (existing.status === "COMPLETED" || existing.status === "CANCELLED") {
+        throw new HttpError(
+          400,
+          "No se puede editar una cita completada o cancelada",
+        );
+      }
+
+      const scheduledDate = new Date(args.scheduledAt);
+      if (scheduledDate.getTime() !== existing.scheduledAt.getTime()) {
+        await validateNoOverlap(
+          context,
+          user.id,
+          scheduledDate,
+          args.durationMinutes,
+          args.citaId,
+        );
+      }
+
+      const updated = await context.entities.Cita.update({
+        where: { id: args.citaId },
+        data: {
+          scheduledAt: scheduledDate,
+          durationMinutes: args.durationMinutes,
+          reason: args.reason ?? null,
+        },
+      });
+
+      await createAuditEntry({
+        userId: user.id,
+        action: "UPDATE_CITA",
+        resourceType: "CITA",
+        resourceId: args.citaId,
+        patientId: existing.patientId,
+        citaId: args.citaId,
+        metadata: { changes: "rescheduled_by_medico" },
+      });
+
+      return updated;
+    }
+    case "CANCEL": {
+      if (!args.citaId) throw new HttpError(400, "citaId es requerido");
+      const existing = await context.entities.Cita.findUnique({
+        where: { id: args.citaId },
+      });
+      if (!existing) throw new HttpError(404, "Cita no encontrada");
+      if (existing.medicoId !== user.id) {
+        throw new HttpError(403, "No puedes cancelar citas de otro profesional");
+      }
+
+      const updated = await context.entities.Cita.update({
+        where: { id: args.citaId },
+        data: { status: "CANCELLED" },
+      });
+
+      await createAuditEntry({
+        userId: user.id,
+        action: "CANCEL_CITA",
+        resourceType: "CITA",
+        resourceId: args.citaId,
+        patientId: existing.patientId,
+        citaId: args.citaId,
+        metadata: { previousStatus: existing.status },
+      });
+
+      return updated;
+    }
+  }
+};

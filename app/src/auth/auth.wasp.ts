@@ -40,7 +40,7 @@ export const authConfig: Auth = {
     email: emailAuthMethod,
   },
   onAuthFailedRedirectTo: "/login",
-  onAuthSucceededRedirectTo: "/clinical/patients",
+  onAuthSucceededRedirectTo: "/patient/link",
 };
 
 export const authSpec: Spec = [

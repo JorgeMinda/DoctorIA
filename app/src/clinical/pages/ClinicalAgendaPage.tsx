@@ -9,6 +9,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock,
+  Download,
   Edit3,
   ExternalLink,
   FileCheck2,
@@ -19,6 +20,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
 import { Button } from "../../client/components/ui/button";
 import {
   Card,
@@ -301,6 +303,29 @@ export function ClinicalAgendaPage() {
                         Pre-clínico
                       </Button>
                     </WaspRouterLink>
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="size-8 p-0"
+                      title="Exportar cita a calendario (.ics)"
+                      onClick={() => {
+                        const start = new Date(cita.scheduledAt);
+                        const end = new Date(start.getTime() + cita.durationMinutes * 60000);
+                        const ics = generateIcsFile({
+                          summary: `Consulta Médica: ${cita.patient.firstName} ${cita.patient.lastName}`,
+                          description: `Cita Médica en DoctorIA. Motivo: ${cita.reason || "Consulta médica"}`,
+                          startTime: start,
+                          endTime: end,
+                          organizer: cita.medico?.fullName || "Dr. Médico",
+                        });
+                        const dateStr = start.toISOString().split("T")[0];
+                        downloadIcsFile(`Cita_${cita.patient.syntheticId}_${dateStr}`, ics);
+                        toast({ title: "📅 Cita exportada a .ics" });
+                      }}
+                    >
+                      <Download className="size-3.5 text-muted-foreground hover:text-primary" />
+                    </Button>
 
                     {cita.status === "SCHEDULED" && (
                       <>

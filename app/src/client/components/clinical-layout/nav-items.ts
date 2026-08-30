@@ -74,6 +74,17 @@ export function getNavGroupsForRole(role: ClinicalRole | null): ClinicalNavGroup
     ];
   }
 
+  if (role === "paciente") {
+    return [
+      {
+        label: "Mi Salud",
+        items: [
+          { name: "Mi Portal", to: "/patient/dashboard", icon: Users },
+        ],
+      },
+    ];
+  }
+
   // Admin
   return [
     {
