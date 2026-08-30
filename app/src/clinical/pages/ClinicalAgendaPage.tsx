@@ -33,6 +33,7 @@ import { toast } from "../../client/hooks/use-toast";
 import { citaStatusLabel } from "../services/statusLabels";
 import { NewAppointmentModal } from "../components/NewAppointmentModal";
 import { EditAppointmentModal } from "../components/EditAppointmentModal";
+import { ClinicalCalendarView } from "../components/ClinicalCalendarView";
 
 function citaBadgeVariant(status: string) {
   if (status === "COMPLETED") return "success";
@@ -98,6 +99,8 @@ export function ClinicalAgendaPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showNewCita, setShowNewCita] = useState(false);
   const [editingCita, setEditingCita] = useState<any | null>(null);
+  const [displayMode, setDisplayMode] = useState<"calendar" | "list">("calendar");
+  const [selectedNewCitaDate, setSelectedNewCitaDate] = useState<Date | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<
     "ALL" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED"
   >("ALL");
@@ -179,14 +182,60 @@ export function ClinicalAgendaPage() {
           </div>
           <Button
             className="gap-1.5 shadow-[0_0_15px_rgba(0,218,243,0.25)]"
-            onClick={() => setShowNewCita(true)}
+            onClick={() => {
+              setSelectedNewCitaDate(undefined);
+              setShowNewCita(true);
+            }}
           >
             <Plus className="size-4" />
             Nueva cita
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Selector de Modo: Calendario Google vs Lista */}
+        <div className="flex items-center justify-between border-b border-outline-variant/40 pb-3">
+          <div className="flex items-center rounded-lg border border-outline-variant/60 bg-surface-container/40 p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setDisplayMode("calendar")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
+                displayMode === "calendar"
+                  ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <CalendarDays className="size-4" />
+              Vista Calendario (Día / Sem / Mes / Año)
+            </button>
+            <button
+              type="button"
+              onClick={() => setDisplayMode("list")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
+                displayMode === "list"
+                  ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <CalendarClock className="size-4" />
+              Vista Lista & Métricas
+            </button>
+          </div>
+        </div>
+
+        {displayMode === "calendar" ? (
+          <ClinicalCalendarView
+            citas={agenda?.citas ?? []}
+            onNewCitaAtDate={(date) => {
+              setSelectedNewCitaDate(date);
+              setShowNewCita(true);
+            }}
+            onEditCita={(cita) => setEditingCita(cita)}
+            onRunTransition={runTransition}
+            busyCitaId={busyId}
+          />
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MetricTile
             value={agenda?.metrics.citasHoy ?? 0}
             label="Citas hoy (Ver todas)"
@@ -465,6 +514,8 @@ export function ClinicalAgendaPage() {
             </CardContent>
           </Card>
         )}
+        </>
+        )}
 
         {showNewCita && (
           <NewAppointmentModal
@@ -536,7 +587,50 @@ export function ClinicalAgendaPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Selector de Modo: Calendario Google vs Lista */}
+      <div className="flex items-center justify-between border-b border-outline-variant/40 pb-3">
+        <div className="flex items-center rounded-lg border border-outline-variant/60 bg-surface-container/40 p-1 text-xs">
+          <button
+            type="button"
+            onClick={() => setDisplayMode("calendar")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
+              displayMode === "calendar"
+                ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarDays className="size-4" />
+            Vista Calendario (Día / Sem / Mes / Año)
+          </button>
+          <button
+            type="button"
+            onClick={() => setDisplayMode("list")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
+              displayMode === "list"
+                ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarClock className="size-4" />
+            Vista Lista & Métricas
+          </button>
+        </div>
+      </div>
+
+      {displayMode === "calendar" ? (
+        <ClinicalCalendarView
+          citas={agenda?.citas ?? []}
+          onNewCitaAtDate={(date) => {
+            setSelectedNewCitaDate(date);
+            setShowNewCita(true);
+          }}
+          onEditCita={(cita) => setEditingCita(cita)}
+          onRunTransition={runTransition}
+          busyCitaId={busyId}
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <MetricTile
           value={agenda?.metrics.pacientesAtendidos ?? "—"}
           label="Pacientes atendidos"
@@ -733,6 +827,8 @@ export function ClinicalAgendaPage() {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
 
       {editingCita && (
         <EditAppointmentModal

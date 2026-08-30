@@ -6,6 +6,7 @@ import { useRole } from "../../client/hooks/useRole";
 import { RoleGuard } from "../../client/components/RoleGuard";
 import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
 import { VoiceOrb, type VoiceAssistantState } from "../../clinical/components/VoiceOrb";
+import { ClinicalCalendarView } from "../../clinical/components/ClinicalCalendarView";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../client/components/ui/card";
 import { Button } from "../../client/components/ui/button";
 import { Badge } from "../../client/components/ui/badge";
@@ -40,6 +41,7 @@ function PatientDashboardContent() {
   const { user } = useRole();
   const [orbState, setOrbState] = useState<VoiceAssistantState>("IDLE");
   const [voiceAnswer, setVoiceAnswer] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<"cards" | "calendar">("cards");
 
   const { data: apptData, isLoading: loadingAppts } = useQuery(
     getPatientAppointments,
@@ -202,8 +204,42 @@ function PatientDashboardContent() {
         </CardContent>
       </Card>
 
-      {/* Próxima Cita Highlight */}
-      {upcomingCita ? (
+      {/* Selector de Modo: Resumen vs Calendario */}
+      <div className="flex items-center justify-between border-b border-outline-variant/60 pb-3">
+        <div className="flex items-center rounded-lg border border-outline-variant/60 bg-surface-container/40 p-1 text-xs">
+          <button
+            type="button"
+            onClick={() => setDisplayMode("cards")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
+              displayMode === "cards"
+                ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarClock className="size-4" />
+            Resumen & Próxima Cita
+          </button>
+          <button
+            type="button"
+            onClick={() => setDisplayMode("calendar")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
+              displayMode === "calendar"
+                ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarDays className="size-4" />
+            Vista Calendario (Día / Sem / Mes / Año)
+          </button>
+        </div>
+      </div>
+
+      {displayMode === "calendar" ? (
+        <ClinicalCalendarView citas={citas} />
+      ) : (
+        <>
+          {/* Próxima Cita Highlight */}
+          {upcomingCita ? (
         <Card className="border-sky-500/30 bg-sky-500/5 shadow-md">
           <CardHeader className="pb-3 border-b border-sky-500/20">
             <div className="flex items-center justify-between">
@@ -389,6 +425,8 @@ function PatientDashboardContent() {
           </CardContent>
         </Card>
       </div>
+      </>
+      )}
     </div>
   );
 }
