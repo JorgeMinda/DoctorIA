@@ -92,7 +92,7 @@ export function ClinicalPatientDetailPage() {
   const updateStatusFn = useAction(updateCitaStatus);
   const manageCitaByMedicoFn = useAction(manageCitaByMedico);
   const deleteEpicrisisFn = useAction(deleteEpicrisis);
-  const confirm = useConfirm();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const isSecretariaView = !!(
     (user as any)?.isSecretaria &&
@@ -554,6 +554,8 @@ export function ClinicalPatientDetailPage() {
           onOpenChange={(v) => !v && setPrintEpicrisisId(null)}
         />
       )}
+
+      {ConfirmDialog}
     </div>
   );
 }

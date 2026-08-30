@@ -127,6 +127,8 @@ export function SignupFormES() {
       const res = await signup({
         email,
         password,
+        username: email.split("@")[0],
+        isAdmin: false,
       });
       if (res.success) {
         setSuccess(

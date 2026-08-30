@@ -280,7 +280,7 @@ export function ClinicalCalendarView({
     const startOffset = (firstDay.getDay() + 6) % 7; // Lunes = 0
     const totalDays = lastDay.getDate();
 
-    const days = [];
+    const days: (Date | null)[] = [];
     for (let i = 0; i < startOffset; i++) {
       days.push(null);
     }

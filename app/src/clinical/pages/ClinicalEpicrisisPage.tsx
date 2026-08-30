@@ -93,7 +93,7 @@ function ClinicalEpicrisisPageContent() {
   const addendumFn = useAction(createEpicrisisAddendum);
   const deleteEpicrisisFn = useAction(deleteEpicrisis);
   const exportAuditFn = useAction(recordEpicrisisExport);
-  const confirm = useConfirm();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -510,6 +510,7 @@ function ClinicalEpicrisisPageContent() {
         onOpenChange={setCie11Open}
         onSelect={handleSelectCIE11}
       />
+      {ConfirmDialog}
     </div>
   );
 }
