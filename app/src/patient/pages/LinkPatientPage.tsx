@@ -22,7 +22,8 @@ export function LinkPatientPage() {
   const [error, setError] = useState<string | null>(null);
 
   const requestLinkFn = useAction(requestPatientLink);
-  const { data: requestStatus, refetch: refetchStatus } = useQuery(getMyLinkRequestStatus);
+  const { data: requestStatusData, refetch: refetchStatus } = useQuery(getMyLinkRequestStatus);
+  const requestStatus = requestStatusData as any;
 
   useEffect(() => {
     if (isLoading) return;
@@ -50,14 +51,14 @@ export function LinkPatientPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await requestLinkFn({
+      const res: any = await requestLinkFn({
         tipoDocumento,
         documento: norm,
         paisEmisor,
       });
       toast({
         title: "Solicitud Enviada",
-        description: res.message || "Tu solicitud ha sido recibida.",
+        description: res?.message || "Tu solicitud ha sido recibida.",
       });
       refetchStatus();
     } catch (err: any) {
