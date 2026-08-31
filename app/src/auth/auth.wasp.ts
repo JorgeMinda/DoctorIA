@@ -22,10 +22,6 @@ const emailAuthMethod: NonNullable<AuthMethods["email"]> = {
     name: "DoctorIA",
     email: "onboarding@resend.dev",
   },
-  emailVerification: {
-    clientRoute: "EmailVerificationRoute",
-    getEmailContentFn: getVerificationEmailContent,
-  },
   passwordReset: {
     clientRoute: "PasswordResetRoute",
     getEmailContentFn: getPasswordResetEmailContent,

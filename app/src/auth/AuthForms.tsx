@@ -112,6 +112,7 @@ export function LoginFormES() {
 }
 
 export function SignupFormES() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -131,11 +132,13 @@ export function SignupFormES() {
         isAdmin: false,
       });
       if (res.success) {
-        setSuccess(
-          "Cuenta creada. Revisa tu correo para verificarla (si aplica) e inicia sesión.",
-        );
-        setEmail("");
-        setPassword("");
+        try {
+          await login({ email, password });
+          navigate("/patient/link", { replace: true });
+        } catch {
+          setSuccess("Cuenta creada exitosamente. Redirigiendo...");
+          setTimeout(() => navigate("/patient/link", { replace: true }), 800);
+        }
       } else {
         setError("No se pudo completar el registro. Intenta de nuevo.");
       }
