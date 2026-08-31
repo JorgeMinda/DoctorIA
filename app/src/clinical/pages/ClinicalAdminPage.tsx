@@ -1956,9 +1956,9 @@ function PendingLinkRequestsTab({
   const handleApprove = async (req: any) => {
     const ok = await confirm({
       title: "¿Aprobar vinculación de paciente?",
-      message: `Se vinculará la cuenta del usuario ${req.user?.email} con la ficha médica de ${req.patient?.firstName} ${req.patient?.lastName} (${req.patient?.syntheticId}). El paciente obtendrá acceso inmediato a su historial y citas.`,
-      confirmLabel: "Aprobar Vinculación",
-      cancelLabel: "Cancelar",
+      description: `Se vinculará la cuenta del usuario ${req.user?.email} con la ficha médica de ${req.patient?.firstName} ${req.patient?.lastName} (${req.patient?.syntheticId}). El paciente obtendrá acceso inmediato a su historial y citas.`,
+      confirmText: "Aprobar Vinculación",
+      cancelText: "Cancelar",
       variant: "default",
     });
     if (!ok) return;
