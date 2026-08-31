@@ -132,13 +132,11 @@ export function SignupFormES() {
         isAdmin: false,
       });
       if (res.success) {
-        try {
-          await login({ email, password });
-          navigate("/patient/link", { replace: true });
-        } catch {
-          setSuccess("Cuenta creada exitosamente. Redirigiendo...");
-          setTimeout(() => navigate("/patient/link", { replace: true }), 800);
-        }
+        setSuccess(
+          "¡Cuenta creada con éxito! Se ha enviado un correo de verificación. Revisa tu bandeja de entrada (o carpeta de Spam) y haz clic en el enlace para activar tu cuenta.",
+        );
+        setEmail("");
+        setPassword("");
       } else {
         setError("No se pudo completar el registro. Intenta de nuevo.");
       }
