@@ -44,6 +44,11 @@ import * as z from "zod";
 import type { CitaStatus, PreClinicalRecord } from "@prisma/client";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
 import {
+  normalizeDocument,
+  validateDocument,
+  calculateDocumentHash,
+} from "../shared/utils/documentValidation";
+import {
   ensureMedico,
   ensureAdmin,
   ensureRole,
@@ -2685,54 +2690,97 @@ export const updateEpicrisisCIE11 = async (
 };
 
 // ---------------------------------------------------------------------------
-// linkPatientAccount (Fase B): Vinculación de usuario con paciente sintético
+// requestPatientLink (Fase Producción): Solicitud de vinculación segura
+// Valida formato de cédula/pasaporte, genera HMAC de búsqueda y crea PENDING_APPROVAL
+// Anti-enumeración: respuesta genérica idéntica ante no-coincidencia.
 // ---------------------------------------------------------------------------
 
-const linkPatientAccountInputSchema = z.object({
-  syntheticId: z.string().regex(/^PAC-\d{3,}$/i, "Formato esperado: PAC-XXX"),
+const requestPatientLinkInputSchema = z.object({
+  tipoDocumento: z.enum(["CEDULA", "PASAPORTE", "OTRO"]).default("CEDULA"),
+  documento: z.string().min(1, "Debe ingresar el número de documento"),
+  paisEmisor: z.string().default("EC"),
 });
 
-export const linkPatientAccount: any = async (rawArgs: any, context: any) => {
+export const requestPatientLink: any = async (rawArgs: any, context: any) => {
   const user = context.user;
-  if (!user) throw new HttpError(401, "Debe iniciar sesión");
+  if (!user) throw new HttpError(401, "Debe iniciar sesión para solicitar la vinculación");
+  if (user.isActive === false) throw new HttpError(403, "Cuenta inactiva");
 
   const args = ensureArgsSchemaOrThrowHttpError(
-    linkPatientAccountInputSchema,
+    requestPatientLinkInputSchema,
     rawArgs,
   );
-  const normalizedId = args.syntheticId.toUpperCase();
 
-  const patient = await context.entities.SyntheticPatient.findUnique({
-    where: { syntheticId: normalizedId },
+  // 1. Validar formato según tipo de documento
+  const valResult = validateDocument(args.tipoDocumento as any, args.documento);
+  if (!valResult.isValid) {
+    throw new HttpError(400, valResult.error || "El formato del documento no es válido");
+  }
+
+  const normalizedDoc = valResult.normalizedDocument;
+  const docHash = calculateDocumentHash(args.tipoDocumento as any, normalizedDoc, args.paisEmisor);
+
+  // 2. Buscar paciente por documentHash o por syntheticId (legacy)
+  const patient = await context.entities.SyntheticPatient.findFirst({
+    where: {
+      OR: [
+        { documentHash: docHash },
+        { syntheticId: normalizedDoc.toUpperCase() },
+        { documento: normalizedDoc },
+      ],
+    },
   });
-  if (!patient) {
-    throw new HttpError(404, "Paciente no encontrado con ese código");
+
+  // Respuesta genérica segura para prevenir enumeración de pacientes
+  const GENERIC_RESPONSE = {
+    success: true,
+    message: "Tu solicitud de vinculación ha sido recibida. Si los datos coinciden con un registro clínico, el consultorio procederá con la verificación.",
+    status: "PENDING",
+  };
+
+  if (!patient || patient.userId) {
+    return GENERIC_RESPONSE;
   }
 
-  if (patient.userId) {
-    throw new HttpError(409, "Este perfil de paciente ya está vinculado a una cuenta");
-  }
-
-  const existingLink = await context.entities.SyntheticPatient.findFirst({
+  // Verificar si el usuario ya está vinculado a otro paciente
+  const alreadyLinked = await context.entities.SyntheticPatient.findFirst({
     where: { userId: user.id },
   });
-  if (existingLink) {
-    throw new HttpError(
-      409,
-      "Tu cuenta ya se encuentra vinculada a un perfil de paciente",
-    );
+  if (alreadyLinked) {
+    throw new HttpError(409, "Tu cuenta ya se encuentra vinculada a un perfil de paciente");
   }
 
-  await context.entities.SyntheticPatient.update({
-    where: { id: patient.id },
-    data: { userId: user.id },
+  // Verificar si ya existe una solicitud PENDING para este paciente y usuario
+  const existingPending = await context.entities.PatientLinkRequest.findFirst({
+    where: {
+      userId: user.id,
+      patientId: patient.id,
+      status: "PENDING",
+    },
   });
 
-  await context.entities.User.update({
-    where: { id: user.id },
-    data: { isPaciente: true },
+  if (existingPending) {
+    return {
+      success: true,
+      message: "Ya tienes una solicitud de vinculación en revisión para este paciente.",
+      status: "PENDING",
+    };
+  }
+
+  // 3. Crear PatientLinkRequest en estado PENDING con vigencia de 7 días
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await context.entities.PatientLinkRequest.create({
+    data: {
+      userId: user.id,
+      patientId: patient.id,
+      documentType: args.tipoDocumento as any,
+      paisEmisor: args.paisEmisor,
+      status: "PENDING",
+      expiresAt,
+    },
   });
 
+  // 4. Auditoría sin PII
   await createAuditEntry({
     userId: user.id,
     action: "ADMIN_MANAGE_DATA",
@@ -2740,12 +2788,165 @@ export const linkPatientAccount: any = async (rawArgs: any, context: any) => {
     resourceId: patient.id,
     patientId: patient.id,
     metadata: {
-      action: "LINK_PATIENT_ACCOUNT",
-      syntheticId: normalizedId,
+      action: "PATIENT_LINK_REQUESTED",
+      documentType: args.tipoDocumento,
+      paisEmisor: args.paisEmisor,
     },
   });
 
-  return { success: true, patientId: patient.id, syntheticId: normalizedId };
+  return {
+    success: true,
+    message: "Tu solicitud de vinculación ha sido enviada al consultorio para su revisión y aprobación.",
+    status: "PENDING",
+  };
+};
+
+// ---------------------------------------------------------------------------
+// approvePatientLinkRequest (Admin): Aprobación transaccional de vinculación
+// ---------------------------------------------------------------------------
+
+const approvePatientLinkInputSchema = z.object({
+  requestId: z.string().min(1),
+});
+
+export const approvePatientLinkRequest: any = async (rawArgs: any, context: any) => {
+  const adminUser = ensureAdmin(context.user);
+  const { requestId } = ensureArgsSchemaOrThrowHttpError(
+    approvePatientLinkInputSchema,
+    rawArgs,
+  );
+
+  const request = await context.entities.PatientLinkRequest.findUnique({
+    where: { id: requestId },
+    include: { patient: true, user: true },
+  });
+
+  if (!request) {
+    throw new HttpError(404, "Solicitud de vinculación no encontrada");
+  }
+  if (request.status !== "PENDING") {
+    throw new HttpError(409, `Esta solicitud ya fue procesada (estado: ${request.status})`);
+  }
+  if (new Date(request.expiresAt).getTime() < Date.now()) {
+    await context.entities.PatientLinkRequest.update({
+      where: { id: requestId },
+      data: { status: "EXPIRED" },
+    });
+    throw new HttpError(410, "La solicitud ha expirado. El paciente debe realizar una nueva solicitud.");
+  }
+  if (request.patient.userId) {
+    throw new HttpError(409, "El paciente ya está vinculado a otra cuenta de usuario.");
+  }
+
+  // Transacción atómica de aprobación
+  await prisma.$transaction([
+    // 1. Vincular paciente con usuario
+    context.entities.SyntheticPatient.update({
+      where: { id: request.patientId },
+      data: { userId: request.userId },
+    }),
+    // 2. Activar rol paciente exclusivo
+    context.entities.User.update({
+      where: { id: request.userId },
+      data: {
+        isPaciente: true,
+        isAdmin: false,
+        isMedico: false,
+        isSecretaria: false,
+      },
+    }),
+    // 3. Marcar solicitud como APPROVED
+    context.entities.PatientLinkRequest.update({
+      where: { id: requestId },
+      data: {
+        status: "APPROVED",
+        reviewedAt: new Date(),
+        reviewedById: adminUser.id,
+      },
+    }),
+    // 4. Rechazar otras solicitudes pendientes del mismo paciente
+    context.entities.PatientLinkRequest.updateMany({
+      where: {
+        patientId: request.patientId,
+        id: { not: requestId },
+        status: "PENDING",
+      },
+      data: {
+        status: "REJECTED",
+        rejectionReason: "Ficha vinculada a otra solicitud aprobada",
+        reviewedAt: new Date(),
+        reviewedById: adminUser.id,
+      },
+    }),
+  ]);
+
+  await createAuditEntry({
+    userId: adminUser.id,
+    action: "ADMIN_MANAGE_DATA",
+    resourceType: "PATIENT",
+    resourceId: request.patientId,
+    patientId: request.patientId,
+    metadata: {
+      action: "PATIENT_LINK_APPROVED",
+      requestId,
+      targetUserId: request.userId,
+    },
+  });
+
+  return { ok: true };
+};
+
+// ---------------------------------------------------------------------------
+// rejectPatientLinkRequest (Admin): Rechazo de solicitud de vinculación
+// ---------------------------------------------------------------------------
+
+const rejectPatientLinkInputSchema = z.object({
+  requestId: z.string().min(1),
+  reason: z.string().optional(),
+});
+
+export const rejectPatientLinkRequest: any = async (rawArgs: any, context: any) => {
+  const adminUser = ensureAdmin(context.user);
+  const { requestId, reason } = ensureArgsSchemaOrThrowHttpError(
+    rejectPatientLinkInputSchema,
+    rawArgs,
+  );
+
+  const request = await context.entities.PatientLinkRequest.findUnique({
+    where: { id: requestId },
+  });
+
+  if (!request) {
+    throw new HttpError(404, "Solicitud no encontrada");
+  }
+  if (request.status !== "PENDING") {
+    throw new HttpError(409, `Esta solicitud ya fue procesada (estado: ${request.status})`);
+  }
+
+  await context.entities.PatientLinkRequest.update({
+    where: { id: requestId },
+    data: {
+      status: "REJECTED",
+      rejectionReason: reason || "Solicitud rechazada por el consultorio",
+      reviewedAt: new Date(),
+      reviewedById: adminUser.id,
+    },
+  });
+
+  await createAuditEntry({
+    userId: adminUser.id,
+    action: "ADMIN_MANAGE_DATA",
+    resourceType: "PATIENT",
+    resourceId: request.patientId,
+    patientId: request.patientId,
+    metadata: {
+      action: "PATIENT_LINK_REJECTED",
+      requestId,
+      reason: reason || "Sin motivo especificado",
+    },
+  });
+
+  return { ok: true };
 };
 
 // ---------------------------------------------------------------------------

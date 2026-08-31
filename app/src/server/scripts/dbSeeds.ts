@@ -5,6 +5,7 @@
 import { faker } from "@faker-js/faker";
 import type { PrismaClient } from "@prisma/client";
 import { hashPassword } from "@wasp.sh/lib-auth/node";
+import { calculateDocumentHash } from "../../shared/utils/documentValidation";
 
 const DEMO_ADMIN_EMAIL = "admin@doctoria.com";
 const DEMO_PASSWORD = "Doctoria2026!";
@@ -57,7 +58,7 @@ const DEMO_SECRETARIA = {
   fullName: "Karla Ramírez",
 };
 
-// Datos ficticios (sintéticos, P5). Cualquier parecido con la realidad es coincidencia.
+// Datos ficticios / pacientes sintéticos de demostración con cédulas válidas.
 const SYNTHETIC_PATIENTS = [
   {
     syntheticId: "PAC-001",
@@ -65,6 +66,7 @@ const SYNTHETIC_PATIENTS = [
     lastName: "Paredes",
     birthDate: new Date("1990-04-12"),
     sex: "F",
+    documento: "1710034065",
     medicalHistory: "Hipertensión arterial controlada. Sin alergias medicamentosas conocidas.",
     allergies: null,
   },
@@ -74,6 +76,7 @@ const SYNTHETIC_PATIENTS = [
     lastName: "Ramírez",
     birthDate: new Date("1985-11-03"),
     sex: "M",
+    documento: "1721532826",
     medicalHistory: "Diabetes tipo 2 en tratamiento con metformina.",
     allergies: "Penicilina",
   },
@@ -83,6 +86,7 @@ const SYNTHETIC_PATIENTS = [
     lastName: "Torres",
     birthDate: new Date("1978-07-25"),
     sex: "F",
+    documento: "0926687856",
     medicalHistory: "Asma bronquial. Hipotiroidismo.",
     allergies: null,
   },
@@ -92,6 +96,7 @@ const SYNTHETIC_PATIENTS = [
     lastName: "Salazar",
     birthDate: new Date("1965-02-18"),
     sex: "M",
+    documento: "0102030408",
     medicalHistory: "Dislipidemia. Cardiopatía isquémica en seguimiento.",
     allergies: "Sulfamidas",
   },
@@ -101,6 +106,7 @@ const SYNTHETIC_PATIENTS = [
     lastName: "Castillo",
     birthDate: new Date("2001-09-30"),
     sex: "F",
+    documento: "1103456783",
     medicalHistory: "Sin antecedentes de relevancia.",
     allergies: null,
   },
@@ -110,6 +116,7 @@ const SYNTHETIC_PATIENTS = [
     lastName: "Núñez",
     birthDate: new Date("1995-12-08"),
     sex: "M",
+    documento: "1802345674",
     medicalHistory: "Migraña crónica.",
     allergies: null,
   },
@@ -180,6 +187,7 @@ export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
   // 3. Pacientes sintéticos + accesos (ambos médicos acceden a todos)
   const patients: { id: string }[] = [];
   for (const p of SYNTHETIC_PATIENTS) {
+    const docHash = calculateDocumentHash("CEDULA", p.documento, "EC");
     const patient = await prismaClient.syntheticPatient.upsert({
       where: { syntheticId: p.syntheticId },
       update: {
@@ -187,6 +195,9 @@ export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
         lastName: p.lastName,
         birthDate: p.birthDate,
         sex: p.sex,
+        documento: p.documento,
+        documentHash: docHash,
+        tipoDocumento: "CEDULA",
         medicalHistory: p.medicalHistory,
         allergies: p.allergies,
       },
@@ -196,6 +207,9 @@ export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
         lastName: p.lastName,
         birthDate: p.birthDate,
         sex: p.sex,
+        documento: p.documento,
+        documentHash: docHash,
+        tipoDocumento: "CEDULA",
         medicalHistory: p.medicalHistory,
         allergies: p.allergies,
       },

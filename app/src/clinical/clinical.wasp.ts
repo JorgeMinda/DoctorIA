@@ -31,7 +31,9 @@ import {
   updateClinicalNoteDraft,
   updateCitaStatus,
   updateEpicrisisDraft,
-  linkPatientAccount,
+  requestPatientLink,
+  approvePatientLinkRequest,
+  rejectPatientLinkRequest,
   manageCitaByMedico,
 } from "./actions" with { type: "ref" };
 import {
@@ -52,6 +54,7 @@ import {
   getPreClinicalRecord,
   getPrintableEpicrises,
   searchCIE11,
+  getPendingLinkRequests,
 } from "./queries" with { type: "ref" };
 
 import { ClinicalAdminPage } from "./pages/ClinicalAdminPage" with { type: "ref" };
@@ -247,8 +250,17 @@ export const clinicalSpec: Spec = [
   action(deleteEpicrisis, {
     entities: ["Epicrisis", "MedicoPatientAccess", "AuditLog"],
   }),
-  action(linkPatientAccount, {
-    entities: ["SyntheticPatient", "User", "AuditLog"],
+  action(requestPatientLink, {
+    entities: ["SyntheticPatient", "User", "PatientLinkRequest", "AuditLog"],
+  }),
+  action(approvePatientLinkRequest, {
+    entities: ["SyntheticPatient", "User", "PatientLinkRequest", "AuditLog"],
+  }),
+  action(rejectPatientLinkRequest, {
+    entities: ["SyntheticPatient", "User", "PatientLinkRequest", "AuditLog"],
+  }),
+  query(getPendingLinkRequests, {
+    entities: ["PatientLinkRequest", "SyntheticPatient", "User"],
   }),
   action(manageCitaByMedico, {
     entities: [

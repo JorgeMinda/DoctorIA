@@ -62,9 +62,24 @@ model User {
   scheduledCitas       Cita[]         @relation("CitaSecretary")
   recordedVitalSigns   VitalSign[]    @relation("VitalSignRecorder")
   recordedPreClinicalRecords PreClinicalRecord[] @relation("PreClinicalRecorder")
+  patientLinkRequests  PatientLinkRequest[] @relation("UserLinkRequests")
+  reviewedLinkRequests PatientLinkRequest[] @relation("RequestReviewer")
 }
 
-// ─────────────── PACIENTES SINTÉTICOS (solo datos ficticios, P5) ───────────────
+enum DocumentType {
+  CEDULA
+  PASAPORTE
+  OTRO
+}
+
+enum LinkRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// ─────────────── PACIENTES SINTÉTICOS / PRODUCCIÓN REAL (P5) ───────────────
 model SyntheticPatient {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
@@ -74,16 +89,22 @@ model SyntheticPatient {
   userId      String?  @unique
   user        User?    @relation(fields: [userId], references: [id])
 
-  syntheticId String  @unique // formato "PAC-NNN", ej. "PAC-001"
+  syntheticId String  @unique // formato "PAC-NNN", ej. "PAC-001" (identificador técnico legacy)
   firstName   String
   lastName    String
   birthDate   DateTime
   sex         String          // "M", "F", "O"
-  documento   String?  @db.VarChar(10) // cédula o pasaporte (máx. 10 caracteres)
+
+  // Identificación real de producción
+  tipoDocumento   DocumentType  @default(CEDULA)
+  documento       String?       @db.VarChar(30) // documento normalizado
+  documentHash    String?       @unique         // HMAC-SHA256 para búsqueda sin exponer PII
+  paisEmisor      String?       @default("EC")
+
   medicalHistory String?
   allergies      String?
 
-  // Perfil demográfico / contacto (datos sintéticos, rf-pacientes)
+  // Perfil demográfico / contacto
   nationality     String?
   heightCm        Int?     // talla (cm)
   weightKg        Int?     // peso (kg)
@@ -99,16 +120,44 @@ model SyntheticPatient {
   // (isActive=false) en lugar de eliminarse físicamente.
   isActive Boolean @default(true)
 
-  clinicalNotes     ClinicalNote[]
-  epicrises         Epicrisis[]
-  authorizedMedicos MedicoPatientAccess[]
-  citas             Cita[]
-  auditLogs         AuditLog[]
-  vitalSigns        VitalSign[]
+  clinicalNotes      ClinicalNote[]
+  epicrises          Epicrisis[]
+  authorizedMedicos  MedicoPatientAccess[]
+  citas              Cita[]
+  auditLogs          AuditLog[]
+  vitalSigns         VitalSign[]
   preClinicalRecords PreClinicalRecord[]
+  linkRequests       PatientLinkRequest[]
 
   @@index([syntheticId])
   @@index([lastName, firstName])
+  @@index([documentHash])
+}
+
+// ─────────────── SOLICITUDES DE VINCULACIÓN DE PACIENTE (Fase Producción) ───────────────
+model PatientLinkRequest {
+  id              String            @id @default(uuid())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  userId          String
+  user            User              @relation("UserLinkRequests", fields: [userId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         SyntheticPatient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  status          LinkRequestStatus @default(PENDING)
+  documentType    DocumentType      @default(CEDULA)
+  paisEmisor      String?           @default("EC")
+
+  reviewedAt      DateTime?
+  reviewedById    String?
+  reviewedBy      User?             @relation("RequestReviewer", fields: [reviewedById], references: [id])
+  rejectionReason String?
+  expiresAt       DateTime
+
+  @@index([status])
+  @@index([userId])
+  @@index([patientId])
 }
 
 // ─────────────── AUTORIZACIÓN EXPLÍCITA MÉDICO ↔ PACIENTE (R-10) ───────────────

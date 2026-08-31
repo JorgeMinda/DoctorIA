@@ -1500,4 +1500,38 @@ export const searchCIE11 = async (
   return results;
 };
 
+// ---------------------------------------------------------------------------
+// getPendingLinkRequests (Admin): Listar solicitudes pendientes de vinculación
+// ---------------------------------------------------------------------------
+
+export const getPendingLinkRequests = async (_args: void, context: any) => {
+  ensureAdmin(context.user);
+  const requests = await context.entities.PatientLinkRequest.findMany({
+    where: { status: "PENDING" },
+    include: {
+      patient: {
+        select: {
+          id: true,
+          syntheticId: true,
+          firstName: true,
+          lastName: true,
+          birthDate: true,
+          sex: true,
+          tipoDocumento: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          createdAt: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return requests;
+};
+
 

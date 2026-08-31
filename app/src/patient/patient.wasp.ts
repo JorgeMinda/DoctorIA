@@ -6,6 +6,7 @@ import { LinkPatientPage } from "./pages/LinkPatientPage" with { type: "ref" };
 import {
   getPatientAppointments,
   getPatientClinicalHistory,
+  getMyLinkRequestStatus,
 } from "./queries" with { type: "ref" };
 
 export const patientSpec: Spec = [
@@ -14,6 +15,9 @@ export const patientSpec: Spec = [
   }),
   query(getPatientClinicalHistory, {
     entities: ["SyntheticPatient", "ClinicalNote", "Epicrisis", "User"],
+  }),
+  query(getMyLinkRequestStatus, {
+    entities: ["PatientLinkRequest", "SyntheticPatient", "User"],
   }),
 
   route(

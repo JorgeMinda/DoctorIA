@@ -114,3 +114,34 @@ export const getPatientClinicalHistory: any = async (
     epicrises,
   };
 };
+
+export const getMyLinkRequestStatus: any = async (
+  _rawArgs: any,
+  context: any,
+) => {
+  const user = context.user;
+  if (!user) return { status: "NONE" };
+
+  const patient = await context.entities.SyntheticPatient.findFirst({
+    where: { userId: user.id },
+  });
+  if (patient) {
+    return { status: "ACTIVE", patientId: patient.id, syntheticId: patient.syntheticId };
+  }
+
+  const latestRequest = await context.entities.PatientLinkRequest.findFirst({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!latestRequest) {
+    return { status: "NONE" };
+  }
+
+  return {
+    status: latestRequest.status,
+    createdAt: latestRequest.createdAt,
+    rejectionReason: latestRequest.rejectionReason,
+  };
+};
+

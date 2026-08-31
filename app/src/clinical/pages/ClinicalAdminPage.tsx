@@ -15,6 +15,9 @@ import {
   manageMedicoPatientAccess,
   manageSyntheticPatients,
   updateCitaStatus,
+  getPendingLinkRequests,
+  approvePatientLinkRequest,
+  rejectPatientLinkRequest,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
 import {
@@ -35,6 +38,7 @@ import {
   ShieldAlert,
   Stethoscope,
   Trash2,
+  UserCheck,
   UserPlus,
   Users,
   XCircle,
@@ -1930,6 +1934,194 @@ function AdminCitasTab({
 }
 
 // ---------------------------------------------------------------------------
+// Tab: Solicitudes de Vinculación de Pacientes (Fase Producción)
+// ---------------------------------------------------------------------------
+
+function PendingLinkRequestsTab({
+  notice,
+  reportError,
+}: {
+  notice: Notice;
+  reportError: ReportError;
+}) {
+  const { data: requests, isLoading, refetch } = useQuery(getPendingLinkRequests);
+  const approveFn = useAction(approvePatientLinkRequest);
+  const rejectFn = useAction(rejectPatientLinkRequest);
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rejectModalId, setRejectModalId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  const handleApprove = async (req: any) => {
+    const ok = await confirm({
+      title: "¿Aprobar vinculación de paciente?",
+      message: `Se vinculará la cuenta del usuario ${req.user?.email} con la ficha médica de ${req.patient?.firstName} ${req.patient?.lastName} (${req.patient?.syntheticId}). El paciente obtendrá acceso inmediato a su historial y citas.`,
+      confirmLabel: "Aprobar Vinculación",
+      cancelLabel: "Cancelar",
+      variant: "primary",
+    });
+    if (!ok) return;
+
+    setBusyId(req.id);
+    try {
+      await approveFn({ requestId: req.id });
+      notice("Vinculación de paciente aprobada exitosamente");
+      refetch();
+    } catch (err: any) {
+      reportError(err?.message || "No se pudo aprobar la vinculación");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleReject = async (requestId: string) => {
+    setBusyId(requestId);
+    try {
+      await rejectFn({ requestId, reason: rejectionReason.trim() || undefined });
+      notice("Solicitud de vinculación rechazada");
+      setRejectModalId(null);
+      setRejectionReason("");
+      refetch();
+    } catch (err: any) {
+      reportError(err?.message || "No se pudo rechazar la solicitud");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="border-outline-variant">
+        <CardContent className="p-8 text-center text-xs text-muted-foreground">
+          Cargando solicitudes pendientes...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const list = requests || [];
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-outline-variant shadow-sm">
+        <CardHeader className="border-b border-outline-variant/60 bg-surface-container/40 pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <UserCheck className="size-4 text-primary" />
+              Solicitudes de Vinculación de Pacientes ({list.length})
+            </CardTitle>
+            <Badge variant="outline" className="border-primary/40 text-primary text-xs">
+              {list.length} pendientes
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0 divide-y divide-outline-variant/40">
+          {list.length === 0 ? (
+            <div className="p-8 text-center text-xs text-muted-foreground space-y-1">
+              <CheckCircle2 className="size-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="font-medium text-foreground">No hay solicitudes pendientes</p>
+              <p>Todas las solicitudes de vinculación han sido procesadas.</p>
+            </div>
+          ) : (
+            list.map((req: any) => (
+              <div
+                key={req.id}
+                className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-surface-container/20 transition-colors"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-foreground">
+                      {req.patient?.firstName} {req.patient?.lastName}
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono border-outline-variant">
+                      {req.patient?.syntheticId}
+                    </Badge>
+                    <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                      {req.documentType} ({req.paisEmisor || "EC"})
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <span>Usuario solicitante: <strong className="text-foreground">{req.user?.email}</strong></span>
+                    <span>·</span>
+                    <span>Fecha solicitud: {new Date(req.createdAt).toLocaleString("es-ES")}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+                    onClick={() => handleApprove(req)}
+                    disabled={busyId === req.id}
+                  >
+                    <CheckCircle2 className="size-3.5" />
+                    {busyId === req.id ? "Aprobando..." : "Aprobar"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 text-xs"
+                    onClick={() => {
+                      setRejectModalId(req.id);
+                      setRejectionReason("");
+                    }}
+                    disabled={busyId === req.id}
+                  >
+                    <XCircle className="size-3.5" />
+                    Rechazar
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de Motivo de Rechazo */}
+      {rejectModalId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-xl border border-outline-variant bg-surface p-6 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+              <XCircle className="size-5 text-destructive" />
+              Rechazar Solicitud de Vinculación
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Indica el motivo del rechazo (este mensaje será visible para el paciente cuando intente ingresar).
+            </p>
+            <Textarea
+              placeholder="Ej: El número de documento no coincide con el registro del paciente en ventanilla."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="text-xs min-h-[80px]"
+            />
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRejectModalId(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleReject(rejectModalId)}
+                disabled={busyId === rejectModalId}
+              >
+                Confirmar Rechazo
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ConfirmDialog}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Página principal
 // ---------------------------------------------------------------------------
 
@@ -1941,7 +2133,7 @@ export function ClinicalAdminPage() {
   );
 }
 
-type TabKey = "pacientes" | "medicos" | "asignaciones" | "citas";
+type TabKey = "pacientes" | "medicos" | "asignaciones" | "citas" | "solicitudes";
 
 function ClinicalAdminPageContent() {
   const { data: user } = useAuth();
@@ -2007,6 +2199,11 @@ function ClinicalAdminPageContent() {
       icon: <Users className="size-4" />,
     },
     {
+      key: "solicitudes",
+      label: "Solicitudes de Vinculación",
+      icon: <UserCheck className="size-4" />,
+    },
+    {
       key: "medicos",
       label: "Médicos",
       icon: <Stethoscope className="size-4" />,
@@ -2033,7 +2230,7 @@ function ClinicalAdminPageContent() {
           Administración
         </h1>
         <p className="text-sm text-muted-foreground">
-          Gestión de pacientes sintéticos, médicos y asignaciones de acceso.
+          Gestión de pacientes, solicitudes de vinculación, médicos y asignaciones.
         </p>
       </div>
 
@@ -2063,6 +2260,9 @@ function ClinicalAdminPageContent() {
 
       {tab === "pacientes" && (
         <PatientsTab notice={showNotice} reportError={reportError} />
+      )}
+      {tab === "solicitudes" && (
+        <PendingLinkRequestsTab notice={showNotice} reportError={reportError} />
       )}
       {tab === "medicos" && (
         <MedicosTab notice={showNotice} reportError={reportError} />
