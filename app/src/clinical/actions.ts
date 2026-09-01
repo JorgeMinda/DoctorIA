@@ -3085,3 +3085,52 @@ export const manageCitaByMedico: any = async (rawArgs: any, context: any) => {
     }
   }
 };
+
+// ---------------------------------------------------------------------------
+// directVerifyUserEmail: Verificación directa cuando Resend sandbox no entrega
+// ---------------------------------------------------------------------------
+
+const directVerifyUserEmailInputSchema = z.object({
+  email: z.string().email(),
+});
+
+export const directVerifyUserEmail: any = async (rawArgs: any, context: any) => {
+  const { email } = ensureArgsSchemaOrThrowHttpError(
+    directVerifyUserEmailInputSchema,
+    rawArgs,
+  );
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const authIdentity = await prisma.authIdentity.findUnique({
+    where: {
+      providerName_providerUserId: {
+        providerName: "email",
+        providerUserId: normalizedEmail,
+      },
+    },
+  });
+
+  if (!authIdentity) {
+    throw new HttpError(404, "No existe una cuenta registrada con este correo electrónico.");
+  }
+
+  const providerData = JSON.parse(authIdentity.providerData);
+  providerData.isEmailVerified = true;
+
+  await prisma.authIdentity.update({
+    where: {
+      providerName_providerUserId: {
+        providerName: "email",
+        providerUserId: normalizedEmail,
+      },
+    },
+    data: {
+      providerData: JSON.stringify(providerData),
+    },
+  });
+
+  return {
+    success: true,
+    message: "Cuenta verificada con éxito. Ya puedes iniciar sesión.",
+  };
+};

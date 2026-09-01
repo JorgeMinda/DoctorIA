@@ -34,6 +34,7 @@ import {
   requestPatientLink,
   approvePatientLinkRequest,
   rejectPatientLinkRequest,
+  directVerifyUserEmail,
   manageCitaByMedico,
 } from "./actions" with { type: "ref" };
 import {
@@ -258,6 +259,9 @@ export const clinicalSpec: Spec = [
   }),
   action(rejectPatientLinkRequest, {
     entities: ["SyntheticPatient", "User", "PatientLinkRequest", "AuditLog"],
+  }),
+  action(directVerifyUserEmail, {
+    entities: ["User"],
   }),
   query(getPendingLinkRequests, {
     entities: ["PatientLinkRequest", "SyntheticPatient", "User"],

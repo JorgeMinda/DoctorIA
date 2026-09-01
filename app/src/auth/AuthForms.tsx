@@ -32,16 +32,41 @@ function FieldSuccess({ message }: { message?: string | null }) {
   );
 }
 
+import { useAction } from "wasp/client/operations";
+import { directVerifyUserEmail } from "wasp/client/operations";
+
 export function LoginFormES() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyNotice, setVerifyNotice] = useState<string | null>(null);
+
+  const directVerifyFn = useAction(directVerifyUserEmail);
+
+  const handleDirectVerify = async () => {
+    if (!email.trim()) {
+      setError("Ingresa primero tu correo para verificarlo.");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const res: any = await directVerifyFn({ email: email.trim() });
+      setVerifyNotice(res?.message || "Cuenta verificada con éxito. Ya puedes ingresar con tu contraseña.");
+      setError(null);
+    } catch (err: any) {
+      setError(err?.message || "No se pudo verificar la cuenta.");
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setVerifyNotice(null);
     setLoading(true);
     try {
       await login({ email, password });
@@ -83,7 +108,20 @@ export function LoginFormES() {
           onChange={(e) => setPassword(e.target.value)}
         />
       </div>
-      <FieldError message={error} />
+      {error && (
+        <div className="space-y-1.5">
+          <FieldError message={error} />
+          <button
+            type="button"
+            onClick={handleDirectVerify}
+            disabled={verifying}
+            className="text-xs text-primary underline underline-offset-2 hover:text-primary/80 block text-center w-full"
+          >
+            {verifying ? "Activando cuenta..." : "¿No recibiste el correo de activación? Haz clic aquí para activar tu cuenta"}
+          </button>
+        </div>
+      )}
+      {verifyNotice && <FieldSuccess message={verifyNotice} />}
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Ingresando…" : "Iniciar sesión"}
       </Button>
