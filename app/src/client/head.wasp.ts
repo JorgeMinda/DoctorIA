@@ -10,6 +10,7 @@ export const head: App["head"] = [
   "<meta name='description' content='DoctorIA - capa de inteligencia artificial asistiva sobre el historial clínico.' />",
   "<meta name='author' content='DoctorIA' />",
   "<meta name='keywords' content='salud, clinica, inteligencia artificial, notas medicas' />",
+  "<meta name='google' content='notranslate' />",
 
   "<meta property='og:type' content='website' />",
   "<meta property='og:title' content='DoctorIA' />",

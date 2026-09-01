@@ -526,26 +526,22 @@ export function ClinicalPatientDetailPage() {
         />
       )}
 
-      {showNewCita && (
-        <NewAppointmentModal
-          open={showNewCita}
-          onOpenChange={setShowNewCita}
-          defaultPatientId={patient.id}
-          onDone={() => refetch()}
-        />
-      )}
+      <NewAppointmentModal
+        open={Boolean(showNewCita)}
+        onOpenChange={setShowNewCita}
+        defaultPatientId={patient.id}
+        onDone={() => refetch()}
+      />
 
-      {editingCita && (
-        <EditAppointmentModal
-          open={!!editingCita}
-          onOpenChange={(v) => !v && setEditingCita(null)}
-          cita={editingCita}
-          onDone={() => {
-            setEditingCita(null);
-            refetch();
-          }}
-        />
-      )}
+      <EditAppointmentModal
+        open={Boolean(editingCita)}
+        onOpenChange={(v) => !v && setEditingCita(null)}
+        cita={editingCita}
+        onDone={() => {
+          setEditingCita(null);
+          refetch();
+        }}
+      />
 
       {printEpicrisisId && (
         <EpicrisisPrintView

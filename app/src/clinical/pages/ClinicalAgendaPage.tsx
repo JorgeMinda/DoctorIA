@@ -517,22 +517,18 @@ export function ClinicalAgendaPage() {
         </>
         )}
 
-        {showNewCita && (
-          <NewAppointmentModal
-            open={showNewCita}
-            onOpenChange={setShowNewCita}
-            onDone={() => refetch()}
-          />
-        )}
+        <NewAppointmentModal
+          open={Boolean(showNewCita)}
+          onOpenChange={setShowNewCita}
+          onDone={() => refetch()}
+        />
 
-        {editingCita && (
-          <EditAppointmentModal
-            open={Boolean(editingCita)}
-            onOpenChange={(v) => !v && setEditingCita(null)}
-            cita={editingCita}
-            onDone={() => refetch()}
-          />
-        )}
+        <EditAppointmentModal
+          open={Boolean(editingCita)}
+          onOpenChange={(v) => !v && setEditingCita(null)}
+          cita={editingCita}
+          onDone={() => refetch()}
+        />
 
         {ConfirmDialog}
       </div>
