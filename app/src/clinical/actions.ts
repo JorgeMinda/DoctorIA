@@ -1881,8 +1881,8 @@ export const manageCita: ManageCita<ManageCitaInput, Cita> = async (
   rawArgs,
   context,
 ) => {
-  // Secretaria administra la agenda junto al admin (crear/reprogramar/cancelar).
-  const user = ensureRole(context.user, "admin", "secretaria");
+  // Administradores, médicos y secretarias pueden crear/reprogramar/cancelar citas.
+  const user = ensureRole(context.user, "admin", "medico", "secretaria");
 
   const { action, citaId, data } = ensureArgsSchemaOrThrowHttpError(
     manageCitaInputSchema,
