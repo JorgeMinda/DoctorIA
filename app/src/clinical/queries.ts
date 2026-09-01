@@ -379,7 +379,7 @@ export const getPreClinicalRecord: GetPreClinicalRecord<
   GetPreClinicalRecordInput,
   any
 > = async (rawArgs, context) => {
-  ensureSecretariaOrMedico(context.user);
+  ensureRole(context.user, "admin", "medico", "secretaria");
 
   const { citaId } = ensureArgsSchemaOrThrowHttpError(
     getPreClinicalRecordInputSchema,

@@ -52,11 +52,13 @@ export function EditAppointmentModal({
     { enabled: open && Boolean(cita) },
   );
 
+  const hasSlotParams = Boolean(open && Boolean(cita) && medicoId && date);
   const { data: slots, isLoading: loadingSlots } = useQuery(
     getAvailableSlots,
-    medicoId && date
+    hasSlotParams
       ? { medicoId, date, durationMinutes: DURATION_MINUTES }
-      : undefined,
+      : ({} as any),
+    { enabled: hasSlotParams },
   );
 
   const manageCitaFn = useAction(manageCita);

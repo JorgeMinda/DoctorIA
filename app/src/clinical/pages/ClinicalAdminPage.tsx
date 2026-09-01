@@ -1536,11 +1536,13 @@ function AdminScheduleForm({
   // Duración estándar fijada a 30 minutos
   const DURATION_MINUTES = 30;
 
+  const hasSlotParams = Boolean(medicoId && date);
   const { data: slotsData, isLoading: loadingSlots } = useQuery(
     getAvailableSlots,
-    medicoId && date
+    hasSlotParams
       ? { medicoId, date, durationMinutes: DURATION_MINUTES }
-      : undefined,
+      : ({} as any),
+    { enabled: hasSlotParams },
   );
 
   const [time, setTime] = useState("");

@@ -119,14 +119,23 @@ export function PatientQuickActions({
         </CardTitle>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-muted-foreground hidden sm:inline-block mono-label">
-            {orbState === "LISTENING" ? "Escuchando dictado..." : orbState === "PROCESSING" ? "Procesando..." : "Asistente de Voz"}
+            {orbState === "LISTENING" ? "Escuchando dictado..." : orbState === "PROCESSING" ? "Procesando..." : "Dictado por Voz"}
           </span>
-          <VoiceOrb
-            state={orbState}
-            onActivate={toggleVoiceDictation}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={toggleVoiceDictation}
             disabled={creating}
-            className="size-9 cursor-pointer transition-transform hover:scale-110"
-          />
+            className={`size-8 p-0 rounded-full border transition-all ${
+              orbState === "LISTENING"
+                ? "border-red-500 bg-red-500/20 text-red-400 animate-pulse ring-2 ring-red-500/30"
+                : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105"
+            }`}
+            title={orbState === "LISTENING" ? "Detener dictado por voz" : "Iniciar dictado por voz"}
+          >
+            <Mic className="size-4" />
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

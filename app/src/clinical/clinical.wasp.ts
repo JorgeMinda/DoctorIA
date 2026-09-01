@@ -234,7 +234,7 @@ export const clinicalSpec: Spec = [
     ],
   }),
   action(updateCitaStatus, {
-    entities: ["Cita", "AuditLog"],
+    entities: ["Cita", "User", "AuditLog"],
   }),
   action(createNoteFromVoice, {
     entities: [
