@@ -2013,10 +2013,6 @@ function PendingLinkRequestsTab({
   const handleCreateAndApprove = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPatientModalReq) return;
-    if (!newPatientData.firstName.trim() || !newPatientData.lastName.trim()) {
-      reportError("Ingresa el nombre y apellido del paciente.");
-      return;
-    }
 
     setBusyId(newPatientModalReq.id);
     try {
@@ -2024,8 +2020,8 @@ function PendingLinkRequestsTab({
         requestId: newPatientModalReq.id,
         createNewPatient: true,
         newPatientData: {
-          firstName: newPatientData.firstName.trim(),
-          lastName: newPatientData.lastName.trim(),
+          firstName: newPatientData.firstName.trim() || undefined,
+          lastName: newPatientData.lastName.trim() || undefined,
           birthDate: newPatientData.birthDate,
           sex: newPatientData.sex,
           allergies: newPatientData.allergies.trim() || undefined,
@@ -2158,7 +2154,7 @@ function PendingLinkRequestsTab({
                       onClick={() => {
                         setNewPatientModalReq(req);
                         setNewPatientData({
-                          firstName: req.user?.username || "",
+                          firstName: "",
                           lastName: "",
                           birthDate: "1990-01-01",
                           sex: "M",
@@ -2231,9 +2227,8 @@ function PendingLinkRequestsTab({
             <form onSubmit={handleCreateAndApprove} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Nombres *</label>
+                  <label className="text-xs font-medium text-foreground">Nombres (opcional)</label>
                   <Input
-                    required
                     placeholder="Ej: Milton Alexander"
                     value={newPatientData.firstName}
                     onChange={(e) => setNewPatientData({ ...newPatientData, firstName: e.target.value })}
@@ -2241,9 +2236,8 @@ function PendingLinkRequestsTab({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Apellidos *</label>
+                  <label className="text-xs font-medium text-foreground">Apellidos (opcional)</label>
                   <Input
-                    required
                     placeholder="Ej: Curimilma S."
                     value={newPatientData.lastName}
                     onChange={(e) => setNewPatientData({ ...newPatientData, lastName: e.target.value })}

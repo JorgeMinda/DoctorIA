@@ -2810,8 +2810,8 @@ const approvePatientLinkInputSchema = z.object({
   createNewPatient: z.boolean().optional(),
   newPatientData: z
     .object({
-      firstName: z.string().min(1, "El nombre es obligatorio"),
-      lastName: z.string().min(1, "El apellido es obligatorio"),
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
       birthDate: z.string().optional(),
       sex: z.enum(["M", "F", "OTHER"]).default("M"),
       medicalHistory: z.string().optional(),
@@ -2868,11 +2868,14 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
       ? new Date(newPatientData.birthDate)
       : new Date("1990-01-01");
 
+    const fName = newPatientData.firstName?.trim() || "Paciente";
+    const lName = newPatientData.lastName?.trim() || syntheticId;
+
     const createdPatient = await context.entities.SyntheticPatient.create({
       data: {
         syntheticId,
-        firstName: newPatientData.firstName.trim(),
-        lastName: newPatientData.lastName.trim(),
+        firstName: fName,
+        lastName: lName,
         birthDate: bDate,
         sex: newPatientData.sex,
         medicalHistory: newPatientData.medicalHistory?.trim() || null,
