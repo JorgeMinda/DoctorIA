@@ -10,6 +10,8 @@ import {
 } from "wasp/client/auth";
 import { Button } from "../client/components/ui/button";
 import { Input } from "../client/components/ui/input";
+import { useAction } from "wasp/client/operations";
+import { directVerifyUserEmail, requestPatientLink } from "wasp/client/operations";
 
 const fieldClass =
   "bg-surface/60 border-outline-variant text-foreground placeholder:text-muted-foreground focus-visible:ring-primary";
@@ -31,9 +33,6 @@ function FieldSuccess({ message }: { message?: string | null }) {
     </p>
   );
 }
-
-import { useAction } from "wasp/client/operations";
-import { directVerifyUserEmail } from "wasp/client/operations";
 
 export function LoginFormES() {
   const navigate = useNavigate();
@@ -148,8 +147,6 @@ export function LoginFormES() {
     </form>
   );
 }
-
-import { directVerifyUserEmail, requestPatientLink } from "wasp/client/operations";
 
 export function SignupFormES() {
   const navigate = useNavigate();
