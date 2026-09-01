@@ -23,12 +23,16 @@ import { useAuth } from "wasp/client/auth";
 import {
   Activity,
   AlertCircle,
+  Calendar,
   CalendarClock,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Clock,
   Edit3,
+  ExternalLink,
   KeyRound,
   Pencil,
   PhoneMissed,
@@ -1723,6 +1727,18 @@ function AdminScheduleForm({
   );
 }
 
+function getGoogleCalendarUrl(cita: any) {
+  const start = new Date(cita.scheduledAt);
+  const end = new Date(start.getTime() + (cita.durationMinutes || 30) * 60 * 1000);
+  const formatGDate = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, "");
+  const title = encodeURIComponent(`Cita Médica: ${cita.patient?.firstName} ${cita.patient?.lastName} (${cita.patient?.syntheticId})`);
+  const details = encodeURIComponent(
+    `Cita Médica DoctorIA\nPaciente: ${cita.patient?.firstName} ${cita.patient?.lastName} (${cita.patient?.syntheticId})\nMédico: ${cita.medico?.fullName || cita.medico?.email}\nMotivo: ${cita.reason || "Consulta médica general"}\nEstado: ${cita.status}`
+  );
+  const location = encodeURIComponent("Consultorio DoctorIA");
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${formatGDate(start)}/${formatGDate(end)}&details=${details}&location=${location}`;
+}
+
 function AdminCitasTab({
   notice,
   reportError,
@@ -1736,6 +1752,10 @@ function AdminCitasTab({
   const { confirm, ConfirmDialog } = useConfirm();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingCita, setEditingCita] = useState<any | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
+  const [calDate, setCalDate] = useState<Date>(new Date());
+  const [selectedDayCitas, setSelectedDayCitas] = useState<any[] | null>(null);
+  const [selectedDayLabel, setSelectedDayLabel] = useState<string | null>(null);
 
   const runTransition = async (
     citaId: string,
@@ -1775,148 +1795,389 @@ function AdminCitasTab({
     }
   };
 
-  const sorted = [...(agenda?.citas ?? [])].sort(
+  const allCitas = agenda?.citas ?? [];
+  const sorted = [...allCitas].sort(
     (a, b) =>
       new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime(),
   );
+
+  // Generador de cuadrícula del mes
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1);
+  const lastDayOfMonth = new Date(year, month + 1, 0);
+  const daysInMonth = lastDayOfMonth.getDate();
+  const startingDayOfWeek = (firstDayOfMonth.getDay() + 6) % 7; // Lunes = 0
+
+  const monthNames = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
+
+  const prevMonth = () => setCalDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCalDate(new Date(year, month + 1, 1));
+  const todayMonth = () => setCalDate(new Date());
+
+  const getCitasForDay = (day: number) => {
+    return allCitas.filter((c: any) => {
+      const d = new Date(c.scheduledAt);
+      return (
+        d.getFullYear() === year &&
+        d.getMonth() === month &&
+        d.getDate() === day
+      );
+    });
+  };
 
   return (
     <div className="space-y-4">
       <AdminScheduleForm notice={notice} reportError={reportError} />
 
       <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md">
-        <div className="flex items-center justify-between border-b border-outline-variant/50 bg-surface-container/60 px-5 py-3">
-          <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
-            Citas de todos los médicos
-          </p>
-          <Badge variant="outline" className="mono-label">
-            {agenda ? `${sorted.length} cita(s)` : "—"}
-          </Badge>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-outline-variant/50 bg-surface-container/60 px-5 py-3 gap-3">
+          <div className="flex items-center gap-3">
+            <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
+              Agenda Médica · {agenda ? `${sorted.length} cita(s)` : "—"}
+            </p>
+            <div className="flex items-center rounded-lg border border-outline-variant bg-surface p-0.5 text-xs">
+              <button
+                type="button"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all ${
+                  viewMode === "calendar"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setViewMode("calendar")}
+              >
+                <Calendar className="size-3.5" />
+                Calendario
+              </button>
+              <button
+                type="button"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all ${
+                  viewMode === "list"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setViewMode("list")}
+              >
+                <ClipboardList className="size-3.5" />
+                Lista
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <a
+              href="https://calendar.google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shadow-sm"
+            >
+              <ExternalLink className="size-3.5" />
+              Abrir Google Calendar
+            </a>
+          </div>
         </div>
 
-        <div className="divide-y divide-outline-variant/40">
-          {isLoading && (
-            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-              Cargando citas…
+        {viewMode === "calendar" ? (
+          <div className="p-4 space-y-4">
+            {/* Header del Calendario */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-foreground capitalize">
+                  {monthNames[month]} {year}
+                </h3>
+                <Button size="sm" variant="ghost" onClick={todayMonth} className="text-xs h-7 px-2">
+                  Hoy
+                </Button>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="outline" onClick={prevMonth} className="size-7 p-0">
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button size="sm" variant="outline" onClick={nextMonth} className="size-7 p-0">
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
             </div>
-          )}
-          {agenda && sorted.length === 0 && (
-            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-              Sin citas en el período.
-            </div>
-          )}
-          {agenda &&
-            sorted.length > 0 &&
-            sorted.map((cita: any) => (
-              <div
-                key={cita.id}
-                className="flex flex-wrap items-center gap-4 px-5 py-4"
-              >
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
-                  <CalendarDays className="size-4 text-primary" />
+
+            {/* Cuadrícula de Días */}
+            <div className="grid grid-cols-7 gap-1 text-center text-xs">
+              {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
+                <div key={d} className="py-1 font-semibold text-muted-foreground">
+                  {d}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">
-                      {cita.medico.fullName ?? cita.medico.email}
-                    </span>
-                    <span className="text-xs text-muted-foreground">→</span>
-                    <span className="text-sm font-medium text-foreground">
-                      {cita.patient.firstName} {cita.patient.lastName}
-                    </span>
-                    <Badge variant="outline" className="mono-label">
-                      {cita.patient.syntheticId}
-                    </Badge>
-                    <AdminCitaBadge status={cita.status} />
-                  </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="size-3.5" />
-                      {new Date(cita.scheduledAt).toLocaleString()}
-                    </span>
-                    <span>· {cita.durationMinutes} min</span>
-                    {cita.reason && <span>· {cita.reason}</span>}
-                  </div>
-                </div>
-                <div className="flex shrink-0 flex-wrap gap-1.5">
-                  {cita.status === "SCHEDULED" && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === cita.id}
-                        onClick={() => setEditingCita(cita)}
-                        className="gap-1 text-xs"
-                      >
-                        <Edit3 className="size-3.5" />
-                        Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === cita.id}
-                        onClick={() =>
-                          runTransition(cita.id, "IN_PROGRESS", "Cita iniciada")
-                        }
-                      >
-                        <Activity className="size-3.5" />
-                        Iniciar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === cita.id}
-                        onClick={() =>
-                          runTransition(cita.id, "NO_SHOW", "No asistió")
-                        }
-                      >
-                        <PhoneMissed className="size-3.5" />
-                        No asistió
-                      </Button>
-                    </>
-                  )}
-                  {cita.status === "IN_PROGRESS" && (
-                    <Button
-                      size="sm"
-                      disabled={busyId === cita.id}
-                      onClick={() =>
-                        runTransition(cita.id, "COMPLETED", "Cita completada")
+              ))}
+
+              {/* Días vacíos iniciales */}
+              {Array.from({ length: startingDayOfWeek }).map((_, i) => (
+                <div key={`empty-${i}`} className="min-h-[75px] rounded-md border border-transparent p-1 bg-surface-container/10 opacity-30" />
+              ))}
+
+              {/* Días del mes */}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const dayNum = i + 1;
+                const dayCitas = getCitasForDay(dayNum);
+                const isToday =
+                  new Date().getDate() === dayNum &&
+                  new Date().getMonth() === month &&
+                  new Date().getFullYear() === year;
+
+                return (
+                  <div
+                    key={`day-${dayNum}`}
+                    onClick={() => {
+                      if (dayCitas.length > 0) {
+                        setSelectedDayCitas(dayCitas);
+                        setSelectedDayLabel(`${dayNum} de ${monthNames[month]} ${year}`);
                       }
-                    >
-                      <CheckCircle2 className="size-3.5" />
-                      Completar
-                    </Button>
-                  )}
-                  {(cita.status === "SCHEDULED" ||
-                    cita.status === "IN_PROGRESS") && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === cita.id}
-                        onClick={() =>
-                          runTransition(cita.id, "CANCELLED", "Cita cancelada")
-                        }
-                      >
-                        <XCircle className="size-3.5" />
-                        Cancelar
-                      </Button>
-                    )}
-                  {cita.status !== "COMPLETED" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      disabled={busyId === cita.id}
-                      onClick={() => handleDelete(cita)}
-                    >
-                      <Trash2 className="size-3.5" />
-                      Eliminar
-                    </Button>
-                  )}
+                    }}
+                    className={`min-h-[75px] rounded-md border p-1 text-left transition-all flex flex-col justify-between ${
+                      dayCitas.length > 0
+                        ? "cursor-pointer hover:border-primary/60 hover:bg-primary/5 bg-surface"
+                        : "bg-surface/30"
+                    } ${
+                      isToday
+                        ? "border-primary font-bold shadow-sm bg-primary/10"
+                        : "border-outline-variant/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs ${isToday ? "text-primary font-bold" : "text-muted-foreground"}`}>
+                        {dayNum}
+                      </span>
+                      {dayCitas.length > 0 && (
+                        <span className="text-[10px] rounded-full bg-primary/20 text-primary px-1.5 py-0.2 font-mono">
+                          {dayCitas.length}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-0.5 mt-1 overflow-hidden">
+                      {dayCitas.slice(0, 2).map((c: any) => (
+                        <div
+                          key={c.id}
+                          className="truncate rounded px-1 py-0.5 text-[9px] font-medium bg-primary/15 text-primary border border-primary/20"
+                          title={`${new Date(c.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${c.patient.firstName} ${c.patient.lastName}`}
+                        >
+                          {new Date(c.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {c.patient.firstName}
+                        </div>
+                      ))}
+                      {dayCitas.length > 2 && (
+                        <div className="text-[9px] text-muted-foreground text-center">
+                          +{dayCitas.length - 2} más
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Detalle de Citas del Día Seleccionado en el Calendario */}
+            {selectedDayCitas && (
+              <div className="rounded-xl border border-primary/30 bg-surface p-4 space-y-3 animate-in fade-in shadow-lg">
+                <div className="flex items-center justify-between border-b border-outline-variant/60 pb-2">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <CalendarDays className="size-4 text-primary" />
+                    Citas del {selectedDayLabel} ({selectedDayCitas.length})
+                  </h4>
+                  <Button size="sm" variant="ghost" className="size-7 p-0" onClick={() => setSelectedDayCitas(null)}>
+                    <XCircle className="size-4" />
+                  </Button>
+                </div>
+
+                <div className="divide-y divide-outline-variant/40">
+                  {selectedDayCitas.map((cita: any) => (
+                    <div key={cita.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-foreground">
+                            {new Date(cita.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className="text-xs font-medium text-foreground">
+                            {cita.patient.firstName} {cita.patient.lastName} ({cita.patient.syntheticId})
+                          </span>
+                          <AdminCitaBadge status={cita.status} />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Médico: {cita.medico.fullName ?? cita.medico.email} · {cita.durationMinutes} min
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <a
+                          href={getGoogleCalendarUrl(cita)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs border border-primary/40 bg-primary/10 px-2 py-1 rounded-md text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          <ExternalLink className="size-3" />
+                          Google Calendar
+                        </a>
+                        {cita.status === "SCHEDULED" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-7"
+                            onClick={() => runTransition(cita.id, "IN_PROGRESS", "Cita iniciada")}
+                          >
+                            Iniciar
+                          </Button>
+                        )}
+                        {cita.status === "IN_PROGRESS" && (
+                          <Button
+                            size="sm"
+                            className="text-xs h-7"
+                            onClick={() => runTransition(cita.id, "COMPLETED", "Cita completada")}
+                          >
+                            Completar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-outline-variant/40">
+            {isLoading && (
+              <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+                Cargando citas…
+              </div>
+            )}
+            {agenda && sorted.length === 0 && (
+              <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+                Sin citas en el período.
+              </div>
+            )}
+            {agenda &&
+              sorted.length > 0 &&
+              sorted.map((cita: any) => (
+                <div
+                  key={cita.id}
+                  className="flex flex-wrap items-center gap-4 px-5 py-4"
+                >
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+                    <CalendarDays className="size-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        {cita.medico.fullName ?? cita.medico.email}
+                      </span>
+                      <span className="text-xs text-muted-foreground">→</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {cita.patient.firstName} {cita.patient.lastName}
+                      </span>
+                      <Badge variant="outline" className="mono-label">
+                        {cita.patient.syntheticId}
+                      </Badge>
+                      <AdminCitaBadge status={cita.status} />
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="size-3.5" />
+                        {new Date(cita.scheduledAt).toLocaleString()}
+                      </span>
+                      <span>· {cita.durationMinutes} min</span>
+                      {cita.reason && <span>· {cita.reason}</span>}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-1.5 items-center">
+                    <a
+                      href={getGoogleCalendarUrl(cita)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs border border-primary/40 bg-primary/10 px-2.5 py-1.5 rounded-md text-primary hover:bg-primary/20 transition-colors shadow-sm font-medium"
+                      title="Añadir a Google Calendar"
+                    >
+                      <ExternalLink className="size-3.5" />
+                      Google Calendar
+                    </a>
+
+                    {cita.status === "SCHEDULED" && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === cita.id}
+                          onClick={() => setEditingCita(cita)}
+                          className="gap-1 text-xs"
+                        >
+                          <Edit3 className="size-3.5" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === cita.id}
+                          onClick={() =>
+                            runTransition(cita.id, "IN_PROGRESS", "Cita iniciada")
+                          }
+                        >
+                          <Activity className="size-3.5" />
+                          Iniciar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === cita.id}
+                          onClick={() =>
+                            runTransition(cita.id, "NO_SHOW", "No asistió")
+                          }
+                        >
+                          <PhoneMissed className="size-3.5" />
+                          No asistió
+                        </Button>
+                      </>
+                    )}
+                    {cita.status === "IN_PROGRESS" && (
+                      <Button
+                        size="sm"
+                        disabled={busyId === cita.id}
+                        onClick={() =>
+                          runTransition(cita.id, "COMPLETED", "Cita completada")
+                        }
+                      >
+                        <CheckCircle2 className="size-3.5" />
+                        Completar
+                      </Button>
+                    )}
+                    {(cita.status === "SCHEDULED" ||
+                      cita.status === "IN_PROGRESS") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === cita.id}
+                          onClick={() =>
+                            runTransition(cita.id, "CANCELLED", "Cita cancelada")
+                          }
+                        >
+                          <XCircle className="size-3.5" />
+                          Cancelar
+                        </Button>
+                      )}
+                    {cita.status !== "COMPLETED" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={busyId === cita.id}
+                        onClick={() => handleDelete(cita)}
+                      >
+                        <Trash2 className="size-3.5" />
+                        Eliminar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
       </Card>
 
       {editingCita && (

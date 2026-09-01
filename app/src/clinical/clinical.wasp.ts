@@ -255,7 +255,7 @@ export const clinicalSpec: Spec = [
     entities: ["SyntheticPatient", "User", "PatientLinkRequest", "AuditLog"],
   }),
   action(approvePatientLinkRequest, {
-    entities: ["SyntheticPatient", "User", "PatientLinkRequest", "AuditLog"],
+    entities: ["SyntheticPatient", "User", "PatientLinkRequest", "AuditLog", "MedicoPatientAccess"],
   }),
   action(rejectPatientLinkRequest, {
     entities: ["SyntheticPatient", "User", "PatientLinkRequest", "AuditLog"],
