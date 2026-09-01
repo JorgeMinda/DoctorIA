@@ -2167,10 +2167,16 @@ export const updateCitaStatus: UpdateCitaStatus<
     throw new HttpError(404, "Cita no encontrada");
   }
 
-  const isOwnerMedico =
-    role === "medico" && cita.medicoId === authUser.id;
-  if (!isOwnerMedico && role === "medico") {
-    throw new HttpError(403, "Solo puede operar sobre sus propias citas");
+  if (role === "medico" && cita.medicoId !== authUser.id) {
+    const access = await context.entities.MedicoPatientAccess.findFirst({
+      where: { medicoId: authUser.id, patientId: cita.patientId },
+    });
+    if (!access) {
+      throw new HttpError(
+        403,
+        "Solo puede operar sobre sus propias citas o de pacientes asignados",
+      );
+    }
   }
 
   // Matriz por rol: la secretaria solo maneja estados administrativos.
