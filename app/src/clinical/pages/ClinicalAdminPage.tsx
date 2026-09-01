@@ -2358,7 +2358,7 @@ function PendingLinkRequestsTab({
         </div>
       )}
 
-      <ConfirmDialog />
+      {ConfirmDialog}
     </div>
   );
 }
