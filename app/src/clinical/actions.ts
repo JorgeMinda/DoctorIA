@@ -2847,6 +2847,12 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
     throw new HttpError(410, "La solicitud ha expirado. El paciente debe realizar una nueva solicitud.");
   }
 
+  // 1. Desvincular preventivamente al usuario de cualquier otra ficha previa para respetar @unique en userId
+  await context.entities.SyntheticPatient.updateMany({
+    where: { userId: request.userId },
+    data: { userId: null },
+  });
+
   // Opción 1: Crear una NUEVA ficha clínica para este paciente
   if (createNewPatient && newPatientData) {
     const existingPatients = await context.entities.SyntheticPatient.findMany({
@@ -2864,6 +2870,14 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
       ? calculateDocumentHash(request.documentType as any, request.requestedDocument, request.paisEmisor || "EC")
       : null;
 
+    // Si ya existe un paciente con ese documentHash, lo limpiamos para no violar @unique
+    if (docHash) {
+      await context.entities.SyntheticPatient.updateMany({
+        where: { documentHash: docHash },
+        data: { documentHash: null, documento: null },
+      });
+    }
+
     const bDate = newPatientData.birthDate
       ? new Date(newPatientData.birthDate)
       : new Date("1990-01-01");
@@ -2877,7 +2891,7 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
         firstName: fName,
         lastName: lName,
         birthDate: bDate,
-        sex: newPatientData.sex,
+        sex: newPatientData.sex || "M",
         medicalHistory: newPatientData.medicalHistory?.trim() || null,
         allergies: newPatientData.allergies?.trim() || null,
         documento: request.requestedDocument || null,
@@ -2889,19 +2903,24 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
       },
     });
 
-    // Otorgar acceso a los médicos activos
+    // Otorgar acceso a los médicos activos de forma segura
     const allMedicos = await context.entities.User.findMany({
       where: { isMedico: true, isActive: true },
       select: { id: true },
     });
     for (const medico of allMedicos) {
-      await context.entities.MedicoPatientAccess.create({
-        data: {
-          medicoId: medico.id,
-          patientId: createdPatient.id,
-          grantedById: adminUser.id,
-        },
+      const exists = await context.entities.MedicoPatientAccess.findFirst({
+        where: { medicoId: medico.id, patientId: createdPatient.id },
       });
+      if (!exists) {
+        await context.entities.MedicoPatientAccess.create({
+          data: {
+            medicoId: medico.id,
+            patientId: createdPatient.id,
+            grantedById: adminUser.id,
+          },
+        });
+      }
     }
 
     // Activar usuario como paciente
@@ -2963,6 +2982,14 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
     ? calculateDocumentHash(request.documentType as any, request.requestedDocument, request.paisEmisor || "EC")
     : targetPatient.documentHash;
 
+  // Si ya existía otro paciente con ese documentHash que no sea el target, liberarlo
+  if (docHash) {
+    await context.entities.SyntheticPatient.updateMany({
+      where: { documentHash: docHash, id: { not: targetPatientId } },
+      data: { documentHash: null },
+    });
+  }
+
   // 1. Vincular paciente con usuario y actualizar documento
   await context.entities.SyntheticPatient.update({
     where: { id: targetPatientId },
@@ -3020,11 +3047,12 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
     metadata: {
       action: "PATIENT_LINK_APPROVED",
       requestId,
+      syntheticId: targetPatient.syntheticId,
       targetUserId: request.userId,
     },
   });
 
-  return { ok: true };
+  return { ok: true, syntheticId: targetPatient.syntheticId };
 };
 
 // ---------------------------------------------------------------------------
