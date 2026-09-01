@@ -2,6 +2,7 @@
 // contracts/clinical-operations.md Â§2, Â§3, Â§5.
 
 import { HttpError, prisma } from "wasp/server";
+import { hashPassword } from "@wasp.sh/lib-auth/node";
 import {
   createProviderId,
   createUser,
@@ -3132,5 +3133,134 @@ export const directVerifyUserEmail: any = async (rawArgs: any, context: any) => 
   return {
     success: true,
     message: "Cuenta verificada con éxito. Ya puedes iniciar sesión.",
+  };
+};
+
+// ---------------------------------------------------------------------------
+// registerPatientAndRequestLink: Registro directo de paciente + solicitud de vinculación
+// ---------------------------------------------------------------------------
+
+const registerPatientAndRequestLinkInputSchema = z.object({
+  email: z.string().email("Correo electrónico inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  tipoDocumento: z.enum(["CEDULA", "PASAPORTE", "OTRO"]).default("CEDULA"),
+  documento: z.string().min(1, "Debe ingresar el número de documento"),
+  paisEmisor: z.string().default("EC"),
+});
+
+export const registerPatientAndRequestLink: any = async (rawArgs: any, context: any) => {
+  const args = ensureArgsSchemaOrThrowHttpError(
+    registerPatientAndRequestLinkInputSchema,
+    rawArgs,
+  );
+
+  // 1. Validar formato de documento
+  const valResult = validateDocument(args.tipoDocumento as any, args.documento);
+  if (!valResult.isValid) {
+    throw new HttpError(400, valResult.error || "El formato del documento no es válido");
+  }
+
+  const normalizedDoc = valResult.normalizedDocument;
+  const docHash = calculateDocumentHash(args.tipoDocumento as any, normalizedDoc, args.paisEmisor);
+  const normalizedEmail = args.email.trim().toLowerCase();
+
+  // 2. Buscar paciente en base de datos
+  const patient = await context.entities.SyntheticPatient.findFirst({
+    where: {
+      OR: [
+        { documentHash: docHash },
+        { syntheticId: normalizedDoc.toUpperCase() },
+        { documento: normalizedDoc },
+      ],
+    },
+  });
+
+  // 3. Crear o actualizar usuario
+  const user = await prisma.user.upsert({
+    where: { email: normalizedEmail },
+    update: {
+      isActive: true,
+      isPaciente: false,
+    },
+    create: {
+      email: normalizedEmail,
+      username: normalizedEmail.split("@")[0],
+      isPaciente: false,
+      isActive: true,
+    },
+  });
+
+  // 4. Crear Auth & AuthIdentity verificado
+  const hashedPassword = await hashPassword(args.password);
+  const existingAuth = await prisma.auth.findUnique({ where: { userId: user.id } });
+  const authId = existingAuth?.id ?? crypto.randomUUID();
+  if (!existingAuth) {
+    await prisma.auth.create({ data: { id: authId, userId: user.id } });
+  }
+
+  await prisma.authIdentity.upsert({
+    where: { providerName_providerUserId: { providerName: "email", providerUserId: normalizedEmail } },
+    update: {
+      providerData: JSON.stringify({
+        hashedPassword,
+        isEmailVerified: true,
+        emailVerificationSentAt: null,
+        passwordResetSentAt: null,
+      }),
+    },
+    create: {
+      providerName: "email",
+      providerUserId: normalizedEmail,
+      providerData: JSON.stringify({
+        hashedPassword,
+        isEmailVerified: true,
+        emailVerificationSentAt: null,
+        passwordResetSentAt: null,
+      }),
+      authId,
+    },
+  });
+
+  // 5. Si existe ficha de paciente y no está vinculada, crear solicitud PENDING
+  if (patient && !patient.userId) {
+    const existingPending = await context.entities.PatientLinkRequest.findFirst({
+      where: {
+        userId: user.id,
+        patientId: patient.id,
+        status: "PENDING",
+      },
+    });
+
+    if (!existingPending) {
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await context.entities.PatientLinkRequest.create({
+        data: {
+          userId: user.id,
+          patientId: patient.id,
+          documentType: args.tipoDocumento as any,
+          paisEmisor: args.paisEmisor,
+          status: "PENDING",
+          expiresAt,
+        },
+      });
+
+      await createAuditEntry({
+        userId: user.id,
+        action: "ADMIN_MANAGE_DATA",
+        resourceType: "PATIENT",
+        resourceId: patient.id,
+        patientId: patient.id,
+        metadata: {
+          action: "PATIENT_LINK_REQUESTED",
+          documentType: args.tipoDocumento,
+          paisEmisor: args.paisEmisor,
+        },
+      });
+    }
+  }
+
+  return {
+    success: true,
+    message: "Cuenta creada y solicitud de vinculación enviada al consultorio.",
   };
 };

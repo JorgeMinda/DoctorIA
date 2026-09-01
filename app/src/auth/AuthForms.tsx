@@ -149,13 +149,19 @@ export function LoginFormES() {
   );
 }
 
+import { registerPatientAndRequestLink } from "wasp/client/operations";
+
 export function SignupFormES() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [tipoDocumento, setTipoDocumento] = useState<"CEDULA" | "PASAPORTE" | "OTRO">("CEDULA");
+  const [documento, setDocumento] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const registerPatientFn = useAction(registerPatientAndRequestLink);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -163,20 +169,27 @@ export function SignupFormES() {
     setSuccess(null);
     setLoading(true);
     try {
-      const res = await signup({
-        email,
+      if (!documento.trim()) {
+        setError("Ingresa tu número de documento de identidad.");
+        setLoading(false);
+        return;
+      }
+
+      await registerPatientFn({
+        email: email.trim(),
         password,
-        username: email.split("@")[0],
-        isAdmin: false,
+        tipoDocumento,
+        documento: documento.trim(),
+        paisEmisor: "EC",
       });
-      if (res.success) {
-        setSuccess(
-          "¡Cuenta creada con éxito! Se ha enviado un correo de verificación. Revisa tu bandeja de entrada (o carpeta de Spam) y haz clic en el enlace para activar tu cuenta.",
-        );
-        setEmail("");
-        setPassword("");
-      } else {
-        setError("No se pudo completar el registro. Intenta de nuevo.");
+
+      // Login inmediato y redirección a /patient/link
+      try {
+        await login({ email: email.trim(), password });
+        navigate("/patient/link", { replace: true });
+      } catch {
+        setSuccess("Cuenta creada exitosamente. Redirigiendo...");
+        setTimeout(() => navigate("/patient/link", { replace: true }), 600);
       }
     } catch (err: any) {
       setError(err?.message ?? "No se pudo completar el registro.");
@@ -189,6 +202,71 @@ export function SignupFormES() {
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <label className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
+          Tipo de Documento
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => setTipoDocumento("CEDULA")}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+              tipoDocumento === "CEDULA"
+                ? "border-primary bg-primary/10 text-primary shadow-sm"
+                : "border-outline-variant text-muted-foreground hover:bg-surface-container"
+            }`}
+          >
+            Cédula
+          </button>
+          <button
+            type="button"
+            onClick={() => setTipoDocumento("PASAPORTE")}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+              tipoDocumento === "PASAPORTE"
+                ? "border-primary bg-primary/10 text-primary shadow-sm"
+                : "border-outline-variant text-muted-foreground hover:bg-surface-container"
+            }`}
+          >
+            Pasaporte
+          </button>
+          <button
+            type="button"
+            onClick={() => setTipoDocumento("OTRO")}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+              tipoDocumento === "OTRO"
+                ? "border-primary bg-primary/10 text-primary shadow-sm"
+                : "border-outline-variant text-muted-foreground hover:bg-surface-container"
+            }`}
+          >
+            Otro / PAC
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
+          {tipoDocumento === "CEDULA"
+            ? "Número de Cédula (10 dígitos)"
+            : tipoDocumento === "PASAPORTE"
+            ? "Número de Pasaporte"
+            : "Número de Documento o Código PAC"}
+        </label>
+        <Input
+          className={fieldClass}
+          type="text"
+          required
+          placeholder={
+            tipoDocumento === "CEDULA"
+              ? "Ej: 1710034065"
+              : tipoDocumento === "PASAPORTE"
+              ? "Ej: A1234567"
+              : "Ej: PAC-011"
+          }
+          value={documento}
+          onChange={(e) => setDocumento(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
           Correo electrónico
         </label>
         <Input
@@ -196,7 +274,7 @@ export function SignupFormES() {
           type="email"
           autoComplete="email"
           required
-          placeholder="medico@doctoria.app"
+          placeholder="paciente@doctoria.app"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -218,7 +296,7 @@ export function SignupFormES() {
       <FieldError message={error} />
       <FieldSuccess message={success} />
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Creando cuenta…" : "Crear cuenta"}
+        {loading ? "Registrando…" : "Crear cuenta y solicitar vinculación"}
       </Button>
       <p className="text-center text-sm font-medium text-muted-foreground">
         ¿Ya tienes cuenta?{" "}
