@@ -2963,60 +2963,60 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
     ? calculateDocumentHash(request.documentType as any, request.requestedDocument, request.paisEmisor || "EC")
     : targetPatient.documentHash;
 
-  // Transacción atómica de aprobación
-  await prisma.$transaction([
-    // 1. Vincular paciente con usuario y actualizar documento
-    context.entities.SyntheticPatient.update({
-      where: { id: targetPatientId },
-      data: {
-        userId: request.userId,
-        tipoDocumento: request.documentType,
-        documento: request.requestedDocument || targetPatient.documento,
-        documentHash: docHash || targetPatient.documentHash,
-      },
-    }),
-    // 2. Activar rol paciente exclusivo
-    context.entities.User.update({
-      where: { id: request.userId },
-      data: {
-        isPaciente: true,
-        isAdmin: false,
-        isMedico: false,
-        isSecretaria: false,
-      },
-    }),
-    // 3. Marcar solicitud como APPROVED
-    context.entities.PatientLinkRequest.update({
-      where: { id: requestId },
-      data: {
-        patientId: targetPatientId,
-        status: "APPROVED",
-        reviewedAt: new Date(),
-        reviewedById: adminUser.id,
-      },
-    }),
-    // 4. Rechazar otras solicitudes pendientes del mismo paciente
-    context.entities.PatientLinkRequest.updateMany({
-      where: {
-        patientId: targetPatientId,
-        id: { not: requestId },
-        status: "PENDING",
-      },
-      data: {
-        status: "REJECTED",
-        rejectionReason: "Ficha vinculada a otra solicitud aprobada",
-        reviewedAt: new Date(),
-        reviewedById: adminUser.id,
-      },
-    }),
-  ]);
+  // 1. Vincular paciente con usuario y actualizar documento
+  await context.entities.SyntheticPatient.update({
+    where: { id: targetPatientId },
+    data: {
+      userId: request.userId,
+      tipoDocumento: request.documentType,
+      documento: request.requestedDocument || targetPatient.documento,
+      documentHash: docHash || targetPatient.documentHash,
+    },
+  });
+
+  // 2. Activar rol paciente exclusivo
+  await context.entities.User.update({
+    where: { id: request.userId },
+    data: {
+      isPaciente: true,
+      isAdmin: false,
+      isMedico: false,
+      isSecretaria: false,
+    },
+  });
+
+  // 3. Marcar solicitud como APPROVED
+  await context.entities.PatientLinkRequest.update({
+    where: { id: requestId },
+    data: {
+      patientId: targetPatientId,
+      status: "APPROVED",
+      reviewedAt: new Date(),
+      reviewedById: adminUser.id,
+    },
+  });
+
+  // 4. Rechazar otras solicitudes pendientes del mismo paciente
+  await context.entities.PatientLinkRequest.updateMany({
+    where: {
+      patientId: targetPatientId,
+      id: { not: requestId },
+      status: "PENDING",
+    },
+    data: {
+      status: "REJECTED",
+      rejectionReason: "Ficha vinculada a otra solicitud aprobada",
+      reviewedAt: new Date(),
+      reviewedById: adminUser.id,
+    },
+  });
 
   await createAuditEntry({
     userId: adminUser.id,
     action: "ADMIN_MANAGE_DATA",
     resourceType: "PATIENT",
-    resourceId: request.patientId,
-    patientId: request.patientId,
+    resourceId: targetPatientId,
+    patientId: targetPatientId,
     metadata: {
       action: "PATIENT_LINK_APPROVED",
       requestId,
