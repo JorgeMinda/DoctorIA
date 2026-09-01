@@ -2807,14 +2807,26 @@ export const requestPatientLink: any = async (rawArgs: any, context: any) => {
 const approvePatientLinkInputSchema = z.object({
   requestId: z.string().min(1),
   patientId: z.string().optional(),
+  createNewPatient: z.boolean().optional(),
+  newPatientData: z
+    .object({
+      firstName: z.string().min(1, "El nombre es obligatorio"),
+      lastName: z.string().min(1, "El apellido es obligatorio"),
+      birthDate: z.string().optional(),
+      sex: z.enum(["M", "F", "OTHER"]).default("M"),
+      medicalHistory: z.string().optional(),
+      allergies: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const approvePatientLinkRequest: any = async (rawArgs: any, context: any) => {
   const adminUser = ensureAdmin(context.user);
-  const { requestId, patientId: passedPatientId } = ensureArgsSchemaOrThrowHttpError(
+  const args = ensureArgsSchemaOrThrowHttpError(
     approvePatientLinkInputSchema,
     rawArgs,
   );
+  const { requestId, patientId: passedPatientId, createNewPatient, newPatientData } = args;
 
   const request = await context.entities.PatientLinkRequest.findUnique({
     where: { id: requestId },
@@ -2835,6 +2847,100 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
     throw new HttpError(410, "La solicitud ha expirado. El paciente debe realizar una nueva solicitud.");
   }
 
+  // Opción 1: Crear una NUEVA ficha clínica para este paciente
+  if (createNewPatient && newPatientData) {
+    const existingPatients = await context.entities.SyntheticPatient.findMany({
+      where: { syntheticId: { startsWith: "PAC-" } },
+      select: { syntheticId: true },
+    });
+    const nums = existingPatients.map((e: { syntheticId: string }) => {
+      const match = /^PAC-(\d+)$/.exec(e.syntheticId);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+    const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    const syntheticId = "PAC-" + String(nextNum).padStart(3, "0");
+
+    const docHash = request.requestedDocument
+      ? calculateDocumentHash(request.documentType as any, request.requestedDocument, request.paisEmisor || "EC")
+      : null;
+
+    const bDate = newPatientData.birthDate
+      ? new Date(newPatientData.birthDate)
+      : new Date("1990-01-01");
+
+    const createdPatient = await context.entities.SyntheticPatient.create({
+      data: {
+        syntheticId,
+        firstName: newPatientData.firstName.trim(),
+        lastName: newPatientData.lastName.trim(),
+        birthDate: bDate,
+        sex: newPatientData.sex,
+        medicalHistory: newPatientData.medicalHistory?.trim() || null,
+        allergies: newPatientData.allergies?.trim() || null,
+        documento: request.requestedDocument || null,
+        tipoDocumento: request.documentType,
+        documentHash: docHash,
+        paisEmisor: request.paisEmisor || "EC",
+        userId: request.userId,
+        isActive: true,
+      },
+    });
+
+    // Otorgar acceso a los médicos activos
+    const allMedicos = await context.entities.User.findMany({
+      where: { isMedico: true, isActive: true },
+      select: { id: true },
+    });
+    for (const medico of allMedicos) {
+      await context.entities.MedicoPatientAccess.create({
+        data: {
+          medicoId: medico.id,
+          patientId: createdPatient.id,
+          grantedById: adminUser.id,
+        },
+      });
+    }
+
+    // Activar usuario como paciente
+    await context.entities.User.update({
+      where: { id: request.userId },
+      data: {
+        isPaciente: true,
+        isAdmin: false,
+        isMedico: false,
+        isSecretaria: false,
+      },
+    });
+
+    // Marcar solicitud como APPROVED
+    await context.entities.PatientLinkRequest.update({
+      where: { id: requestId },
+      data: {
+        patientId: createdPatient.id,
+        status: "APPROVED",
+        reviewedAt: new Date(),
+        reviewedById: adminUser.id,
+      },
+    });
+
+    await createAuditEntry({
+      userId: adminUser.id,
+      action: "ADMIN_MANAGE_DATA",
+      resourceType: "PATIENT",
+      resourceId: createdPatient.id,
+      patientId: createdPatient.id,
+      metadata: {
+        action: "PATIENT_LINK_APPROVED_NEW_PATIENT",
+        requestId,
+        syntheticId,
+        targetUserId: request.userId,
+      },
+    });
+
+    return { ok: true, syntheticId };
+  }
+
+  // Opción 2: Vincular a una ficha clínica EXISTENTE
   const targetPatientId = request.patientId || passedPatientId;
   if (!targetPatientId) {
     throw new HttpError(400, "Debe seleccionar un paciente para vincular la solicitud.");

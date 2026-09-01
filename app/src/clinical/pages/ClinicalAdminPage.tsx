@@ -1955,14 +1955,32 @@ function PendingLinkRequestsTab({
   const [rejectionReason, setRejectionReason] = useState("");
   const [selectedPatientId, setSelectedPatientId] = useState<Record<string, string>>({});
 
+  // Modal para Crear Nueva Ficha y Aprobar
+  const [newPatientModalReq, setNewPatientModalReq] = useState<any | null>(null);
+  const [newPatientData, setNewPatientData] = useState<{
+    firstName: string;
+    lastName: string;
+    birthDate: string;
+    sex: "M" | "F" | "OTHER";
+    allergies: string;
+    medicalHistory: string;
+  }>({
+    firstName: "",
+    lastName: "",
+    birthDate: "1990-01-01",
+    sex: "M",
+    allergies: "",
+    medicalHistory: "",
+  });
+
   const allPatients = patientsData?.patients || [];
   const unlinkedPatients = allPatients.filter((p: any) => !p.userId);
   const availablePatients = unlinkedPatients.length > 0 ? unlinkedPatients : allPatients;
 
-  const handleApprove = async (req: any) => {
+  const handleApproveExisting = async (req: any) => {
     const targetId = req.patient?.id || selectedPatientId[req.id];
     if (!targetId) {
-      reportError("Por favor selecciona una ficha de paciente en el menú desplegable antes de aprobar.");
+      reportError("Por favor selecciona una ficha de paciente en el menú desplegable antes de vincular.");
       return;
     }
 
@@ -1972,8 +1990,8 @@ function PendingLinkRequestsTab({
       : "el paciente seleccionado";
 
     const ok = await confirm({
-      title: "¿Aprobar vinculación de paciente?",
-      description: `Se vinculará la cuenta del usuario ${req.user?.email} con la ficha médica de ${patientName}. El paciente obtendrá acceso inmediato a su historial y citas.`,
+      title: "¿Vincular y aprobar paciente?",
+      description: `Se vinculará la cuenta del usuario ${req.user?.email} con la ficha médica existente de ${patientName}. El paciente obtendrá acceso inmediato a su historial y citas.`,
       confirmText: "Aprobar Vinculación",
       cancelText: "Cancelar",
       variant: "default",
@@ -1987,6 +2005,38 @@ function PendingLinkRequestsTab({
       refetch();
     } catch (err: any) {
       reportError(err?.message || "No se pudo aprobar la vinculación");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCreateAndApprove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPatientModalReq) return;
+    if (!newPatientData.firstName.trim() || !newPatientData.lastName.trim()) {
+      reportError("Ingresa el nombre y apellido del paciente.");
+      return;
+    }
+
+    setBusyId(newPatientModalReq.id);
+    try {
+      const res: any = await approveFn({
+        requestId: newPatientModalReq.id,
+        createNewPatient: true,
+        newPatientData: {
+          firstName: newPatientData.firstName.trim(),
+          lastName: newPatientData.lastName.trim(),
+          birthDate: newPatientData.birthDate,
+          sex: newPatientData.sex,
+          allergies: newPatientData.allergies.trim() || undefined,
+          medicalHistory: newPatientData.medicalHistory.trim() || undefined,
+        },
+      });
+      notice(`Ficha médica (${res?.syntheticId || "creada"}) creada y vinculada exitosamente.`);
+      setNewPatientModalReq(null);
+      refetch();
+    } catch (err: any) {
+      reportError(err?.message || "No se pudo crear la ficha del paciente.");
     } finally {
       setBusyId(null);
     }
@@ -2044,9 +2094,9 @@ function PendingLinkRequestsTab({
             list.map((req: any) => (
               <div
                 key={req.id}
-                className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-surface-container/20 transition-colors"
+                className="p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 hover:bg-surface-container/20 transition-colors"
               >
-                <div className="space-y-1.5">
+                <div className="space-y-2 flex-1">
                   {req.patient ? (
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm text-foreground">
@@ -2060,7 +2110,7 @@ function PendingLinkRequestsTab({
                       </Badge>
                     </div>
                   ) : (
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-amber-300">
                           Documento Solicitado: {req.requestedDocument || "(Sin especificar)"}
@@ -2068,15 +2118,21 @@ function PendingLinkRequestsTab({
                         <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/30">
                           {req.documentType} ({req.paisEmisor || "EC"})
                         </Badge>
+                        <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-300">
+                          Nuevo Paciente
+                        </Badge>
                       </div>
+
                       <div className="flex items-center gap-2 pt-1 flex-wrap">
-                        <label className="text-xs font-medium text-foreground whitespace-nowrap">Asignar a Ficha:</label>
+                        <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                          O vincular a ficha existente:
+                        </label>
                         <select
-                          className="text-xs bg-surface border border-primary/40 rounded-md px-3 py-1.5 text-foreground font-medium focus:ring-1 focus:ring-primary shadow-sm"
+                          className="text-xs bg-surface border border-primary/40 rounded-md px-3 py-1.5 text-foreground font-medium focus:ring-1 focus:ring-primary shadow-sm max-w-xs"
                           value={selectedPatientId[req.id] || ""}
                           onChange={(e) => setSelectedPatientId({ ...selectedPatientId, [req.id]: e.target.value })}
                         >
-                          <option value="">-- Seleccionar Paciente a Vincular --</option>
+                          <option value="">-- Seleccionar Paciente Registrado --</option>
                           {availablePatients.map((p: any) => (
                             <option key={p.id} value={p.id}>
                               {p.syntheticId} - {p.firstName} {p.lastName} {p.documento ? `(CI: ${p.documento})` : ""}
@@ -2086,6 +2142,7 @@ function PendingLinkRequestsTab({
                       </div>
                     </div>
                   )}
+
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <span>Usuario solicitante: <strong className="text-foreground">{req.user?.email}</strong></span>
                     <span>·</span>
@@ -2093,16 +2150,39 @@ function PendingLinkRequestsTab({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  {!req.patient && (
+                    <Button
+                      size="sm"
+                      className="gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs shadow-sm"
+                      onClick={() => {
+                        setNewPatientModalReq(req);
+                        setNewPatientData({
+                          firstName: req.user?.username || "",
+                          lastName: "",
+                          birthDate: "1990-01-01",
+                          sex: "M",
+                          allergies: "",
+                          medicalHistory: "",
+                        });
+                      }}
+                      disabled={busyId === req.id}
+                    >
+                      <UserPlus className="size-3.5" />
+                      + Crear Ficha y Aprobar
+                    </Button>
+                  )}
+
                   <Button
                     size="sm"
                     className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
-                    onClick={() => handleApprove(req)}
+                    onClick={() => handleApproveExisting(req)}
                     disabled={busyId === req.id}
                   >
                     <CheckCircle2 className="size-3.5" />
-                    {busyId === req.id ? "Aprobando..." : "Aprobar"}
+                    {busyId === req.id ? "Aprobando..." : req.patient ? "Aprobar" : "Vincular a Seleccionado"}
                   </Button>
+
                   <Button
                     size="sm"
                     variant="outline"
@@ -2122,6 +2202,123 @@ function PendingLinkRequestsTab({
           )}
         </CardContent>
       </Card>
+
+      {/* Modal para Crear Nueva Ficha de Paciente y Aprobar */}
+      {newPatientModalReq && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-xl border border-outline-variant bg-surface p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-outline-variant/60 pb-3">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <UserPlus className="size-5 text-emerald-400" />
+                Crear Nueva Ficha Clínica y Vincular
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="size-8 p-0"
+                onClick={() => setNewPatientModalReq(null)}
+              >
+                <XCircle className="size-4" />
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Se registrará una nueva ficha de paciente y se vinculará a la cuenta de{" "}
+              <strong className="text-foreground">{newPatientModalReq.user?.email}</strong> con Documento{" "}
+              <strong className="text-foreground">{newPatientModalReq.requestedDocument}</strong>.
+            </p>
+
+            <form onSubmit={handleCreateAndApprove} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Nombres *</label>
+                  <Input
+                    required
+                    placeholder="Ej: Milton Alexander"
+                    value={newPatientData.firstName}
+                    onChange={(e) => setNewPatientData({ ...newPatientData, firstName: e.target.value })}
+                    className="text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Apellidos *</label>
+                  <Input
+                    required
+                    placeholder="Ej: Curimilma S."
+                    value={newPatientData.lastName}
+                    onChange={(e) => setNewPatientData({ ...newPatientData, lastName: e.target.value })}
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Fecha de Nacimiento</label>
+                  <Input
+                    type="date"
+                    value={newPatientData.birthDate}
+                    onChange={(e) => setNewPatientData({ ...newPatientData, birthDate: e.target.value })}
+                    className="text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Sexo</label>
+                  <select
+                    className="w-full text-xs bg-surface border border-outline-variant rounded-md px-3 py-2 text-foreground"
+                    value={newPatientData.sex}
+                    onChange={(e) => setNewPatientData({ ...newPatientData, sex: e.target.value as any })}
+                  >
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                    <option value="OTHER">Otro</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Alergias (opcional)</label>
+                <Input
+                  placeholder="Ej: Penicilina, Mariscos (o Ninguna)"
+                  value={newPatientData.allergies}
+                  onChange={(e) => setNewPatientData({ ...newPatientData, allergies: e.target.value })}
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Antecedentes Médicos (opcional)</label>
+                <Textarea
+                  placeholder="Ej: Hipertensión arterial, cirugías previas, etc."
+                  value={newPatientData.medicalHistory}
+                  onChange={(e) => setNewPatientData({ ...newPatientData, medicalHistory: e.target.value })}
+                  className="text-xs min-h-[60px]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-outline-variant/60">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setNewPatientModalReq(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5"
+                  disabled={busyId === newPatientModalReq.id}
+                >
+                  <CheckCircle2 className="size-4" />
+                  {busyId === newPatientModalReq.id ? "Creando y Aprobando..." : "Crear Ficha y Habilitar Paciente"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Motivo de Rechazo */}
       {rejectModalId && (
@@ -2161,7 +2358,7 @@ function PendingLinkRequestsTab({
         </div>
       )}
 
-      {ConfirmDialog}
+      <ConfirmDialog />
     </div>
   );
 }
