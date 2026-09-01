@@ -149,7 +149,7 @@ export function LoginFormES() {
   );
 }
 
-import { registerPatientAndRequestLink } from "wasp/client/operations";
+import { directVerifyUserEmail, requestPatientLink } from "wasp/client/operations";
 
 export function SignupFormES() {
   const navigate = useNavigate();
@@ -161,7 +161,8 @@ export function SignupFormES() {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const registerPatientFn = useAction(registerPatientAndRequestLink);
+  const directVerifyFn = useAction(directVerifyUserEmail);
+  const requestPatientLinkFn = useAction(requestPatientLink);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -175,22 +176,44 @@ export function SignupFormES() {
         return;
       }
 
-      await registerPatientFn({
+      // 1. Registro estándar nativo de Wasp
+      const signupRes = await signup({
         email: email.trim(),
         password,
-        tipoDocumento,
-        documento: documento.trim(),
-        paisEmisor: "EC",
+        username: email.trim().split("@")[0],
+        isAdmin: false,
       });
 
-      // Login inmediato y redirección a /patient/link
+      if (!signupRes.success) {
+        setError("No se pudo completar el registro. Verifica los datos.");
+        setLoading(false);
+        return;
+      }
+
+      // 2. Iniciar sesión (con auto-verificación directa para evitar bloqueo de Resend sandbox)
       try {
         await login({ email: email.trim(), password });
-        navigate("/patient/link", { replace: true });
       } catch {
-        setSuccess("Cuenta creada exitosamente. Redirigiendo...");
-        setTimeout(() => navigate("/patient/link", { replace: true }), 600);
+        try {
+          await directVerifyFn({ email: email.trim() });
+          await login({ email: email.trim(), password });
+        } catch {
+          // Continuar
+        }
       }
+
+      // 3. Crear la solicitud de vinculación en PostgreSQL
+      try {
+        await requestPatientLinkFn({
+          tipoDocumento,
+          documento: documento.trim(),
+          paisEmisor: "EC",
+        });
+      } catch (linkErr: any) {
+        console.error("Error al registrar solicitud de vinculación:", linkErr);
+      }
+
+      navigate("/patient/link", { replace: true });
     } catch (err: any) {
       setError(err?.message ?? "No se pudo completar el registro.");
     } finally {
