@@ -1945,6 +1945,7 @@ function PendingLinkRequestsTab({
   reportError: ReportError;
 }) {
   const { data: requests, isLoading, refetch } = useQuery(getPendingLinkRequests);
+  const { data: patientsData } = useQuery(adminGetPatients, { page: 1, pageSize: 200 });
   const approveFn = useAction(approvePatientLinkRequest);
   const rejectFn = useAction(rejectPatientLinkRequest);
   const { confirm, ConfirmDialog } = useConfirm();
@@ -1952,11 +1953,25 @@ function PendingLinkRequestsTab({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectModalId, setRejectModalId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedPatientId, setSelectedPatientId] = useState<Record<string, string>>({});
+
+  const unlinkedPatients = (patientsData?.patients || []).filter((p: any) => !p.userId);
 
   const handleApprove = async (req: any) => {
+    const targetId = req.patient?.id || selectedPatientId[req.id];
+    if (!targetId) {
+      reportError("Por favor selecciona una ficha de paciente en el menú desplegable antes de aprobar.");
+      return;
+    }
+
+    const patientToLink = req.patient || unlinkedPatients.find((p: any) => p.id === targetId);
+    const patientName = patientToLink
+      ? `${patientToLink.firstName} ${patientToLink.lastName} (${patientToLink.syntheticId})`
+      : "el paciente seleccionado";
+
     const ok = await confirm({
       title: "¿Aprobar vinculación de paciente?",
-      description: `Se vinculará la cuenta del usuario ${req.user?.email} con la ficha médica de ${req.patient?.firstName} ${req.patient?.lastName} (${req.patient?.syntheticId}). El paciente obtendrá acceso inmediato a su historial y citas.`,
+      description: `Se vinculará la cuenta del usuario ${req.user?.email} con la ficha médica de ${patientName}. El paciente obtendrá acceso inmediato a su historial y citas.`,
       confirmText: "Aprobar Vinculación",
       cancelText: "Cancelar",
       variant: "default",
@@ -1965,7 +1980,7 @@ function PendingLinkRequestsTab({
 
     setBusyId(req.id);
     try {
-      await approveFn({ requestId: req.id });
+      await approveFn({ requestId: req.id, patientId: targetId });
       notice("Vinculación de paciente aprobada exitosamente");
       refetch();
     } catch (err: any) {
@@ -2029,18 +2044,46 @@ function PendingLinkRequestsTab({
                 key={req.id}
                 className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-surface-container/20 transition-colors"
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-foreground">
-                      {req.patient?.firstName} {req.patient?.lastName}
-                    </span>
-                    <Badge variant="outline" className="text-[10px] font-mono border-outline-variant">
-                      {req.patient?.syntheticId}
-                    </Badge>
-                    <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">
-                      {req.documentType} ({req.paisEmisor || "EC"})
-                    </Badge>
-                  </div>
+                <div className="space-y-1.5">
+                  {req.patient ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm text-foreground">
+                        {req.patient.firstName} {req.patient.lastName}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] font-mono border-outline-variant">
+                        {req.patient.syntheticId}
+                      </Badge>
+                      <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                        {req.documentType}: {req.requestedDocument || "Registrado"}
+                      </Badge>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm text-amber-300">
+                          Doc: {req.requestedDocument || "(Sin especificar)"}
+                        </span>
+                        <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/30">
+                          {req.documentType} ({req.paisEmisor || "EC"})
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <label className="text-xs text-muted-foreground whitespace-nowrap">Asignar a Ficha:</label>
+                        <select
+                          className="text-xs bg-surface border border-outline-variant rounded-md px-2 py-1 text-foreground"
+                          value={selectedPatientId[req.id] || ""}
+                          onChange={(e) => setSelectedPatientId({ ...selectedPatientId, [req.id]: e.target.value })}
+                        >
+                          <option value="">-- Seleccionar Paciente --</option>
+                          {unlinkedPatients.map((p: any) => (
+                            <option key={p.id} value={p.id}>
+                              {p.syntheticId} - {p.firstName} {p.lastName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <span>Usuario solicitante: <strong className="text-foreground">{req.user?.email}</strong></span>
                     <span>·</span>

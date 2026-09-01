@@ -32,9 +32,10 @@ CREATE TABLE IF NOT EXISTS "PatientLinkRequest" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "userId" TEXT NOT NULL,
-    "patientId" TEXT NOT NULL,
+    "patientId" TEXT,
     "status" "LinkRequestStatus" NOT NULL DEFAULT 'PENDING',
     "documentType" "DocumentType" NOT NULL DEFAULT 'CEDULA',
+    "requestedDocument" TEXT,
     "paisEmisor" TEXT DEFAULT 'EC',
     "reviewedAt" TIMESTAMP(3),
     "reviewedById" TEXT,
@@ -43,6 +44,9 @@ CREATE TABLE IF NOT EXISTS "PatientLinkRequest" (
 
     CONSTRAINT "PatientLinkRequest_pkey" PRIMARY KEY ("id")
 );
+
+ALTER TABLE "PatientLinkRequest" ALTER COLUMN "patientId" DROP NOT NULL;
+ALTER TABLE "PatientLinkRequest" ADD COLUMN IF NOT EXISTS "requestedDocument" TEXT;
 
 -- 6. Crear índices para PatientLinkRequest
 CREATE INDEX IF NOT EXISTS "PatientLinkRequest_status_idx" ON "PatientLinkRequest"("status");

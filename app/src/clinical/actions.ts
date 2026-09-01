@@ -2773,27 +2773,30 @@ export const requestPatientLink: any = async (rawArgs: any, context: any) => {
   await context.entities.PatientLinkRequest.create({
     data: {
       userId: user.id,
-      patientId: patient.id,
+      patientId: patient ? patient.id : null,
       documentType: args.tipoDocumento as any,
+      requestedDocument: normalizedDoc,
       paisEmisor: args.paisEmisor,
       status: "PENDING",
       expiresAt,
     },
   });
 
-  // 4. Auditoría sin PII
-  await createAuditEntry({
-    userId: user.id,
-    action: "ADMIN_MANAGE_DATA",
-    resourceType: "PATIENT",
-    resourceId: patient.id,
-    patientId: patient.id,
-    metadata: {
-      action: "PATIENT_LINK_REQUESTED",
-      documentType: args.tipoDocumento,
-      paisEmisor: args.paisEmisor,
-    },
-  });
+  // 4. Auditoría
+  if (patient) {
+    await createAuditEntry({
+      userId: user.id,
+      action: "ADMIN_MANAGE_DATA",
+      resourceType: "PATIENT",
+      resourceId: patient.id,
+      patientId: patient.id,
+      metadata: {
+        action: "PATIENT_LINK_REQUESTED",
+        documentType: args.tipoDocumento,
+        paisEmisor: args.paisEmisor,
+      },
+    });
+  }
 
   return {
     success: true,
@@ -2808,11 +2811,12 @@ export const requestPatientLink: any = async (rawArgs: any, context: any) => {
 
 const approvePatientLinkInputSchema = z.object({
   requestId: z.string().min(1),
+  patientId: z.string().optional(),
 });
 
 export const approvePatientLinkRequest: any = async (rawArgs: any, context: any) => {
   const adminUser = ensureAdmin(context.user);
-  const { requestId } = ensureArgsSchemaOrThrowHttpError(
+  const { requestId, patientId: passedPatientId } = ensureArgsSchemaOrThrowHttpError(
     approvePatientLinkInputSchema,
     rawArgs,
   );
@@ -2835,16 +2839,37 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
     });
     throw new HttpError(410, "La solicitud ha expirado. El paciente debe realizar una nueva solicitud.");
   }
-  if (request.patient.userId) {
+
+  const targetPatientId = request.patientId || passedPatientId;
+  if (!targetPatientId) {
+    throw new HttpError(400, "Debe seleccionar un paciente para vincular la solicitud.");
+  }
+
+  const targetPatient = await context.entities.SyntheticPatient.findUnique({
+    where: { id: targetPatientId },
+  });
+  if (!targetPatient) {
+    throw new HttpError(404, "Ficha de paciente no encontrada.");
+  }
+  if (targetPatient.userId && targetPatient.userId !== request.userId) {
     throw new HttpError(409, "El paciente ya está vinculado a otra cuenta de usuario.");
   }
 
+  const docHash = request.requestedDocument
+    ? calculateDocumentHash(request.documentType as any, request.requestedDocument, request.paisEmisor || "EC")
+    : targetPatient.documentHash;
+
   // Transacción atómica de aprobación
   await prisma.$transaction([
-    // 1. Vincular paciente con usuario
+    // 1. Vincular paciente con usuario y actualizar documento
     context.entities.SyntheticPatient.update({
-      where: { id: request.patientId },
-      data: { userId: request.userId },
+      where: { id: targetPatientId },
+      data: {
+        userId: request.userId,
+        tipoDocumento: request.documentType,
+        documento: request.requestedDocument || targetPatient.documento,
+        documentHash: docHash || targetPatient.documentHash,
+      },
     }),
     // 2. Activar rol paciente exclusivo
     context.entities.User.update({
@@ -2860,6 +2885,7 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
     context.entities.PatientLinkRequest.update({
       where: { id: requestId },
       data: {
+        patientId: targetPatientId,
         status: "APPROVED",
         reviewedAt: new Date(),
         reviewedById: adminUser.id,
@@ -2868,7 +2894,7 @@ export const approvePatientLinkRequest: any = async (rawArgs: any, context: any)
     // 4. Rechazar otras solicitudes pendientes del mismo paciente
     context.entities.PatientLinkRequest.updateMany({
       where: {
-        patientId: request.patientId,
+        patientId: targetPatientId,
         id: { not: requestId },
         status: "PENDING",
       },
@@ -3221,29 +3247,29 @@ export const registerPatientAndRequestLink: any = async (rawArgs: any, context: 
     },
   });
 
-  // 5. Si existe ficha de paciente y no está vinculada, crear solicitud PENDING
-  if (patient && !patient.userId) {
-    const existingPending = await context.entities.PatientLinkRequest.findFirst({
-      where: {
+  // 5. Crear solicitud PENDING (patientId puede ser null si aún no existe ficha)
+  const existingPending = await context.entities.PatientLinkRequest.findFirst({
+    where: {
+      userId: user.id,
+      status: "PENDING",
+    },
+  });
+
+  if (!existingPending) {
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await context.entities.PatientLinkRequest.create({
+      data: {
         userId: user.id,
-        patientId: patient.id,
+        patientId: patient ? patient.id : null,
+        documentType: args.tipoDocumento as any,
+        requestedDocument: normalizedDoc,
+        paisEmisor: args.paisEmisor,
         status: "PENDING",
+        expiresAt,
       },
     });
 
-    if (!existingPending) {
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      await context.entities.PatientLinkRequest.create({
-        data: {
-          userId: user.id,
-          patientId: patient.id,
-          documentType: args.tipoDocumento as any,
-          paisEmisor: args.paisEmisor,
-          status: "PENDING",
-          expiresAt,
-        },
-      });
-
+    if (patient) {
       await createAuditEntry({
         userId: user.id,
         action: "ADMIN_MANAGE_DATA",

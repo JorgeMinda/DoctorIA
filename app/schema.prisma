@@ -142,11 +142,12 @@ model PatientLinkRequest {
 
   userId          String
   user            User              @relation("UserLinkRequests", fields: [userId], references: [id], onDelete: Cascade)
-  patientId       String
-  patient         SyntheticPatient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId       String?
+  patient         SyntheticPatient? @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   status          LinkRequestStatus @default(PENDING)
   documentType    DocumentType      @default(CEDULA)
+  requestedDocument String?
   paisEmisor      String?           @default("EC")
 
   reviewedAt      DateTime?
