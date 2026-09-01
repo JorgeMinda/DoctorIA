@@ -109,10 +109,8 @@ export function NewAppointmentModal({
     selectedPatient?.authorizedMedicos ?? []
   ).map((a: any) => a.medicoId);
 
-  // Filtrar médicos si hay un paciente seleccionado
-  const availableMedicos = patientId
-    ? allMedicos.filter((m: any) => authorizedMedicoIds.includes(m.id))
-    : allMedicos;
+  // Todos los médicos activos pueden ser seleccionados para la cita
+  const availableMedicos = allMedicos;
 
   const handlePatientChange = (newPatientId: string) => {
     setPatientId(newPatientId);
@@ -124,8 +122,6 @@ export function NewAppointmentModal({
     const validMedicos = allMedicos.filter((m: any) => authIds.includes(m.id));
     if (validMedicos.length === 1) {
       setMedicoId(validMedicos[0].id);
-    } else if (!authIds.includes(medicoId)) {
-      setMedicoId("");
     }
   };
 
@@ -144,17 +140,6 @@ export function NewAppointmentModal({
       toast({
         title: "Campos requeridos",
         description: "Por favor complete médico, paciente, fecha y hora.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validación de asignación médico-paciente
-    if (!authorizedMedicoIds.includes(medicoId)) {
-      toast({
-        title: "Médico no asignado",
-        description:
-          "El profesional seleccionado no tiene asignación activa para este paciente.",
         variant: "destructive",
       });
       return;
@@ -322,15 +307,16 @@ export function NewAppointmentModal({
             </div>
 
             {/* Selección de Médico */}
+            {/* Selección de Médico */}
             <div className="space-y-1.5 sm:col-span-2">
               <Label className="flex items-center justify-between">
-                <span>Médico asignado</span>
-                {selectedPatient && (
+                <span>Profesional médico</span>
+                {allMedicos.length > 0 && (
                   <span className="text-[11px] font-normal text-muted-foreground">
-                    {availableMedicos.length}{" "}
-                    {availableMedicos.length === 1
-                      ? "médico asignado"
-                      : "médicos asignados"}
+                    {allMedicos.length}{" "}
+                    {allMedicos.length === 1
+                      ? "profesional disponible"
+                      : "profesionales disponibles"}
                   </span>
                 )}
               </Label>
@@ -349,35 +335,38 @@ export function NewAppointmentModal({
                       !patientId
                         ? "Seleccione primero un paciente"
                         : availableMedicos.length === 0
-                          ? "Sin médicos asignados a este paciente"
+                          ? "Sin médicos activos disponibles"
                           : "Seleccione profesional médico"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableMedicos.map((m: any) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <div className="flex items-center gap-1.5">
-                        <UserCheck className="size-3.5 text-primary" />
-                        <span>{m.fullName || m.email}</span>
-                        {m.specialty ? (
-                          <span className="text-xs text-muted-foreground">
-                            · {m.specialty}
-                          </span>
-                        ) : null}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {availableMedicos.map((m: any) => {
+                    const isAssigned = authorizedMedicoIds.includes(m.id);
+                    return (
+                      <SelectItem key={m.id} value={m.id}>
+                        <div className="flex items-center gap-1.5">
+                          <UserCheck className="size-3.5 text-primary" />
+                          <span>{m.fullName || m.email}</span>
+                          {m.specialty ? (
+                            <span className="text-xs text-muted-foreground">
+                              · {m.specialty}
+                            </span>
+                          ) : null}
+                          {isAssigned && (
+                            <Badge
+                              variant="outline"
+                              className="ml-1 text-[10px] py-0 px-1 text-primary border-primary/40"
+                            >
+                              Asignado
+                            </Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
-
-              {patientId && selectedPatient && availableMedicos.length === 0 && (
-                <p className="flex items-center gap-1 text-xs text-destructive">
-                  <AlertCircle className="size-3.5 shrink-0" />
-                  Este paciente no tiene médicos asignados. Un administrador debe
-                  asignarle un médico antes de programar una cita.
-                </p>
-              )}
             </div>
 
             {/* Fecha */}
