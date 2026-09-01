@@ -1055,7 +1055,7 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
   Record<string, never>,
   GetDoctorsAgendaOutput
 > = async (_rawArgs, context) => {
-  ensureRole(context.user, "admin", "secretaria");
+  ensureRole(context.user, "admin", "medico", "secretaria");
 
   const medicos = await context.entities.User.findMany({
     where: { isMedico: true, isAdmin: false, isActive: true },
