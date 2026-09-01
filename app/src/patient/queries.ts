@@ -36,6 +36,11 @@ export const getPatientAppointments: any = async (_rawArgs: any, context: any) =
       lastName: patient.lastName,
       birthDate: patient.birthDate,
       sex: patient.sex,
+      tipoDocumento: patient.tipoDocumento,
+      documento: patient.documento,
+      allergies: patient.allergies,
+      medicalHistory: patient.medicalHistory,
+      bloodType: patient.bloodType,
     },
     citas,
   };
