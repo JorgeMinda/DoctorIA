@@ -751,7 +751,7 @@ export const getVoiceAssistantResponse: GetVoiceAssistantResponse<
 const adminGetPatientsInputSchema = z.object({
   search: z.string().optional(),
   page: z.number().int().nonnegative().optional(),
-  pageSize: z.number().int().positive().max(100).optional(),
+  pageSize: z.number().int().positive().max(500).optional(),
   medicoId: z.string().optional(),
   // Solo admin: ver también pacientes desactivados (R4/R3).
   includeInactive: z.boolean().optional(),

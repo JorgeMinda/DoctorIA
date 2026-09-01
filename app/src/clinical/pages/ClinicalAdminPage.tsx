@@ -1945,7 +1945,7 @@ function PendingLinkRequestsTab({
   reportError: ReportError;
 }) {
   const { data: requests, isLoading, refetch } = useQuery(getPendingLinkRequests);
-  const { data: patientsData } = useQuery(adminGetPatients, { page: 1, pageSize: 200 });
+  const { data: patientsData } = useQuery(adminGetPatients, { page: 1, pageSize: 100 });
   const approveFn = useAction(approvePatientLinkRequest);
   const rejectFn = useAction(rejectPatientLinkRequest);
   const { confirm, ConfirmDialog } = useConfirm();
@@ -1955,7 +1955,9 @@ function PendingLinkRequestsTab({
   const [rejectionReason, setRejectionReason] = useState("");
   const [selectedPatientId, setSelectedPatientId] = useState<Record<string, string>>({});
 
-  const unlinkedPatients = (patientsData?.patients || []).filter((p: any) => !p.userId);
+  const allPatients = patientsData?.patients || [];
+  const unlinkedPatients = allPatients.filter((p: any) => !p.userId);
+  const availablePatients = unlinkedPatients.length > 0 ? unlinkedPatients : allPatients;
 
   const handleApprove = async (req: any) => {
     const targetId = req.patient?.id || selectedPatientId[req.id];
@@ -1964,7 +1966,7 @@ function PendingLinkRequestsTab({
       return;
     }
 
-    const patientToLink = req.patient || unlinkedPatients.find((p: any) => p.id === targetId);
+    const patientToLink = req.patient || availablePatients.find((p: any) => p.id === targetId);
     const patientName = patientToLink
       ? `${patientToLink.firstName} ${patientToLink.lastName} (${patientToLink.syntheticId})`
       : "el paciente seleccionado";
@@ -2061,23 +2063,23 @@ function PendingLinkRequestsTab({
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-amber-300">
-                          Doc: {req.requestedDocument || "(Sin especificar)"}
+                          Documento Solicitado: {req.requestedDocument || "(Sin especificar)"}
                         </span>
                         <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/30">
                           {req.documentType} ({req.paisEmisor || "EC"})
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2 pt-0.5">
-                        <label className="text-xs text-muted-foreground whitespace-nowrap">Asignar a Ficha:</label>
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
+                        <label className="text-xs font-medium text-foreground whitespace-nowrap">Asignar a Ficha:</label>
                         <select
-                          className="text-xs bg-surface border border-outline-variant rounded-md px-2 py-1 text-foreground"
+                          className="text-xs bg-surface border border-primary/40 rounded-md px-3 py-1.5 text-foreground font-medium focus:ring-1 focus:ring-primary shadow-sm"
                           value={selectedPatientId[req.id] || ""}
                           onChange={(e) => setSelectedPatientId({ ...selectedPatientId, [req.id]: e.target.value })}
                         >
-                          <option value="">-- Seleccionar Paciente --</option>
-                          {unlinkedPatients.map((p: any) => (
+                          <option value="">-- Seleccionar Paciente a Vincular --</option>
+                          {availablePatients.map((p: any) => (
                             <option key={p.id} value={p.id}>
-                              {p.syntheticId} - {p.firstName} {p.lastName}
+                              {p.syntheticId} - {p.firstName} {p.lastName} {p.documento ? `(CI: ${p.documento})` : ""}
                             </option>
                           ))}
                         </select>
