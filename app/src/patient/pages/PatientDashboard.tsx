@@ -81,6 +81,33 @@ function PatientDashboardContent() {
     refetch: refetchHistory,
   } = useQuery(getPatientClinicalHistory, {}, { enabled: Boolean(user) });
 
+  const dataAppts = apptData as any;
+  const dataHistory = historyData as any;
+  const patient = dataAppts?.patient;
+  const citas = dataAppts?.citas || [];
+  const notes = dataHistory?.notes || [];
+  const epicrises = dataHistory?.epicrises || [];
+
+  // Detección automática de primer ingreso o datos pendientes al vincular cuenta (Hook en el nivel superior)
+  useEffect(() => {
+    if (patient) {
+      const isPlaceholderName =
+        !patient.firstName ||
+        patient.firstName.includes("@") ||
+        patient.firstName === "Paciente" ||
+        patient.lastName?.startsWith("PAC-");
+      const isMissingContact = !patient.phone || !patient.address;
+      const seenKey = `patient_onboarding_prompted_${patient.id}`;
+      const alreadyPrompted = sessionStorage.getItem(seenKey);
+
+      if ((isPlaceholderName || isMissingContact) && !alreadyPrompted) {
+        setIsFirstTimeOnboarding(true);
+        setShowProfileModal(true);
+        sessionStorage.setItem(seenKey, "true");
+      }
+    }
+  }, [patient]);
+
   if (loadingAppts || loadingHistory) {
     return (
       <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -91,9 +118,6 @@ function PatientDashboardContent() {
       </div>
     );
   }
-
-  const dataAppts = apptData as any;
-  const dataHistory = historyData as any;
 
   if (dataAppts && !dataAppts.linked) {
     return (
@@ -114,35 +138,10 @@ function PatientDashboardContent() {
     );
   }
 
-  const patient = dataAppts?.patient;
-  const citas = dataAppts?.citas || [];
-  const notes = dataHistory?.notes || [];
-  const epicrises = dataHistory?.epicrises || [];
-
   const displayName =
     patient?.firstName === "Paciente" && patient?.lastName?.startsWith("PAC-")
       ? "Paciente"
       : `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Paciente";
-
-  // Detección automática de primer ingreso o datos pendientes al vincular cuenta
-  useEffect(() => {
-    if (patient) {
-      const isPlaceholderName =
-        !patient.firstName ||
-        patient.firstName.includes("@") ||
-        patient.firstName === "Paciente" ||
-        patient.lastName?.startsWith("PAC-");
-      const isMissingContact = !patient.phone || !patient.address;
-      const seenKey = `patient_onboarding_prompted_${patient.id}`;
-      const alreadyPrompted = sessionStorage.getItem(seenKey);
-
-      if ((isPlaceholderName || isMissingContact) && !alreadyPrompted) {
-        setIsFirstTimeOnboarding(true);
-        setShowProfileModal(true);
-        sessionStorage.setItem(seenKey, "true");
-      }
-    }
-  }, [patient]);
 
   const now = new Date();
   const upcomingCita = citas.find(
