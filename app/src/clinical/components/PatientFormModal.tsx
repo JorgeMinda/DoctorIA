@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAction } from "wasp/client/operations";
 import { manageSyntheticPatients } from "wasp/client/operations";
 import { toast } from "../../client/hooks/use-toast";
@@ -18,11 +18,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   DialogClose,
 } from "../../client/components/ui/dialog";
+import {
+  UserRound,
+  HeartPulse,
+  Phone,
+  ShieldCheck,
+} from "lucide-react";
 
-type PatientLike = {
+export type PatientLike = {
   id: string;
   firstName: string;
   lastName: string;
@@ -30,8 +37,13 @@ type PatientLike = {
   sex: string | null;
   documento?: string | null;
   phone?: string | null;
-  medicalHistory?: string | null;
+  address?: string | null;
+  insurance?: string | null;
+  bloodType?: string | null;
   allergies?: string | null;
+  medicalHistory?: string | null;
+  emergencyName?: string | null;
+  emergencyPhone?: string | null;
   nationality?: string | null;
   email?: string | null;
 };
@@ -40,12 +52,17 @@ const empty = {
   firstName: "",
   lastName: "",
   birthDate: "",
-  sex: "",
+  sex: "M",
   documento: "",
+  nationality: "Ecuatoriana",
   phone: "",
-  medicalHistory: "",
+  address: "",
+  insurance: "",
+  bloodType: "",
   allergies: "",
-  nationality: "",
+  medicalHistory: "",
+  emergencyName: "",
+  emergencyPhone: "",
 };
 
 export function PatientFormModal({
@@ -60,31 +77,41 @@ export function PatientFormModal({
   onDone?: () => void;
 }) {
   const isEdit = Boolean(initialPatient);
-  const [form, setForm] = useState(
-    initialPatient
-      ? {
+  const [form, setForm] = useState(empty);
+  const [saving, setSaving] = useState(false);
+
+  const manageFn = useAction(manageSyntheticPatients);
+
+  useEffect(() => {
+    if (initialPatient && open) {
+      setForm({
         firstName: initialPatient.firstName ?? "",
         lastName: initialPatient.lastName ?? "",
         birthDate: initialPatient.birthDate
           ? new Date(initialPatient.birthDate).toISOString().slice(0, 10)
           : "",
-        sex: initialPatient.sex ?? "",
+        sex: initialPatient.sex ?? "M",
         documento: initialPatient.documento ?? "",
+        nationality: initialPatient.nationality ?? "Ecuatoriana",
         phone: initialPatient.phone ?? "",
-        medicalHistory: initialPatient.medicalHistory ?? "",
+        address: initialPatient.address ?? "",
+        insurance: initialPatient.insurance ?? "",
+        bloodType: initialPatient.bloodType ?? "",
         allergies: initialPatient.allergies ?? "",
-        nationality: initialPatient.nationality ?? "",
-      }
-      : empty,
-  );
-  const [saving, setSaving] = useState(false);
-
-  const manageFn = useAction(manageSyntheticPatients);
+        medicalHistory: initialPatient.medicalHistory ?? "",
+        emergencyName: initialPatient.emergencyName ?? "",
+        emergencyPhone: initialPatient.emergencyPhone ?? "",
+      });
+    } else if (!initialPatient && open) {
+      setForm(empty);
+    }
+  }, [initialPatient, open]);
 
   const set = (k: keyof typeof form, v: string) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  const handleSave = async () => {
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!form.firstName.trim() || !form.lastName.trim()) {
       toast({
         title: "Campos requeridos",
@@ -112,16 +139,22 @@ export function PatientFormModal({
           birthDate: new Date(`${form.birthDate}T00:00:00`),
           sex: form.sex,
           documento: form.documento?.trim()
-            ? form.documento.trim().slice(0, 10)
+            ? form.documento.trim().slice(0, 30)
             : null,
-          phone: form.phone?.trim() || null,
-          medicalHistory: form.medicalHistory?.trim() || null,
-          allergies: form.allergies?.trim() || null,
           nationality: form.nationality?.trim() || null,
+          phone: form.phone?.trim() || null,
+          address: form.address?.trim() || null,
+          insurance: form.insurance?.trim() || null,
+          bloodType: form.bloodType?.trim() || null,
+          allergies: form.allergies?.trim() || null,
+          medicalHistory: form.medicalHistory?.trim() || null,
+          emergencyName: form.emergencyName?.trim() || null,
+          emergencyPhone: form.emergencyPhone?.trim() || null,
         },
       });
       toast({
         title: isEdit ? "Paciente actualizado" : "Paciente creado",
+        description: "La ficha clínica ha sido guardada con todos sus datos.",
       });
       onOpenChange(false);
       onDone?.();
@@ -138,111 +171,266 @@ export function PatientFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Editar paciente" : "Nuevo paciente"}
+      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl border-outline-variant bg-surface/95 backdrop-blur-md shadow-2xl p-6">
+        <DialogHeader className="space-y-1.5 pb-2 border-b border-outline-variant/40">
+          <DialogTitle className="text-xl font-bold tracking-tight">
+            {isEdit ? "Editar Ficha de Paciente" : "Nuevo Paciente"}
           </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            {isEdit
+              ? "Actualiza la información médica, de contacto y de emergencia del paciente."
+              : "Registra un nuevo paciente en la base de datos de la clínica."}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="pf-firstName">Nombre</Label>
-            <Input
-              id="pf-firstName"
-              value={form.firstName}
-              onChange={(e) => set("firstName", e.target.value)}
-              className="border-outline-variant bg-surface"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pf-lastName">Apellido</Label>
-            <Input
-              id="pf-lastName"
-              value={form.lastName}
-              onChange={(e) => set("lastName", e.target.value)}
-              className="border-outline-variant bg-surface"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pf-birth">Fecha de nacimiento</Label>
-            <Input
-              id="pf-birth"
-              type="date"
-              value={form.birthDate}
-              onChange={(e) => set("birthDate", e.target.value)}
-              className="border-outline-variant bg-surface"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Sexo</Label>
-            <Select value={form.sex} onValueChange={(v) => set("sex", v)}>
-              <SelectTrigger className="border-outline-variant bg-surface">
-                <SelectValue placeholder="Seleccione" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="M">Masculino</SelectItem>
-                <SelectItem value="F">Femenino</SelectItem>
-                <SelectItem value="O">Otro</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pf-doc">Documento de identidad</Label>
-            <Input
-              id="pf-doc"
-              value={form.documento}
-              onChange={(e) => set("documento", e.target.value)}
-              className="border-outline-variant bg-surface"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pf-phone">Teléfono</Label>
-            <Input
-              id="pf-phone"
-              value={form.phone}
-              onChange={(e) => set("phone", e.target.value)}
-              className="border-outline-variant bg-surface"
-            />
-          </div>
-        </div>
+        <form onSubmit={handleSave} className="space-y-6 pt-2">
+          {/* SECCIÓN 1: IDENTIFICACIÓN Y DATOS PERSONALES */}
+          <div className="space-y-3">
+            <h4 className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
+              <UserRound className="size-3.5" />
+              1. Identificación y Datos Personales
+            </h4>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-doc" className="text-xs font-medium">
+                  Documento de Identidad (Cédula/Pasaporte)
+                </Label>
+                <Input
+                  id="pf-doc"
+                  value={form.documento}
+                  onChange={(e) => set("documento", e.target.value)}
+                  placeholder="Ej: 1712345678"
+                  className="border-outline-variant bg-surface text-xs font-mono"
+                />
+              </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="pf-nat">Nacionalidad</Label>
-          <Input
-            id="pf-nat"
-            value={form.nationality}
-            onChange={(e) => set("nationality", e.target.value)}
-            className="border-outline-variant bg-surface"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="pf-hist">Historia médica</Label>
-          <Textarea
-            id="pf-hist"
-            value={form.medicalHistory}
-            onChange={(e) => set("medicalHistory", e.target.value)}
-            className="border-outline-variant bg-surface"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="pf-all">Alergias</Label>
-          <Textarea
-            id="pf-all"
-            value={form.allergies}
-            onChange={(e) => set("allergies", e.target.value)}
-            className="border-outline-variant bg-surface"
-          />
-        </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-nat" className="text-xs font-medium">
+                  Nacionalidad
+                </Label>
+                <Input
+                  id="pf-nat"
+                  value={form.nationality}
+                  onChange={(e) => set("nationality", e.target.value)}
+                  placeholder="Ej: Ecuatoriana"
+                  className="border-outline-variant bg-surface text-xs"
+                />
+              </div>
 
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancelar</Button>
-          </DialogClose>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Guardando…" : isEdit ? "Guardar" : "Crear paciente"}
-          </Button>
-        </DialogFooter>
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-firstName" className="text-xs font-medium">
+                  Nombres completos <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="pf-firstName"
+                  required
+                  value={form.firstName}
+                  onChange={(e) => set("firstName", e.target.value)}
+                  placeholder="Ej: Juan Carlos"
+                  className="border-outline-variant bg-surface text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-lastName" className="text-xs font-medium">
+                  Apellidos completos <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="pf-lastName"
+                  required
+                  value={form.lastName}
+                  onChange={(e) => set("lastName", e.target.value)}
+                  placeholder="Ej: Pérez Gómez"
+                  className="border-outline-variant bg-surface text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-birth" className="text-xs font-medium">
+                  Fecha de nacimiento <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="pf-birth"
+                  type="date"
+                  required
+                  value={form.birthDate}
+                  onChange={(e) => set("birthDate", e.target.value)}
+                  className="border-outline-variant bg-surface text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-sex" className="text-xs font-medium">
+                  Sexo Biológico <span className="text-destructive">*</span>
+                </Label>
+                <Select value={form.sex} onValueChange={(v) => set("sex", v)}>
+                  <SelectTrigger id="pf-sex" className="border-outline-variant bg-surface text-xs">
+                    <SelectValue placeholder="Seleccione sexo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="M">Masculino</SelectItem>
+                    <SelectItem value="F">Femenino</SelectItem>
+                    <SelectItem value="O">Otro / Intersex</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN 2: CONTACTO Y LOCALIZACIÓN */}
+          <div className="space-y-3 pt-2 border-t border-outline-variant/30">
+            <h4 className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
+              <Phone className="size-3.5" />
+              2. Datos de Contacto y Residencia
+            </h4>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-phone" className="text-xs font-medium">
+                  Teléfono Móvil / Celular
+                </Label>
+                <Input
+                  id="pf-phone"
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value)}
+                  placeholder="Ej: 0991234567"
+                  className="border-outline-variant bg-surface text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-ins" className="text-xs font-medium">
+                  Seguro Médico / Cobertura
+                </Label>
+                <Input
+                  id="pf-ins"
+                  value={form.insurance}
+                  onChange={(e) => set("insurance", e.target.value)}
+                  placeholder="Ej: IESS, Particular, Seguro Privado…"
+                  className="border-outline-variant bg-surface text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="pf-addr" className="text-xs font-medium">
+                  Dirección Domiciliaria
+                </Label>
+                <Input
+                  id="pf-addr"
+                  value={form.address}
+                  onChange={(e) => set("address", e.target.value)}
+                  placeholder="Ej: Av. Amazonas y República, Quito"
+                  className="border-outline-variant bg-surface text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN 3: SALUD Y ANTECEDENTES */}
+          <div className="space-y-3 pt-2 border-t border-outline-variant/30">
+            <h4 className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
+              <HeartPulse className="size-3.5" />
+              3. Información Médica y Alergias
+            </h4>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-blood" className="text-xs font-medium">
+                  Tipo de Sangre
+                </Label>
+                <Select
+                  value={form.bloodType || undefined}
+                  onValueChange={(v) => set("bloodType", v)}
+                >
+                  <SelectTrigger id="pf-blood" className="border-outline-variant bg-surface text-xs font-mono">
+                    <SelectValue placeholder="Seleccione grupo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"].map(
+                      (g) => (
+                        <SelectItem key={g} value={g} className="font-mono">
+                          {g}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="pf-all" className="text-xs font-medium flex items-center justify-between">
+                  <span>Alergias Medicamentosas / Ambientales</span>
+                  <span className="text-[10px] text-amber-500 font-normal">
+                    Importante para prescripción
+                  </span>
+                </Label>
+                <Input
+                  id="pf-all"
+                  value={form.allergies}
+                  onChange={(e) => set("allergies", e.target.value)}
+                  placeholder="Ej: Penicilina, AINEs, Polen, Ninguna…"
+                  className="border-outline-variant bg-surface text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-3">
+                <Label htmlFor="pf-hist" className="text-xs font-medium">
+                  Antecedentes Médicos / Enfermedades Preexistentes
+                </Label>
+                <Textarea
+                  id="pf-hist"
+                  rows={2}
+                  value={form.medicalHistory}
+                  onChange={(e) => set("medicalHistory", e.target.value)}
+                  placeholder="Ej: Hipertensión arterial en tratamiento, diabetes, cirugías previas…"
+                  className="border-outline-variant bg-surface text-xs leading-relaxed"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN 4: CONTACTO DE EMERGENCIA */}
+          <div className="space-y-3 pt-2 border-t border-outline-variant/30">
+            <h4 className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
+              <ShieldCheck className="size-3.5" />
+              4. Contacto de Emergencia
+            </h4>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-em-name" className="text-xs font-medium">
+                  Nombre del Contacto
+                </Label>
+                <Input
+                  id="pf-em-name"
+                  value={form.emergencyName}
+                  onChange={(e) => set("emergencyName", e.target.value)}
+                  placeholder="Ej: María Pérez (Cónyuge / Familiar)"
+                  className="border-outline-variant bg-surface text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-em-phone" className="text-xs font-medium">
+                  Teléfono de Emergencia
+                </Label>
+                <Input
+                  id="pf-em-phone"
+                  value={form.emergencyPhone}
+                  onChange={(e) => set("emergencyPhone", e.target.value)}
+                  placeholder="Ej: 0987654321"
+                  className="border-outline-variant bg-surface text-xs font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2 border-t border-outline-variant/30">
+            <DialogClose asChild>
+              <Button variant="outline" type="button">Cancelar</Button>
+            </DialogClose>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Guardando…" : isEdit ? "Guardar Cambios" : "Crear Paciente"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

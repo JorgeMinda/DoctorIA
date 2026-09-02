@@ -5,7 +5,6 @@ import { getPatientAppointments, getPatientClinicalHistory } from "wasp/client/o
 import { useRole } from "../../client/hooks/useRole";
 import { RoleGuard } from "../../client/components/RoleGuard";
 import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
-import { VoiceOrb, type VoiceAssistantState } from "../../clinical/components/VoiceOrb";
 import { ClinicalCalendarView } from "../../clinical/components/ClinicalCalendarView";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../client/components/ui/card";
 import { Button } from "../../client/components/ui/button";
@@ -62,8 +61,6 @@ type PatientTab = "resumen" | "citas" | "historial" | "epicrisis";
 function PatientDashboardContent() {
   const navigate = useNavigate();
   const { user } = useRole();
-  const [orbState, setOrbState] = useState<VoiceAssistantState>("IDLE");
-  const [voiceAnswer, setVoiceAnswer] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<PatientTab>("resumen");
   const [citasViewMode, setCitasViewMode] = useState<"list" | "calendar">("list");
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -171,44 +168,6 @@ function PatientDashboardContent() {
     });
   };
 
-  const handleOrbQuery = (type: "cita" | "indicaciones" | "alergias") => {
-    setOrbState("LISTENING");
-    setTimeout(() => {
-      setOrbState("PROCESSING");
-      setTimeout(() => {
-        setOrbState("RESPONDING");
-        if (type === "cita") {
-          if (upcomingCita) {
-            const dateStr = new Date(upcomingCita.scheduledAt).toLocaleDateString("es-ES", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            setVoiceAnswer(`Tu próxima cita es el ${dateStr} con ${upcomingCita.medico?.fullName || "tu médico asignado"}.`);
-          } else {
-            setVoiceAnswer("No tienes citas médicas pendientes programadas.");
-          }
-        } else if (type === "indicaciones") {
-          const lastNote = notes[0];
-          if (lastNote?.planIndicaciones) {
-            setVoiceAnswer(`Tus últimas indicaciones médicas son: "${lastNote.planIndicaciones.slice(0, 140)}..."`);
-          } else {
-            setVoiceAnswer("No tienes indicaciones médicas recientes registradas en tus consultas confirmadas.");
-          }
-        } else if (type === "alergias") {
-          if (patient?.allergies) {
-            setVoiceAnswer(`Tienes registradas las siguientes alergias: ${patient.allergies}.`);
-          } else {
-            setVoiceAnswer("No tienes alergias registradas en tu ficha médica.");
-          }
-        }
-        setTimeout(() => setOrbState("IDLE"), 6000);
-      }, 800);
-    }, 800);
-  };
-
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header del Paciente */}
@@ -311,105 +270,6 @@ function PatientDashboardContent() {
           </div>
         </Card>
       </div>
-
-      {/* Asistente Virtual Inteligente (Misma forma y diseño del rol médico) */}
-      <Card className="overflow-hidden border-primary/20 bg-gradient-to-b from-primary/5 via-surface/60 to-surface shadow-md">
-        <CardHeader className="text-center pb-2 pt-6">
-          <div className="inline-flex items-center justify-center gap-2 mx-auto">
-            <Sparkles className="size-4 text-primary" />
-            <span className="text-xs font-bold uppercase tracking-wider text-primary mono-label">
-              Asistente Virtual de Salud
-            </span>
-          </div>
-          <CardTitle className="text-xl sm:text-2xl font-bold text-foreground mt-1">
-            ¿En qué puedo ayudarte hoy, {displayName}?
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground max-w-lg mx-auto">
-            Toca el orbe para consultar o presiona una consulta rápida para revisar tus citas, últimas indicaciones médicas o alergias.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="flex flex-col items-center pb-8 pt-2 space-y-6">
-          {/* Orbe idéntico al rol médico con su forma original completa */}
-          <div className="relative flex flex-col items-center py-6">
-            <VoiceOrb
-              state={orbState}
-              onActivate={() => handleOrbQuery("cita")}
-              disabled={orbState === "PROCESSING"}
-            />
-
-            <div
-              role="status"
-              aria-live="polite"
-              className="mt-6 flex items-center gap-2 text-xs text-muted-foreground font-mono"
-            >
-              <span
-                className={
-                  orbState === "LISTENING"
-                    ? "text-cyan-400 font-semibold"
-                    : orbState === "PROCESSING"
-                      ? "text-violet-400 font-semibold animate-pulse"
-                      : orbState === "RESPONDING"
-                        ? "text-emerald-400 font-semibold"
-                        : "text-muted-foreground"
-                }
-              >
-                {orbState === "IDLE"
-                  ? "Toca el orbe y consulta por voz"
-                  : orbState === "LISTENING"
-                    ? "Escuchando consulta…"
-                    : orbState === "PROCESSING"
-                      ? "Consultando tu historial clínico…"
-                      : "Respuesta lista"}
-              </span>
-            </div>
-          </div>
-
-          {/* Chips de consultas rápidas */}
-          <div className="flex flex-wrap items-center justify-center gap-2 max-w-xl">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleOrbQuery("cita")}
-              disabled={orbState === "PROCESSING"}
-              className="text-xs rounded-full border-primary/30 bg-surface/80 hover:bg-primary/10 hover:border-primary transition-all shadow-sm"
-            >
-              🗓️ ¿Cuándo es mi próxima cita?
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleOrbQuery("indicaciones")}
-              disabled={orbState === "PROCESSING"}
-              className="text-xs rounded-full border-primary/30 bg-surface/80 hover:bg-primary/10 hover:border-primary transition-all shadow-sm"
-            >
-              💊 Últimas indicaciones médicas
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleOrbQuery("alergias")}
-              disabled={orbState === "PROCESSING"}
-              className="text-xs rounded-full border-primary/30 bg-surface/80 hover:bg-primary/10 hover:border-primary transition-all shadow-sm"
-            >
-              ⚠️ Mis alergias registradas
-            </Button>
-          </div>
-
-          {/* Tarjeta de respuesta hablada */}
-          {voiceAnswer && (
-            <div className="w-full max-w-xl rounded-xl border border-primary/40 bg-primary/10 p-4 text-xs text-foreground animate-in fade-in slide-in-from-bottom-2 flex items-start gap-3 backdrop-blur-sm shadow-md">
-              <span className="text-xl shrink-0">🗣️</span>
-              <div className="space-y-1">
-                <p className="font-semibold text-primary">DoctorIA Asistente:</p>
-                <p className="font-medium text-foreground leading-relaxed text-sm">
-                  {voiceAnswer}
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Navegación por Pestañas del Portal */}
       <div className="flex flex-wrap gap-1 rounded-lg border border-outline-variant bg-surface-container/60 p-1 text-xs">
