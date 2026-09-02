@@ -18,6 +18,7 @@ const updateMyPatientProfileSchema = z.object({
   emergencyPhone: z.string().trim().nullable().optional(),
   insurance: z.string().trim().nullable().optional(),
   nationality: z.string().trim().nullable().optional(),
+  ethnicity: z.string().trim().nullable().optional(),
   heightCm: z.number().int().positive().nullable().optional(),
   weightKg: z.number().int().positive().nullable().optional(),
 });
