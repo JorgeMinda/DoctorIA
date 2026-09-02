@@ -1,4 +1,4 @@
-import { page, query, route, type Spec } from "@wasp.sh/spec";
+import { action, page, query, route, type Spec } from "@wasp.sh/spec";
 
 import { PatientDashboard } from "./pages/PatientDashboard" with { type: "ref" };
 import { LinkPatientPage } from "./pages/LinkPatientPage" with { type: "ref" };
@@ -8,8 +8,12 @@ import {
   getPatientClinicalHistory,
   getMyLinkRequestStatus,
 } from "./queries" with { type: "ref" };
+import { updateMyPatientProfile } from "./actions" with { type: "ref" };
 
 export const patientSpec: Spec = [
+  action(updateMyPatientProfile, {
+    entities: ["SyntheticPatient", "User", "AuditLog"],
+  }),
   query(getPatientAppointments, {
     entities: ["SyntheticPatient", "Cita", "User"],
   }),

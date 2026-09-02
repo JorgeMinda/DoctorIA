@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { useQuery } from "wasp/client/operations";
 import { getPatientAppointments, getPatientClinicalHistory } from "wasp/client/operations";
@@ -12,6 +12,7 @@ import { Button } from "../../client/components/ui/button";
 import { Badge } from "../../client/components/ui/badge";
 import { StatusBadge } from "../../clinical/components/StatusBadge";
 import { toast } from "../../client/hooks/use-toast";
+import { PatientProfileModal } from "../components/PatientProfileModal";
 import {
   CalendarDays,
   CalendarClock,
@@ -33,6 +34,7 @@ import {
   Calendar as CalendarIcon,
   CheckCircle2,
   PhoneCall,
+  Edit3,
 } from "lucide-react";
 
 function getGoogleCalendarUrl(cita: any, patientName: string) {
@@ -64,18 +66,20 @@ function PatientDashboardContent() {
   const [voiceAnswer, setVoiceAnswer] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<PatientTab>("resumen");
   const [citasViewMode, setCitasViewMode] = useState<"list" | "calendar">("list");
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isFirstTimeOnboarding, setIsFirstTimeOnboarding] = useState(false);
 
-  const { data: apptData, isLoading: loadingAppts } = useQuery(
-    getPatientAppointments,
-    {},
-    { enabled: Boolean(user) },
-  );
+  const {
+    data: apptData,
+    isLoading: loadingAppts,
+    refetch: refetchAppts,
+  } = useQuery(getPatientAppointments, {}, { enabled: Boolean(user) });
 
-  const { data: historyData, isLoading: loadingHistory } = useQuery(
-    getPatientClinicalHistory,
-    {},
-    { enabled: Boolean(user) },
-  );
+  const {
+    data: historyData,
+    isLoading: loadingHistory,
+    refetch: refetchHistory,
+  } = useQuery(getPatientClinicalHistory, {}, { enabled: Boolean(user) });
 
   if (loadingAppts || loadingHistory) {
     return (
@@ -119,6 +123,26 @@ function PatientDashboardContent() {
     patient?.firstName === "Paciente" && patient?.lastName?.startsWith("PAC-")
       ? "Paciente"
       : `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Paciente";
+
+  // Detección automática de primer ingreso o datos pendientes al vincular cuenta
+  useEffect(() => {
+    if (patient) {
+      const isPlaceholderName =
+        !patient.firstName ||
+        patient.firstName.includes("@") ||
+        patient.firstName === "Paciente" ||
+        patient.lastName?.startsWith("PAC-");
+      const isMissingContact = !patient.phone || !patient.address;
+      const seenKey = `patient_onboarding_prompted_${patient.id}`;
+      const alreadyPrompted = sessionStorage.getItem(seenKey);
+
+      if ((isPlaceholderName || isMissingContact) && !alreadyPrompted) {
+        setIsFirstTimeOnboarding(true);
+        setShowProfileModal(true);
+        sessionStorage.setItem(seenKey, "true");
+      }
+    }
+  }, [patient]);
 
   const now = new Date();
   const upcomingCita = citas.find(
@@ -210,12 +234,25 @@ function PatientDashboardContent() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setIsFirstTimeOnboarding(false);
+              setShowProfileModal(true);
+            }}
+            className="gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/10"
+          >
+            <Edit3 className="size-3.5" />
+            Actualizar mis datos
+          </Button>
+
           <a
             href="https://calendar.google.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant bg-surface px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-surface-container transition-colors shadow-sm"
           >
             <ExternalLink className="size-3.5" />
             Google Calendar
@@ -398,6 +435,33 @@ function PatientDashboardContent() {
       {/* CONTENIDO DE PESTAÑA: RESUMEN DE SALUD */}
       {activeTab === "resumen" && (
         <div className="space-y-6 animate-in fade-in">
+          {(!patient?.phone || !patient?.address || !patient?.bloodType) && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 backdrop-blur-sm">
+              <div className="flex items-center gap-3 text-xs">
+                <AlertTriangle className="size-5 text-amber-400 shrink-0" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-foreground">
+                    Ficha de paciente pendiente de completar
+                  </p>
+                  <p className="text-muted-foreground">
+                    Por favor registra tu teléfono, dirección domiciliaria y grupo sanguíneo para la atención clínica.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setIsFirstTimeOnboarding(false);
+                  setShowProfileModal(true);
+                }}
+                className="text-xs shrink-0 border-amber-500/40 text-amber-300 hover:bg-amber-500/20 w-full sm:w-auto"
+              >
+                Completar mis datos
+              </Button>
+            </div>
+          )}
+
           {/* Próxima Cita */}
           {upcomingCita ? (
             <Card className="border-primary/40 bg-gradient-to-br from-primary/10 to-surface shadow-md">
@@ -450,7 +514,7 @@ function PatientDashboardContent() {
                     className="inline-flex items-center gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-2 rounded-lg font-medium shadow-sm transition-colors"
                   >
                     <ExternalLink className="size-3.5" />
-                    Añadir a Google Calendar
+                    Google Calendar
                   </a>
                   <Button
                     variant="outline"
@@ -505,13 +569,25 @@ function PatientDashboardContent() {
             </Card>
 
             <Card className="border-outline-variant shadow-sm">
-              <CardHeader className="border-b border-outline-variant/60 bg-surface-container/40 pb-3">
+              <CardHeader className="border-b border-outline-variant/60 bg-surface-container/40 pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <HeartPulse className="size-4 text-primary" />
                   Información del Paciente
                 </CardTitle>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsFirstTimeOnboarding(false);
+                    setShowProfileModal(true);
+                  }}
+                  className="h-7 px-2 text-xs text-primary gap-1 hover:bg-primary/10"
+                >
+                  <Edit3 className="size-3" />
+                  Editar
+                </Button>
               </CardHeader>
-              <CardContent className="p-4 text-xs space-y-2.5">
+              <CardContent className="p-4 text-xs space-y-2">
                 <div className="flex justify-between py-1 border-b border-outline-variant/40">
                   <span className="text-muted-foreground">Código de Ficha:</span>
                   <span className="font-mono font-bold text-primary">{patient?.syntheticId}</span>
@@ -519,6 +595,20 @@ function PatientDashboardContent() {
                 <div className="flex justify-between py-1 border-b border-outline-variant/40">
                   <span className="text-muted-foreground">Documento:</span>
                   <span className="font-medium text-foreground">{patient?.documento || "No registrado"}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-outline-variant/40">
+                  <span className="text-muted-foreground">Teléfono:</span>
+                  <span className="font-mono font-medium text-foreground">{patient?.phone || "No registrado"}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-outline-variant/40">
+                  <span className="text-muted-foreground">Dirección:</span>
+                  <span className="font-medium text-foreground truncate max-w-[180px]" title={patient?.address || ""}>
+                    {patient?.address || "No registrada"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-outline-variant/40">
+                  <span className="text-muted-foreground">Grupo Sanguíneo:</span>
+                  <span className="font-mono font-bold text-primary">{patient?.bloodType || "No registrado"}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/40">
                   <span className="text-muted-foreground">Fecha de Nacimiento:</span>
@@ -776,6 +866,17 @@ function PatientDashboardContent() {
           </div>
         </div>
       )}
+
+      <PatientProfileModal
+        open={showProfileModal}
+        onOpenChange={setShowProfileModal}
+        patient={patient}
+        isFirstTimeOnboarding={isFirstTimeOnboarding}
+        onSuccess={() => {
+          refetchAppts();
+          refetchHistory();
+        }}
+      />
     </div>
   );
 }
