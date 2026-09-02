@@ -312,67 +312,102 @@ function PatientDashboardContent() {
         </Card>
       </div>
 
-      {/* Asistente Virtual Inteligente */}
-      <Card className="overflow-hidden border-primary/20 bg-gradient-to-r from-primary/10 via-surface to-surface-container shadow-md">
-        <CardContent className="flex flex-col md:flex-row items-center justify-between gap-6 p-6">
-          <div className="space-y-2.5 text-center md:text-left flex-1">
-            <div className="flex items-center justify-center md:justify-start gap-2">
-              <Sparkles className="size-4 text-primary" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-primary mono-label">
-                Asistente Virtual de Salud
-              </span>
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-foreground">
-              ¿En qué puedo ayudarte hoy, {displayName}?
-            </h3>
-            <p className="text-xs text-muted-foreground max-w-lg">
-              Consulta tus citas, medicamentos e historial médico de forma inmediata o toca las preguntas rápidas:
-            </p>
-
-            {/* Chips de consulta rápida */}
-            <div className="flex flex-wrap gap-2 pt-1 justify-center md:justify-start">
-              <button
-                type="button"
-                onClick={() => handleOrbQuery("cita")}
-                className="text-xs bg-surface border border-outline-variant hover:border-primary/60 px-2.5 py-1 rounded-full text-foreground transition-colors flex items-center gap-1.5 shadow-sm"
-              >
-                🗓️ ¿Cuándo es mi próxima cita?
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOrbQuery("indicaciones")}
-                className="text-xs bg-surface border border-outline-variant hover:border-primary/60 px-2.5 py-1 rounded-full text-foreground transition-colors flex items-center gap-1.5 shadow-sm"
-              >
-                💊 Ver mis indicaciones médicas
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOrbQuery("alergias")}
-                className="text-xs bg-surface border border-outline-variant hover:border-primary/60 px-2.5 py-1 rounded-full text-foreground transition-colors flex items-center gap-1.5 shadow-sm"
-              >
-                🛡️ Mis alergias registradas
-              </button>
-            </div>
-
-            {voiceAnswer && (
-              <div className="mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-foreground animate-in fade-in flex items-start gap-2">
-                <span className="text-base">🗣️</span>
-                <span className="font-medium pt-0.5">{voiceAnswer}</span>
-              </div>
-            )}
+      {/* Asistente Virtual Inteligente (Misma forma y diseño del rol médico) */}
+      <Card className="overflow-hidden border-primary/20 bg-gradient-to-b from-primary/5 via-surface/60 to-surface shadow-md">
+        <CardHeader className="text-center pb-2 pt-6">
+          <div className="inline-flex items-center justify-center gap-2 mx-auto">
+            <Sparkles className="size-4 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-wider text-primary mono-label">
+              Asistente Virtual de Salud
+            </span>
           </div>
+          <CardTitle className="text-xl sm:text-2xl font-bold text-foreground mt-1">
+            ¿En qué puedo ayudarte hoy, {displayName}?
+          </CardTitle>
+          <CardDescription className="text-xs text-muted-foreground max-w-lg mx-auto">
+            Toca el orbe para consultar o presiona una consulta rápida para revisar tus citas, últimas indicaciones médicas o alergias.
+          </CardDescription>
+        </CardHeader>
 
-          <div className="shrink-0 flex flex-col items-center">
+        <CardContent className="flex flex-col items-center pb-8 pt-2 space-y-6">
+          {/* Orbe idéntico al rol médico con su forma original completa */}
+          <div className="relative flex flex-col items-center py-6">
             <VoiceOrb
               state={orbState}
               onActivate={() => handleOrbQuery("cita")}
-              disabled={false}
-              className="size-20 cursor-pointer hover:scale-105 transition-transform"
+              disabled={orbState === "PROCESSING"}
             />
-            <span className="text-[10px] text-muted-foreground mt-2 mono-label">
-              {orbState === "IDLE" ? "Toca para consultar" : orbState === "LISTENING" ? "Escuchando..." : orbState === "PROCESSING" ? "Consultando..." : "Respondiendo"}
-            </span>
+
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-6 flex items-center gap-2 text-xs text-muted-foreground font-mono"
+            >
+              <span
+                className={
+                  orbState === "LISTENING"
+                    ? "text-cyan-400 font-semibold"
+                    : orbState === "PROCESSING"
+                      ? "text-violet-400 font-semibold animate-pulse"
+                      : orbState === "RESPONDING"
+                        ? "text-emerald-400 font-semibold"
+                        : "text-muted-foreground"
+                }
+              >
+                {orbState === "IDLE"
+                  ? "Toca el orbe y consulta por voz"
+                  : orbState === "LISTENING"
+                    ? "Escuchando consulta…"
+                    : orbState === "PROCESSING"
+                      ? "Consultando tu historial clínico…"
+                      : "Respuesta lista"}
+              </span>
+            </div>
           </div>
+
+          {/* Chips de consultas rápidas */}
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-xl">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleOrbQuery("cita")}
+              disabled={orbState === "PROCESSING"}
+              className="text-xs rounded-full border-primary/30 bg-surface/80 hover:bg-primary/10 hover:border-primary transition-all shadow-sm"
+            >
+              🗓️ ¿Cuándo es mi próxima cita?
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleOrbQuery("indicaciones")}
+              disabled={orbState === "PROCESSING"}
+              className="text-xs rounded-full border-primary/30 bg-surface/80 hover:bg-primary/10 hover:border-primary transition-all shadow-sm"
+            >
+              💊 Últimas indicaciones médicas
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleOrbQuery("alergias")}
+              disabled={orbState === "PROCESSING"}
+              className="text-xs rounded-full border-primary/30 bg-surface/80 hover:bg-primary/10 hover:border-primary transition-all shadow-sm"
+            >
+              ⚠️ Mis alergias registradas
+            </Button>
+          </div>
+
+          {/* Tarjeta de respuesta hablada */}
+          {voiceAnswer && (
+            <div className="w-full max-w-xl rounded-xl border border-primary/40 bg-primary/10 p-4 text-xs text-foreground animate-in fade-in slide-in-from-bottom-2 flex items-start gap-3 backdrop-blur-sm shadow-md">
+              <span className="text-xl shrink-0">🗣️</span>
+              <div className="space-y-1">
+                <p className="font-semibold text-primary">DoctorIA Asistente:</p>
+                <p className="font-medium text-foreground leading-relaxed text-sm">
+                  {voiceAnswer}
+                </p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
