@@ -47,6 +47,7 @@ export const getPatientAppointments: any = async (_rawArgs: any, context: any) =
       emergencyPhone: patient.emergencyPhone,
       insurance: patient.insurance,
       nationality: patient.nationality,
+      ethnicity: patient.ethnicity,
       heightCm: patient.heightCm,
       weightKg: patient.weightKg,
     },

@@ -505,6 +505,16 @@ function PatientDashboardContent() {
                   <span className="font-mono font-bold text-primary">{patient?.bloodType || "No registrado"}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/40">
+                  <span className="text-muted-foreground">Etnia:</span>
+                  <span className="font-medium text-foreground">{patient?.ethnicity || "No registrada"}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-outline-variant/40">
+                  <span className="text-muted-foreground">Talla / Peso:</span>
+                  <span className="font-medium text-foreground font-mono">
+                    {patient?.heightCm ? `${patient.heightCm} cm` : "—"} · {patient?.weightKg ? `${patient.weightKg} kg` : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-outline-variant/40">
                   <span className="text-muted-foreground">Fecha de Nacimiento:</span>
                   <span className="font-medium text-foreground">
                     {patient?.birthDate ? new Date(patient.birthDate).toLocaleDateString("es-ES") : "No registrada"}

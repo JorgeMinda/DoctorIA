@@ -45,6 +45,9 @@ export type PatientLike = {
   emergencyName?: string | null;
   emergencyPhone?: string | null;
   nationality?: string | null;
+  ethnicity?: string | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
   email?: string | null;
 };
 
@@ -55,6 +58,9 @@ const empty = {
   sex: "M",
   documento: "",
   nationality: "Ecuatoriana",
+  ethnicity: "Mestizo",
+  heightCm: "",
+  weightKg: "",
   phone: "",
   address: "",
   insurance: "",
@@ -93,6 +99,9 @@ export function PatientFormModal({
         sex: initialPatient.sex ?? "M",
         documento: initialPatient.documento ?? "",
         nationality: initialPatient.nationality ?? "Ecuatoriana",
+        ethnicity: initialPatient.ethnicity ?? "Mestizo",
+        heightCm: initialPatient.heightCm != null ? String(initialPatient.heightCm) : "",
+        weightKg: initialPatient.weightKg != null ? String(initialPatient.weightKg) : "",
         phone: initialPatient.phone ?? "",
         address: initialPatient.address ?? "",
         insurance: initialPatient.insurance ?? "",
@@ -142,6 +151,9 @@ export function PatientFormModal({
             ? form.documento.trim().slice(0, 30)
             : null,
           nationality: form.nationality?.trim() || null,
+          ethnicity: form.ethnicity?.trim() || null,
+          heightCm: form.heightCm ? parseInt(form.heightCm, 10) : null,
+          weightKg: form.weightKg ? parseInt(form.weightKg, 10) : null,
           phone: form.phone?.trim() || null,
           address: form.address?.trim() || null,
           insurance: form.insurance?.trim() || null,
@@ -274,6 +286,26 @@ export function PatientFormModal({
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="pf-eth" className="text-xs font-medium">
+                  Etnia / Autoidentificación
+                </Label>
+                <Select value={form.ethnicity} onValueChange={(v) => set("ethnicity", v)}>
+                  <SelectTrigger id="pf-eth" className="border-outline-variant bg-surface text-xs">
+                    <SelectValue placeholder="Seleccione etnia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Mestizo">Mestizo/a</SelectItem>
+                    <SelectItem value="Blanco">Blanco/a</SelectItem>
+                    <SelectItem value="Afroecuatoriano">Afroecuatoriano/a</SelectItem>
+                    <SelectItem value="Indígena">Indígena</SelectItem>
+                    <SelectItem value="Montubio">Montubio/a</SelectItem>
+                    <SelectItem value="Mulato">Mulato/a</SelectItem>
+                    <SelectItem value="Otro">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -325,11 +357,11 @@ export function PatientFormModal({
             </div>
           </div>
 
-          {/* SECCIÓN 3: SALUD Y ANTECEDENTES */}
+          {/* SECCIÓN 3: SALUD, ANTROPOMETRÍA Y ANTECEDENTES */}
           <div className="space-y-3 pt-2 border-t border-outline-variant/30">
             <h4 className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
               <HeartPulse className="size-3.5" />
-              3. Información Médica y Alergias
+              3. Información Médica, Antropometría y Alergias
             </h4>
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
               <div className="space-y-1.5">
@@ -355,7 +387,39 @@ export function PatientFormModal({
                 </Select>
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-height" className="text-xs font-medium">
+                  Talla / Estatura (cm)
+                </Label>
+                <Input
+                  id="pf-height"
+                  type="number"
+                  min="1"
+                  max="250"
+                  value={form.heightCm}
+                  onChange={(e) => set("heightCm", e.target.value)}
+                  placeholder="Ej: 172"
+                  className="border-outline-variant bg-surface text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-weight" className="text-xs font-medium">
+                  Peso (kg)
+                </Label>
+                <Input
+                  id="pf-weight"
+                  type="number"
+                  min="1"
+                  max="300"
+                  value={form.weightKg}
+                  onChange={(e) => set("weightKg", e.target.value)}
+                  placeholder="Ej: 68"
+                  className="border-outline-variant bg-surface text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-3">
                 <Label htmlFor="pf-all" className="text-xs font-medium flex items-center justify-between">
                   <span>Alergias Medicamentosas / Ambientales</span>
                   <span className="text-[10px] text-amber-500 font-normal">

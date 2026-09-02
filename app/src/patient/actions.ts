@@ -63,6 +63,7 @@ export const updateMyPatientProfile: any = async (
       emergencyPhone: data.emergencyPhone ?? null,
       insurance: data.insurance ?? null,
       nationality: data.nationality ?? null,
+      ethnicity: data.ethnicity ?? null,
       heightCm: data.heightCm ?? null,
       weightKg: data.weightKg ?? null,
     },

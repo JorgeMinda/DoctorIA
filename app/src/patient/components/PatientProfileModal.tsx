@@ -66,6 +66,9 @@ export function PatientProfileModal({
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [insurance, setInsurance] = useState("");
   const [nationality, setNationality] = useState("Ecuatoriana");
+  const [ethnicity, setEthnicity] = useState("Mestizo");
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
 
   useEffect(() => {
     if (patient && open) {
@@ -103,6 +106,9 @@ export function PatientProfileModal({
       setEmergencyPhone(patient.emergencyPhone ?? "");
       setInsurance(patient.insurance ?? "");
       setNationality(patient.nationality ?? "Ecuatoriana");
+      setEthnicity(patient.ethnicity ?? "Mestizo");
+      setHeightCm(patient.heightCm != null ? String(patient.heightCm) : "");
+      setWeightKg(patient.weightKg != null ? String(patient.weightKg) : "");
     }
   }, [patient, open]);
 
@@ -133,6 +139,9 @@ export function PatientProfileModal({
         emergencyPhone: emergencyPhone.trim() || null,
         insurance: insurance.trim() || null,
         nationality: nationality.trim() || null,
+        ethnicity: ethnicity.trim() || null,
+        heightCm: heightCm ? parseInt(heightCm, 10) : null,
+        weightKg: weightKg ? parseInt(weightKg, 10) : null,
       });
 
       toast({
@@ -290,6 +299,26 @@ export function PatientProfileModal({
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="pf-eth" className="text-xs">
+                  Etnia / Autoidentificación
+                </Label>
+                <Select value={ethnicity} onValueChange={setEthnicity}>
+                  <SelectTrigger id="pf-eth" className="text-xs">
+                    <SelectValue placeholder="Seleccione etnia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Mestizo">Mestizo/a</SelectItem>
+                    <SelectItem value="Blanco">Blanco/a</SelectItem>
+                    <SelectItem value="Afroecuatoriano">Afroecuatoriano/a</SelectItem>
+                    <SelectItem value="Indígena">Indígena</SelectItem>
+                    <SelectItem value="Montubio">Montubio/a</SelectItem>
+                    <SelectItem value="Mulato">Mulato/a</SelectItem>
+                    <SelectItem value="Otro">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -341,11 +370,11 @@ export function PatientProfileModal({
             </div>
           </div>
 
-          {/* SECCIÓN 3: SALUD Y ANTECEDENTES */}
+          {/* SECCIÓN 3: SALUD, ANTROPOMETRÍA Y ANTECEDENTES */}
           <div className="space-y-3 pt-2 border-t border-outline-variant/30">
             <h4 className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
               <HeartPulse className="size-3.5" />
-              3. Información Médica y Alergias
+              3. Información Médica, Antropometría y Alergias
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div className="space-y-1.5">
@@ -371,7 +400,39 @@ export function PatientProfileModal({
                 </Select>
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-height" className="text-xs">
+                  Talla / Estatura (cm)
+                </Label>
+                <Input
+                  id="pf-height"
+                  type="number"
+                  min="1"
+                  max="250"
+                  value={heightCm}
+                  onChange={(e) => setHeightCm(e.target.value)}
+                  placeholder="Ej: 172"
+                  className="text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-weight" className="text-xs">
+                  Peso (kg)
+                </Label>
+                <Input
+                  id="pf-weight"
+                  type="number"
+                  min="1"
+                  max="300"
+                  value={weightKg}
+                  onChange={(e) => setWeightKg(e.target.value)}
+                  placeholder="Ej: 68"
+                  className="text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-3">
                 <Label htmlFor="pf-all" className="text-xs flex items-center justify-between">
                   <span>Alergias Medicamentosas / Ambientales</span>
                   <span className="text-[10px] text-amber-500 font-normal">
