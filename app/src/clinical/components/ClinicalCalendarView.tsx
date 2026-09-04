@@ -12,10 +12,22 @@ import {
   Activity,
   XCircle,
   Download,
+  UserCheck,
+  FileText,
+  Phone,
+  ArrowRight,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "../../client/components/ui/button";
 import { Badge } from "../../client/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../client/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../../client/components/ui/dialog";
 import { citaStatusLabel } from "../services/statusLabels";
 import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
 import { toast } from "../../client/hooks/use-toast";
@@ -40,7 +52,8 @@ export function ClinicalCalendarView({
   busyCitaId,
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
+  const [viewMode, setViewMode] = useState<CalendarViewMode>("week");
+  const [selectedDetailCita, setSelectedDetailCita] = useState<any | null>(null);
 
   // Navegación de fechas
   const handlePrev = () => {
@@ -62,6 +75,38 @@ export function ClinicalCalendarView({
   };
 
   const handleToday = () => setCurrentDate(new Date());
+
+  const handleCitaClick = (cita: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedDetailCita(cita);
+    onSelectCita?.(cita);
+  };
+
+  const handleExportIcs = (cita: any) => {
+    try {
+      const start = new Date(cita.scheduledAt);
+      const end = new Date(start.getTime() + (cita.durationMinutes || 30) * 60_000);
+      const ics = generateIcsFile({
+        summary: `Cita Médica - ${cita.patient.firstName} ${cita.patient.lastName} (${cita.patient.syntheticId})`,
+        description: `Consulta médica programada en DoctorIA.\nPaciente: ${cita.patient.firstName} ${cita.patient.lastName}\nMotivo: ${cita.reason || "Consulta médica general"}`,
+        location: "Consultorio Médico - DoctorIA",
+        startTime: start,
+        endTime: end,
+        organizer: cita.medico?.fullName || "DoctorIA",
+      });
+      downloadIcsFile(`cita-${cita.patient.syntheticId}-${start.toISOString().slice(0, 10)}.ics`, ics);
+      toast({
+        title: "Calendario descargado",
+        description: "El archivo .ics de la cita fue guardado con éxito.",
+      });
+    } catch (e: any) {
+      toast({
+        title: "Error al exportar",
+        description: "No se pudo generar el archivo de calendario.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Formato del título del calendario
   const getHeaderTitle = () => {
@@ -135,7 +180,8 @@ export function ClinicalCalendarView({
                 {hourCitas.map((cita) => (
                   <div
                     key={cita.id}
-                    className={`rounded-lg border p-2 text-xs transition-all shadow-sm flex items-center justify-between gap-2 ${getStatusColor(cita.status)}`}
+                    onClick={(e) => handleCitaClick(cita, e)}
+                    className={`cursor-pointer rounded-lg border p-2 text-xs transition-all shadow-sm flex items-center justify-between gap-2 hover:scale-[1.01] ${getStatusColor(cita.status)}`}
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -152,19 +198,9 @@ export function ClinicalCalendarView({
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      <WaspRouterLink
-                        to={routes.ClinicalPatientDetailRoute.to}
-                        params={{ patientId: cita.patient.id }}
-                      >
-                        <Button size="sm" variant="ghost" className="size-7 p-0" title="Ver paciente">
-                          <ExternalLink className="size-3.5" />
-                        </Button>
-                      </WaspRouterLink>
-                      {onEditCita && cita.status === "SCHEDULED" && (
-                        <Button size="sm" variant="ghost" className="size-7 p-0" onClick={() => onEditCita(cita)}>
-                          <Edit3 className="size-3.5" />
-                        </Button>
-                      )}
+                      <Button size="sm" variant="ghost" className="size-7 p-0" title="Ver detalles">
+                        <ExternalLink className="size-3.5" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -234,13 +270,20 @@ export function ClinicalCalendarView({
                   {dayCitas.map((cita) => (
                     <div
                       key={cita.id}
-                      onClick={() => onSelectCita?.(cita)}
-                      className={`cursor-pointer rounded-lg border p-1.5 text-[11px] transition-transform hover:scale-[1.02] ${getStatusColor(cita.status)}`}
+                      onClick={(e) => handleCitaClick(cita, e)}
+                      className={`cursor-pointer rounded-lg border p-2 text-[11px] transition-transform hover:scale-[1.02] shadow-sm ${getStatusColor(cita.status)}`}
                     >
-                      <div className="font-semibold truncate">
-                        {new Date(cita.scheduledAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}{" "}
-                        {cita.patient.firstName}
+                      <div className="font-semibold truncate flex items-center justify-between">
+                        <span>
+                          {new Date(cita.scheduledAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        <span className="text-[9px] opacity-80 uppercase tracking-wider">
+                          {cita.durationMinutes || 30}m
+                        </span>
                       </div>
+                      <p className="font-medium text-foreground truncate mt-0.5">
+                        {cita.patient.firstName} {cita.patient.lastName}
+                      </p>
                       <p className="text-[10px] text-muted-foreground truncate">
                         {cita.patient.syntheticId}
                       </p>
@@ -256,7 +299,7 @@ export function ClinicalCalendarView({
                   className="w-full text-xs text-muted-foreground hover:text-primary mt-2 h-7"
                   onClick={() => onNewCitaAtDate(date)}
                 >
-                  <Plus className="size-3" />
+                  <Plus className="size-3 mr-1" />
                   Cita
                 </Button>
               )}
@@ -350,7 +393,8 @@ export function ClinicalCalendarView({
                   {dayCitas.slice(0, 2).map((c) => (
                     <div
                       key={c.id}
-                      className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium border ${getStatusColor(c.status)}`}
+                      onClick={(e) => handleCitaClick(c, e)}
+                      className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium border hover:scale-[1.02] transition-transform ${getStatusColor(c.status)}`}
                       title={`${c.patient.firstName} ${c.patient.lastName} - ${new Date(c.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                     >
                       {new Date(c.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {c.patient.firstName}
@@ -410,75 +454,318 @@ export function ClinicalCalendarView({
   };
 
   return (
-    <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md shadow-lg">
-      <CardHeader className="border-b border-outline-variant/40 bg-surface-container/30 p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          {/* Controles de Navegación de Fecha */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleToday} className="text-xs">
-              Hoy
-            </Button>
-            <div className="flex items-center">
-              <Button variant="ghost" size="sm" onClick={handlePrev} className="size-8 p-0">
-                <ChevronLeft className="size-4" />
+    <>
+      <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md shadow-lg">
+        <CardHeader className="border-b border-outline-variant/40 bg-surface-container/30 p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Controles de Navegación de Fecha */}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleToday} className="text-xs">
+                Hoy
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleNext} className="size-8 p-0">
-                <ChevronRight className="size-4" />
-              </Button>
+              <div className="flex items-center">
+                <Button variant="ghost" size="sm" onClick={handlePrev} className="size-8 p-0">
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleNext} className="size-8 p-0">
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-foreground capitalize">
+                {getHeaderTitle()}
+              </h2>
             </div>
-            <h2 className="text-base sm:text-lg font-bold text-foreground capitalize">
-              {getHeaderTitle()}
-            </h2>
-          </div>
 
-          {/* Selector de Modo de Vista (Día | Semana | Mes | Año) */}
-          <div className="flex items-center rounded-lg border border-outline-variant/60 bg-surface-container/50 p-0.5 text-xs font-medium">
-            <button
-              type="button"
-              onClick={() => setViewMode("day")}
-              className={`rounded-md px-2.5 py-1 transition-colors ${
-                viewMode === "day" ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Día
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("week")}
-              className={`rounded-md px-2.5 py-1 transition-colors ${
-                viewMode === "week" ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Semana
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("month")}
-              className={`rounded-md px-2.5 py-1 transition-colors ${
-                viewMode === "month" ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Mes
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("year")}
-              className={`rounded-md px-2.5 py-1 transition-colors ${
-                viewMode === "year" ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Año
-            </button>
+            {/* Selector de Modo de Vista (Día | Semana | Mes | Año) */}
+            <div className="flex items-center rounded-lg border border-outline-variant/60 bg-surface-container/50 p-0.5 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setViewMode("day")}
+                className={`rounded-md px-2.5 py-1 transition-colors ${
+                  viewMode === "day" ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Día
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("week")}
+                className={`rounded-md px-2.5 py-1 transition-colors ${
+                  viewMode === "week" ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Semana
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("month")}
+                className={`rounded-md px-2.5 py-1 transition-colors ${
+                  viewMode === "month" ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Mes
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("year")}
+                className={`rounded-md px-2.5 py-1 transition-colors ${
+                  viewMode === "year" ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Año
+              </button>
+            </div>
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent className="p-4 sm:p-6">
-        {viewMode === "day" && renderDayView()}
-        {viewMode === "week" && renderWeekView()}
-        {viewMode === "month" && renderMonthView()}
-        {viewMode === "year" && renderYearView()}
-      </CardContent>
-    </Card>
+        <CardContent className="p-4 sm:p-6">
+          {viewMode === "day" && renderDayView()}
+          {viewMode === "week" && renderWeekView()}
+          {viewMode === "month" && renderMonthView()}
+          {viewMode === "year" && renderYearView()}
+        </CardContent>
+      </Card>
+
+      {/* Detalle de Cita tipo Ant Design / Sonner Floating Modal */}
+      <Dialog
+        open={Boolean(selectedDetailCita)}
+        onOpenChange={(v) => !v && setSelectedDetailCita(null)}
+      >
+        <DialogContent className="max-w-lg border-outline-variant/80 bg-surface/95 backdrop-blur-xl shadow-2xl p-6">
+          {selectedDetailCita && (
+            <div className="space-y-5">
+              <DialogHeader className="space-y-2 pb-3 border-b border-outline-variant/40">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant={
+                      selectedDetailCita.status === "COMPLETED"
+                        ? "success"
+                        : selectedDetailCita.status === "IN_PROGRESS"
+                        ? "warning"
+                        : selectedDetailCita.status === "CANCELLED"
+                        ? "destructive"
+                        : "outline"
+                    }
+                    className="text-xs px-2.5 py-0.5 mono-label"
+                  >
+                    {citaStatusLabel(selectedDetailCita.status)}
+                  </Badge>
+                  <span className="text-xs font-mono text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="size-3.5 text-primary" />
+                    {selectedDetailCita.durationMinutes || 30} min
+                  </span>
+                </div>
+                <DialogTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+                  <CalendarDays className="size-5 text-primary" />
+                  {new Date(selectedDetailCita.scheduledAt).toLocaleDateString("es-ES", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground font-mono">
+                  Horario:{" "}
+                  <span className="text-foreground font-bold">
+                    {new Date(selectedDetailCita.scheduledAt).toLocaleTimeString("es-ES", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>{" "}
+                  a{" "}
+                  <span className="text-foreground font-bold">
+                    {new Date(
+                      new Date(selectedDetailCita.scheduledAt).getTime() +
+                        (selectedDetailCita.durationMinutes || 30) * 60_000,
+                    ).toLocaleTimeString("es-ES", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* Información del Paciente */}
+              <div className="rounded-xl border border-outline-variant/60 bg-surface-container/40 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex size-9 items-center justify-center rounded-full bg-primary/20 text-primary font-bold text-xs ring-1 ring-primary/40">
+                      {selectedDetailCita.patient?.firstName?.[0] || "P"}
+                      {selectedDetailCita.patient?.lastName?.[0] || ""}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground">
+                        {selectedDetailCita.patient?.firstName} {selectedDetailCita.patient?.lastName}
+                      </h4>
+                      <p className="text-[11px] font-mono text-muted-foreground">
+                        Código: <span className="text-primary font-semibold">{selectedDetailCita.patient?.syntheticId}</span>
+                      </p>
+                    </div>
+                  </div>
+                  {selectedDetailCita.patient?.documento && (
+                    <Badge variant="outline" className="text-[10px] font-mono">
+                      Doc: {selectedDetailCita.patient.documento}
+                    </Badge>
+                  )}
+                </div>
+
+                {selectedDetailCita.patient?.phone && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1.5 border-t border-outline-variant/30">
+                    <Phone className="size-3 text-primary" />
+                    <span>Contacto: {selectedDetailCita.patient.phone}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Información del Médico y Motivo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="rounded-xl border border-outline-variant/60 bg-surface-container/30 p-3 space-y-1">
+                  <span className="text-muted-foreground font-medium flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                    <UserCheck className="size-3.5 text-primary" />
+                    Médico Tratante
+                  </span>
+                  <p className="font-semibold text-foreground text-sm">
+                    {selectedDetailCita.medico?.fullName || "Médico Asignado"}
+                  </p>
+                  {selectedDetailCita.medico?.specialty && (
+                    <p className="text-muted-foreground text-[11px]">
+                      {selectedDetailCita.medico.specialty}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-outline-variant/60 bg-surface-container/30 p-3 space-y-1">
+                  <span className="text-muted-foreground font-medium flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                    <FileText className="size-3.5 text-primary" />
+                    Motivo de Consulta
+                  </span>
+                  <p className="text-foreground italic line-clamp-2">
+                    {selectedDetailCita.reason || "Consulta médica general"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Acciones Rápidas */}
+              <div className="space-y-3 pt-2 border-t border-outline-variant/40">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      type="button"
+                      onClick={() => handleExportIcs(selectedDetailCita)}
+                      className="text-xs gap-1.5 border-outline-variant"
+                    >
+                      <Download className="size-3.5" />
+                      Descargar .ics
+                    </Button>
+
+                    {onEditCita && selectedDetailCita.status === "SCHEDULED" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        type="button"
+                        onClick={() => {
+                          const c = selectedDetailCita;
+                          setSelectedDetailCita(null);
+                          onEditCita(c);
+                        }}
+                        className="text-xs gap-1.5 border-outline-variant"
+                      >
+                        <Edit3 className="size-3.5" />
+                        Editar Cita
+                      </Button>
+                    )}
+                  </div>
+
+                  {selectedDetailCita.patient?.id && (
+                    <WaspRouterLink
+                      to={routes.ClinicalPatientDetailRoute.to}
+                      params={{ patientId: selectedDetailCita.patient.id }}
+                    >
+                      <Button size="sm" className="text-xs gap-1.5 shadow-[0_0_12px_rgba(0,218,243,0.3)]">
+                        <span>Ir a Ficha Clínica</span>
+                        <ArrowRight className="size-3.5" />
+                      </Button>
+                    </WaspRouterLink>
+                  )}
+                </div>
+
+                {/* Transiciones de Estado Rápidas */}
+                {onRunTransition && (
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                    {selectedDetailCita.status === "SCHEDULED" && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          type="button"
+                          disabled={busyCitaId === selectedDetailCita.id}
+                          onClick={async () => {
+                            await onRunTransition(selectedDetailCita.id, "CANCELLED", "Cancelar");
+                            setSelectedDetailCita(null);
+                          }}
+                          className="text-xs text-destructive hover:bg-destructive/10 h-8"
+                        >
+                          <XCircle className="size-3.5 mr-1" />
+                          Cancelar Cita
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          type="button"
+                          disabled={busyCitaId === selectedDetailCita.id}
+                          onClick={async () => {
+                            await onRunTransition(selectedDetailCita.id, "IN_PROGRESS", "Iniciar atención");
+                            setSelectedDetailCita((prev: any) => prev ? { ...prev, status: "IN_PROGRESS" } : null);
+                          }}
+                          className="text-xs bg-cyan-600 hover:bg-cyan-500 text-white h-8"
+                        >
+                          <Activity className="size-3.5 mr-1" />
+                          Iniciar Atención
+                        </Button>
+                      </>
+                    )}
+
+                    {selectedDetailCita.status === "IN_PROGRESS" && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          type="button"
+                          disabled={busyCitaId === selectedDetailCita.id}
+                          onClick={async () => {
+                            await onRunTransition(selectedDetailCita.id, "CANCELLED", "Cancelar");
+                            setSelectedDetailCita(null);
+                          }}
+                          className="text-xs text-destructive hover:bg-destructive/10 h-8"
+                        >
+                          <XCircle className="size-3.5 mr-1" />
+                          Cancelar Cita
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          type="button"
+                          disabled={busyCitaId === selectedDetailCita.id}
+                          onClick={async () => {
+                            await onRunTransition(selectedDetailCita.id, "COMPLETED", "Completar");
+                            setSelectedDetailCita((prev: any) => prev ? { ...prev, status: "COMPLETED" } : null);
+                          }}
+                          className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white h-8"
+                        >
+                          <CheckCircle2 className="size-3.5 mr-1" />
+                          Completar Consulta
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

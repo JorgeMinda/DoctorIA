@@ -142,9 +142,24 @@ export function EditAppointmentModal({
 
   if (!cita) return null;
 
+  const isSlotPast = (slotTime: string) => {
+    if (!date) return false;
+    const slotDate = new Date(`${date}T${slotTime}:00`);
+    return slotDate.getTime() <= Date.now();
+  };
+
+  const ALL_DAY_SLOTS = [
+    "07:00", "07:30", "08:00", "08:30", "09:00", "09:30",
+    "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
+    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+    "16:00", "16:30", "17:00", "17:30", "18:00", "18:30",
+    "19:00", "19:30", "20:00", "20:30",
+  ];
+  const baseSlots = Array.from(new Set([...ALL_DAY_SLOTS, ...displaySlots])).sort();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Badge variant="outline" className="mono-label gap-1.5 border-primary/40 text-primary">
@@ -215,52 +230,97 @@ export function EditAppointmentModal({
             />
           </div>
 
-          {/* Horarios Disponibles */}
+          {/* Horarios Disponibles vs Ocupados */}
           <div className="space-y-2 sm:col-span-2">
-            <Label className="flex items-center justify-between">
-              <span>Horarios disponibles</span>
+            <div className="flex items-center justify-between">
+              <Label>Horarios del día</Label>
               {date && medicoId && (
                 <span className="text-[11px] font-normal text-muted-foreground">
                   {loadingSlots
                     ? "Consultando disponibilidad…"
-                    : `${displaySlots.length} horarios`}
+                    : `${displaySlots.length} horarios libres`}
                 </span>
               )}
-            </Label>
+            </div>
 
             {!medicoId || !date ? (
               <div className="rounded-lg border border-dashed border-outline-variant/60 bg-surface/30 p-3 text-center text-xs text-muted-foreground">
-                Seleccione profesional y fecha para ver los turnos libres.
+                Seleccione profesional y fecha para ver los turnos disponibles y ocupados.
               </div>
             ) : loadingSlots ? (
               <div className="flex items-center justify-center gap-2 rounded-lg border border-outline-variant/40 bg-surface/30 p-4 text-xs text-muted-foreground">
                 <span className="size-2 animate-pulse rounded-full bg-primary" />
                 Verificando disponibilidad de horarios…
               </div>
-            ) : displaySlots.length === 0 ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-center text-xs text-destructive">
-                No hay horarios libres ese día para este médico.
-              </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 max-h-36 overflow-y-auto p-1">
-                {displaySlots.map((s) => {
-                  const isSelected = time === s;
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setTime(s)}
-                      className={`flex items-center justify-center gap-1 rounded-lg border py-2 text-xs font-mono font-medium transition-all ${
-                        isSelected
-                          ? "border-primary bg-primary/25 text-primary shadow-[0_0_12px_rgba(0,218,243,0.35)] scale-[1.02]"
-                          : "border-outline-variant/60 bg-surface/50 text-foreground hover:bg-surface-high hover:border-outline backdrop-blur-sm"
-                      }`}
-                    >
-                      <Clock className="size-3 opacity-70" />
-                      {s}
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                {/* Leyenda de colores */}
+                <div className="flex flex-wrap items-center gap-3 text-[10px] font-mono px-1 text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 text-emerald-400">
+                    <span className="size-2 rounded-full bg-emerald-400" />
+                    Disponible
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-rose-400">
+                    <span className="size-2 rounded-full bg-rose-400" />
+                    Ocupado
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-muted-foreground/60">
+                    <span className="size-2 rounded-full bg-muted-foreground/40" />
+                    Pasado
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 max-h-48 overflow-y-auto p-1.5 border rounded-lg border-outline-variant/40 bg-surface/30">
+                  {baseSlots.map((s) => {
+                    const isPast = isSlotPast(s);
+                    const isBusy = !displaySlots.includes(s) && !isPast;
+                    const isFree = displaySlots.includes(s) && !isPast;
+                    const isSelected = time === s;
+
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        disabled={!isFree}
+                        onClick={() => setTime(s)}
+                        title={
+                          isSelected
+                            ? "Horario seleccionado"
+                            : isBusy
+                            ? "Horario ocupado por otra cita"
+                            : isPast
+                            ? "Horario pasado"
+                            : "Disponible para agendar"
+                        }
+                        className={`flex flex-col items-center justify-center rounded-lg border py-2 px-1 text-xs font-mono font-medium transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground font-bold shadow-[0_0_15px_rgba(0,218,243,0.4)] scale-105 ring-2 ring-primary"
+                            : isBusy
+                            ? "border-rose-500/40 bg-rose-500/10 text-rose-400 line-through cursor-not-allowed opacity-80 select-none"
+                            : isPast
+                            ? "border-outline-variant/30 bg-surface/20 text-muted-foreground/40 line-through cursor-not-allowed select-none"
+                            : "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:border-emerald-400 hover:bg-emerald-500/25 hover:shadow-[0_0_10px_rgba(52,211,153,0.25)] cursor-pointer"
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">
+                          {isSelected ? (
+                            <span className="size-1.5 rounded-full bg-primary-foreground" />
+                          ) : isBusy ? (
+                            <span className="size-1.5 rounded-full bg-rose-400" />
+                          ) : isPast ? null : (
+                            <Clock className="size-3 opacity-80" />
+                          )}
+                          {s}
+                        </span>
+                        {isBusy && (
+                          <span className="text-[9px] font-sans text-rose-400/90 tracking-tight mt-0.5">
+                            Ocupado
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
