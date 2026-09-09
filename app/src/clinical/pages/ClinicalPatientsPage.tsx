@@ -84,7 +84,7 @@ export function ClinicalPatientsPage() {
               Nuevo paciente
             </Button>
           )}
-          {user?.isSecretaria ? (
+          {user?.isSecretaria && (
             <Button
               variant="destructive"
               onClick={() => setShowEmergency(true)}
@@ -93,7 +93,8 @@ export function ClinicalPatientsPage() {
               <Siren className="size-4 animate-pulse" />
               🚨 Cita Emergente
             </Button>
-          ) : (
+          )}
+          {user?.isMedico && (
             <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
               <Button className="shadow-[0_0_20px_rgba(0,218,243,0.25)]">
                 <Mic className="size-4" />
