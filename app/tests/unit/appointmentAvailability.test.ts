@@ -55,15 +55,15 @@ describe("buildDaySlots", () => {
 
 describe("filterFreeSlots", () => {
   const day = "2026-08-25";
-  const now = new Date("2026-08-25T00:00:00Z").getTime();
+  const now = Date.UTC(2026, 7, 25, 0, 0, 0);
 
   it("excluye slots pasados", () => {
-    const free = filterFreeSlots(["00:00", "23:30"], day, [], 30, now + 12 * 3_600_000);
+    const free = filterFreeSlots(["00:00", "23:30"], day, [], 30, now + 12 * 3_600_000, 0);
     expect(free).toEqual(["23:30"]);
   });
 
   it("excluye slots ocupados por una cita activa", () => {
-    const busyStart = new Date(`${day}T14:00:00`).getTime();
+    const busyStart = Date.UTC(2026, 7, 25, 14, 0, 0);
     const busy: Interval[] = [iv(busyStart, 30)];
     const free = filterFreeSlots(
       ["13:30", "14:00", "14:30"],
@@ -71,15 +71,35 @@ describe("filterFreeSlots", () => {
       busy,
       30,
       now,
+      0,
     );
     expect(free).toEqual(["13:30", "14:30"]);
   });
 
   it("respeta la duración de la nueva cita (solape parcial cuenta)", () => {
-    const busyStart = new Date(`${day}T14:00:00`).getTime();
+    const busyStart = Date.UTC(2026, 7, 25, 14, 0, 0);
     const busy: Interval[] = [iv(busyStart, 30)];
     // cita nueva de 60 min a las 13:30 pisa 14:00 → inválido
-    const free = filterFreeSlots(["13:30"], day, busy, 60, now);
+    const free = filterFreeSlots(["13:30"], day, busy, 60, now, 0);
     expect(free).toEqual([]);
+  });
+
+  it("maneja correctamente el timezoneOffset del cliente (ej. UTC-5)", () => {
+    // Para un cliente en UTC-5 (offset = 300 min), las 13:00 local es 18:00 UTC
+    const busyStartUtc = Date.UTC(2026, 7, 25, 18, 0, 0);
+    const busy: Interval[] = [iv(busyStartUtc, 30)];
+    const free = filterFreeSlots(
+      ["12:30", "13:00", "13:30", "18:00"],
+      day,
+      busy,
+      30,
+      now,
+      300, // UTC-5
+    );
+    // 13:00 local (18:00 UTC) debe estar OCUPADO. 18:00 local (23:00 UTC) debe estar LIBRE.
+    expect(free).toContain("12:30");
+    expect(free).not.toContain("13:00");
+    expect(free).toContain("13:30");
+    expect(free).toContain("18:00");
   });
 });

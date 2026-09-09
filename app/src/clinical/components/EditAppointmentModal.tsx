@@ -56,7 +56,12 @@ export function EditAppointmentModal({
   const { data: slots, isLoading: loadingSlots } = useQuery(
     getAvailableSlots,
     hasSlotParams
-      ? { medicoId, date, durationMinutes: DURATION_MINUTES }
+      ? {
+          medicoId,
+          date,
+          durationMinutes: DURATION_MINUTES,
+          timezoneOffset: new Date().getTimezoneOffset(),
+        }
       : ({} as any),
     { enabled: hasSlotParams },
   );
@@ -67,8 +72,8 @@ export function EditAppointmentModal({
     if (open && cita) {
       setMedicoId(cita.medicoId ?? cita.medico?.id ?? "");
       const d = new Date(cita.scheduledAt);
-      const dateStr = d.toISOString().slice(0, 10);
-      const timeStr = d.toTimeString().slice(0, 5);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
       setDate(dateStr);
       setTime(timeStr);
       setReason(cita.reason ?? "");
@@ -81,15 +86,17 @@ export function EditAppointmentModal({
 
   // Incluir el horario actual de la cita si coincide con la fecha y médico seleccionados
   const displaySlots = [...freeSlots];
-  if (
-    cita &&
-    time &&
-    !displaySlots.includes(time) &&
-    medicoId === (cita.medicoId ?? cita.medico?.id) &&
-    date === new Date(cita.scheduledAt).toISOString().slice(0, 10)
-  ) {
-    displaySlots.push(time);
-    displaySlots.sort();
+  if (cita && time) {
+    const cd = new Date(cita.scheduledAt);
+    const citaLocalDateStr = `${cd.getFullYear()}-${String(cd.getMonth() + 1).padStart(2, "0")}-${String(cd.getDate()).padStart(2, "0")}`;
+    if (
+      !displaySlots.includes(time) &&
+      medicoId === (cita.medicoId ?? cita.medico?.id) &&
+      date === citaLocalDateStr
+    ) {
+      displaySlots.push(time);
+      displaySlots.sort();
+    }
   }
 
   const handleUpdate = async () => {

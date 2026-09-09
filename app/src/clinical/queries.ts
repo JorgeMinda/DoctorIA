@@ -1248,6 +1248,7 @@ const getAvailableSlotsInputSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha en formato YYYY-MM-DD"),
   durationMinutes: z.number().int().positive().max(240).optional(),
+  timezoneOffset: z.number().int().min(-840).max(840).optional(),
 });
 
 type GetAvailableSlotsInput = z.infer<typeof getAvailableSlotsInputSchema>;
@@ -1266,13 +1267,18 @@ export const getAvailableSlots: GetAvailableSlots<
 > = async (rawArgs, context) => {
   ensureRole(context.user, "admin", "medico", "secretaria", "paciente");
 
-  const { medicoId, date, durationMinutes = 30 } =
-    ensureArgsSchemaOrThrowHttpError(getAvailableSlotsInputSchema, rawArgs);
+  const {
+    medicoId,
+    date,
+    durationMinutes = 30,
+    timezoneOffset = 0,
+  } = ensureArgsSchemaOrThrowHttpError(getAvailableSlotsInputSchema, rawArgs);
 
   const busy = await getOccupiedSlots({
     citaDelegate: context.entities.Cita,
     medicoId,
     dateISO: date,
+    timezoneOffset,
   });
 
   const freeSlots = filterFreeSlots(
@@ -1281,6 +1287,7 @@ export const getAvailableSlots: GetAvailableSlots<
     busy,
     durationMinutes,
     Date.now(),
+    timezoneOffset,
   );
 
   return {

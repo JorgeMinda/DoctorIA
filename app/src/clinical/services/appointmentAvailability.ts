@@ -37,18 +37,39 @@ export function buildDaySlots(slotMinutes = 30): string[] {
   return slots;
 }
 
+// Calcula el timestamp UTC en milisegundos de un slot local ("HH:mm") en una fecha local ("YYYY-MM-DD")
+// dado el timezoneOffset del cliente (en minutos, ej. +300 para UTC-5).
+export function getSlotStartMs(
+  dateISO: string,
+  hhmm: string,
+  timezoneOffset = 0,
+): number {
+  const [yearStr, monthStr, dayStr] = dateISO.split("-");
+  const [hourStr, minStr] = hhmm.split(":");
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10) - 1;
+  const day = parseInt(dayStr, 10);
+  const hour = parseInt(hourStr, 10);
+  const min = parseInt(minStr, 10);
+
+  // Date.UTC da los ms asumiendo que esa hora es UTC.
+  // timezoneOffset (de new Date().getTimezoneOffset()) es (UTC - Local) en minutos.
+  // Por tanto: LocalTime + timezoneOffset * 60_000 = UTCTime real.
+  return Date.UTC(year, month, day, hour, min, 0, 0) + timezoneOffset * 60_000;
+}
+
 // Filtra slots: descarta pasados (relativos a nowMs) y los que choquen con
-// intervalos ocupados. dateISO = "YYYY-MM-DD" en la misma zona horaria con la
-// que se muestran los slots.
+// intervalos ocupados, alineando exactamente con la zona horaria del cliente.
 export function filterFreeSlots(
   slots: string[],
   dateISO: string,
   busy: Interval[],
   durationMinutes: number,
   nowMs: number,
+  timezoneOffset = 0,
 ): string[] {
   return slots.filter((hhmm) => {
-    const startMs = new Date(`${dateISO}T${hhmm}:00`).getTime();
+    const startMs = getSlotStartMs(dateISO, hhmm, timezoneOffset);
     if (Number.isNaN(startMs)) return false;
     if (startMs <= nowMs) return false;
     return !hasConflict(busy, startMs, startMs + durationMinutes * 60_000);
@@ -65,15 +86,18 @@ export function citasToIntervals(
   });
 }
 
-// Intervalos ocupados de un médico en un día (solo estados bloqueantes).
-// dateISO = "YYYY-MM-DD" (misma zona que se usa para mostrar los slots).
+// Intervalos ocupados de un médico en un día local (solo estados bloqueantes).
 export async function getOccupiedSlots(args: {
   citaDelegate: any;
   medicoId: string;
   dateISO: string;
+  timezoneOffset?: number;
 }): Promise<Interval[]> {
-  const dayStart = new Date(`${args.dateISO}T00:00:00.000Z`);
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const offset = args.timezoneOffset ?? 0;
+  const dayStartMs = getSlotStartMs(args.dateISO, "00:00", offset);
+  const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+  const dayStart = new Date(dayStartMs);
+  const dayEnd = new Date(dayEndMs);
   const citas = await args.citaDelegate.findMany({
     where: {
       medicoId: args.medicoId,
@@ -94,14 +118,20 @@ export async function validateNoOverlap(args: {
   durationMinutes: number;
   excludeCitaId?: string;
 }): Promise<void> {
-  const dateISO = new Date(args.scheduledAt).toISOString().slice(0, 10);
-  const busy = await getOccupiedSlots({
-    citaDelegate: args.citaDelegate,
-    medicoId: args.medicoId,
-    dateISO,
-  });
   const startMs = new Date(args.scheduledAt).getTime();
   const endMs = startMs + args.durationMinutes * 60_000;
+  // Búsqueda en ventana de seguridad de ±24h alrededor del timestamp de la cita
+  const windowStart = new Date(startMs - 24 * 60 * 60 * 1000);
+  const windowEnd = new Date(endMs + 24 * 60 * 60 * 1000);
+  const citas = await args.citaDelegate.findMany({
+    where: {
+      medicoId: args.medicoId,
+      status: { in: [...BLOCKING_CITA_STATUSES] },
+      scheduledAt: { gte: windowStart, lt: windowEnd },
+    },
+    select: { id: true, scheduledAt: true, durationMinutes: true },
+  });
+  const busy = citasToIntervals(citas);
   const conflict = busy.some(
     (iv) =>
       iv.id !== args.excludeCitaId &&

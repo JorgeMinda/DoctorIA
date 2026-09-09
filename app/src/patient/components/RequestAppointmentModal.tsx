@@ -72,7 +72,12 @@ export function RequestAppointmentModal({
   const { data: slotsData, isLoading: loadingSlots } = useQuery(
     getAvailableSlots,
     hasSlotParams
-      ? { medicoId, date, durationMinutes: 30 }
+      ? {
+          medicoId,
+          date,
+          durationMinutes: 30,
+          timezoneOffset: new Date().getTimezoneOffset(),
+        }
       : ({} as any),
     { enabled: hasSlotParams }
   );
