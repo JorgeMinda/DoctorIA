@@ -92,29 +92,22 @@ export async function sendWhatsAppMessage(options: SendMessageOptions): Promise<
  * Obtiene el estado actual de la instancia en el Gateway QR.
  */
 export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
-  const gatewayUrl = (env as any).WHATSAPP_GATEWAY_URL?.replace(/\/+$/, "");
-  const apiKey = (env as any).WHATSAPP_API_KEY;
+  const gatewayUrl = (env as any).WHATSAPP_GATEWAY_URL?.replace(/\/+$/, "") || "http://localhost:8080";
+  const apiKey = (env as any).WHATSAPP_API_KEY || "doctoria_secret_key_2026";
   const instanceName = (env as any).WHATSAPP_INSTANCE_NAME || "doctoria";
-
-  if (!gatewayUrl) {
-    return {
-      connected: true, // Simulación activa para permitir pruebas inmediatas
-      instanceName,
-      gatewayUrl: null,
-      state: "mock",
-    };
-  }
 
   try {
     const endpoint = `${gatewayUrl}/instance/connectionState/${instanceName}`;
     const response = await fetch(endpoint, {
       headers: {
-        ...(apiKey ? { apikey: apiKey, Authorization: `Bearer ${apiKey}` } : {}),
+        apikey: apiKey,
+        Authorization: `Bearer ${apiKey}`,
       },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(4000),
     });
 
     if (!response.ok) {
+      // Si la instancia aún no ha sido creada en Evolution API, no está conectada
       return {
         connected: false,
         instanceName,
@@ -143,24 +136,62 @@ export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
 
 /**
  * Obtiene el código QR para escanear en WhatsApp si la sesión no está conectada.
+ * Si la instancia no existe en Evolution API, la crea automáticamente.
  */
 export async function getWhatsAppQrCode(): Promise<{ qr: string | null; pairingCode?: string | null }> {
-  const gatewayUrl = (env as any).WHATSAPP_GATEWAY_URL?.replace(/\/+$/, "");
-  const apiKey = (env as any).WHATSAPP_API_KEY;
+  const gatewayUrl = (env as any).WHATSAPP_GATEWAY_URL?.replace(/\/+$/, "") || "http://localhost:8080";
+  const apiKey = (env as any).WHATSAPP_API_KEY || "doctoria_secret_key_2026";
   const instanceName = (env as any).WHATSAPP_INSTANCE_NAME || "doctoria";
 
-  if (!gatewayUrl) {
-    return { qr: null };
-  }
-
   try {
-    const endpoint = `${gatewayUrl}/instance/connect/${instanceName}`;
-    const response = await fetch(endpoint, {
+    // 1. Intentar conectar / obtener QR de la instancia existente
+    const connectEndpoint = `${gatewayUrl}/instance/connect/${instanceName}`;
+    let response = await fetch(connectEndpoint, {
       headers: {
-        ...(apiKey ? { apikey: apiKey, Authorization: `Bearer ${apiKey}` } : {}),
+        apikey: apiKey,
+        Authorization: `Bearer ${apiKey}`,
       },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(5000),
     });
+
+    // 2. Si retorna 404 (no existe), crear la instancia en Evolution API
+    if (response.status === 404) {
+      const createEndpoint = `${gatewayUrl}/instance/create`;
+      const createRes = await fetch(createEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: apiKey,
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          instanceName,
+          token: apiKey,
+          qrcode: true,
+          integration: "WHATSAPP-BAILEYS",
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (createRes.ok) {
+        const createData = await createRes.json();
+        const qr =
+          createData?.qrcode?.base64 ||
+          createData?.base64 ||
+          createData?.code ||
+          null;
+        if (qr) return { qr };
+      }
+
+      // Reintentar connect tras crear
+      response = await fetch(connectEndpoint, {
+        headers: {
+          apikey: apiKey,
+          Authorization: `Bearer ${apiKey}`,
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+    }
 
     if (!response.ok) return { qr: null };
     const data = await response.json();
@@ -168,7 +199,8 @@ export async function getWhatsAppQrCode(): Promise<{ qr: string | null; pairingC
       qr: data?.base64 || data?.qrcode?.base64 || data?.code || null,
       pairingCode: data?.pairingCode || null,
     };
-  } catch {
+  } catch (err) {
+    console.warn("[WhatsAppGateway] No se pudo conectar al Gateway en", gatewayUrl, err);
     return { qr: null };
   }
 }

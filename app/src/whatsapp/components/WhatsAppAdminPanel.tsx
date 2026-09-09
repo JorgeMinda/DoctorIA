@@ -180,13 +180,23 @@ export function WhatsAppAdminPanel({
                 <img
                   src={info.qrCode.startsWith("data:") ? info.qrCode : `data:image/png;base64,${info.qrCode}`}
                   alt="Código QR WhatsApp"
-                  className="size-56 rounded-lg shadow-sm"
+                  className="size-56 rounded-lg shadow-sm border bg-white p-2"
                 />
-                <p className="text-xs text-muted-foreground mt-3 text-center max-w-xs">
-                  Abre WhatsApp en tu teléfono → Dispositivos vinculados → Vincular un dispositivo y escanea este código.
+                <p className="text-xs text-muted-foreground mt-3 text-center max-w-xs font-medium">
+                  Abre WhatsApp en tu teléfono ➔ Dispositivos vinculados ➔ Vincular un dispositivo y escanea este código.
                 </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                  className="mt-3 gap-1.5"
+                >
+                  <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                  Actualizar QR
+                </Button>
               </div>
-            ) : info?.connected ? (
+            ) : info?.connected && info?.state === "open" ? (
               <div className="flex flex-col items-center justify-center p-6 border rounded-xl bg-emerald-500/5 border-emerald-500/20 text-center space-y-2">
                 <CheckCircle2 className="size-12 text-emerald-500" />
                 <h4 className="font-semibold text-foreground">WhatsApp Vinculado con Éxito</h4>
@@ -198,13 +208,25 @@ export function WhatsAppAdminPanel({
                 </Badge>
               </div>
             ) : (
-              <div className="p-4 rounded-xl border bg-muted/30 text-sm space-y-2">
-                <div className="flex items-center gap-2 font-medium text-foreground">
-                  <Zap className="size-4 text-primary" />
-                  Modo Simulación / Listo para Gateway
+              <div className="p-4 rounded-xl border bg-muted/30 text-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-medium text-foreground">
+                    <QrCode className="size-4 text-primary" />
+                    Generar Conexión WhatsApp
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => refetch()}
+                    disabled={isLoading}
+                    className="gap-1.5"
+                  >
+                    <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                    Obtener Código QR
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Para conectar un número real de WhatsApp en producción, despliega una instancia gratuita de Evolution API o Baileys Bridge y configura <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">WHATSAPP_GATEWAY_URL</code>.
+                  El Gateway de Evolution API está corriendo. Haz clic en <b>Obtener Código QR</b> para cargar el código de emparejamiento con WhatsApp.
                 </p>
               </div>
             )}
