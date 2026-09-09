@@ -934,10 +934,10 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
 
   const currentStatus = citas.some(
     (c: any) =>
-      (c.status === statusRef.SCHEDULED ||
-        c.status === statusRef.IN_PROGRESS) &&
-      c.scheduledAt.getTime() <= now.getTime() &&
-      now.getTime() < c.scheduledAt.getTime() + c.durationMinutes * 60_000,
+      c.status === statusRef.IN_PROGRESS ||
+      (c.status === statusRef.SCHEDULED &&
+        c.scheduledAt.getTime() <= now.getTime() &&
+        now.getTime() < c.scheduledAt.getTime() + c.durationMinutes * 60_000),
   )
     ? ("EN_CITA" as const)
     : ("DESOCUPADO" as const);
@@ -1128,9 +1128,10 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
 
       const currentStatus = citas.some(
         (c: any) =>
-          (c.status === "SCHEDULED" || c.status === "IN_PROGRESS") &&
-          c.scheduledAt.getTime() <= now.getTime() &&
-          now.getTime() < c.scheduledAt.getTime() + c.durationMinutes * 60_000,
+          c.status === "IN_PROGRESS" ||
+          (c.status === "SCHEDULED" &&
+            c.scheduledAt.getTime() <= now.getTime() &&
+            now.getTime() < c.scheduledAt.getTime() + c.durationMinutes * 60_000),
       )
         ? ("EN_CITA" as const)
         : ("DESOCUPADO" as const);

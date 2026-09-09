@@ -2202,7 +2202,11 @@ export const updateCitaStatus: UpdateCitaStatus<
     );
   }
 
-  if (status !== cita.status && !canTransitionCita(cita.status, status)) {
+  if (status === cita.status) {
+    return cita;
+  }
+
+  if (!canTransitionCita(cita.status, status)) {
     throw new HttpError(
       409,
       `Transición no permitida: ${cita.status} → ${status}`,
@@ -2222,12 +2226,6 @@ export const updateCitaStatus: UpdateCitaStatus<
       400,
       "Solo una cita vencida puede marcarse como no iniciada",
     );
-  }
-  if (
-    status === "IN_PROGRESS" &&
-    cita.scheduledAt.getTime() > nowMs + 5 * 60_000
-  ) {
-    throw new HttpError(409, "La cita aún no comienza");
   }
 
   const updated = await context.entities.Cita.update({
