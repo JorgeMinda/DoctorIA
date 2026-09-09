@@ -1264,7 +1264,7 @@ export const getAvailableSlots: GetAvailableSlots<
   GetAvailableSlotsInput,
   GetAvailableSlotsOutput
 > = async (rawArgs, context) => {
-  ensureRole(context.user, "admin", "medico", "secretaria");
+  ensureRole(context.user, "admin", "medico", "secretaria", "paciente");
 
   const { medicoId, date, durationMinutes = 30 } =
     ensureArgsSchemaOrThrowHttpError(getAvailableSlotsInputSchema, rawArgs);

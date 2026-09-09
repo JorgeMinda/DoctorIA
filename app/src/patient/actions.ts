@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ensurePaciente } from "../clinical/services/guards";
 import { createAuditEntry } from "../clinical/services/audit";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
+import { validateNoOverlap } from "../clinical/services/appointmentAvailability";
 
 const updateMyPatientProfileSchema = z.object({
   firstName: z.string().trim().min(1, "El nombre es obligatorio").max(60),
@@ -94,5 +95,114 @@ export const updateMyPatientProfile: any = async (
   return {
     success: true,
     patient: updatedPatient,
+  };
+};
+
+const requestPatientAppointmentSchema = z.object({
+  medicoId: z.string().min(1, "El ID del médico es obligatorio"),
+  scheduledAt: z.coerce.date().refine((d) => !isNaN(d.getTime()), {
+    message: "Fecha de cita inválida",
+  }),
+  durationMinutes: z.number().int().min(15).max(120).default(30).optional(),
+  reason: z.string().trim().max(500).optional(),
+});
+
+type RequestPatientAppointmentInput = z.infer<
+  typeof requestPatientAppointmentSchema
+>;
+
+export const requestPatientAppointment: any = async (
+  rawArgs: any,
+  context: any,
+) => {
+  const user = ensurePaciente(context.user);
+
+  const data: RequestPatientAppointmentInput = ensureArgsSchemaOrThrowHttpError(
+    requestPatientAppointmentSchema,
+    rawArgs,
+  );
+
+  const patient = await context.entities.SyntheticPatient.findFirst({
+    where: { userId: user.id },
+  });
+
+  if (!patient) {
+    throw new HttpError(
+      404,
+      "No se encontró una ficha de paciente vinculada a tu usuario.",
+    );
+  }
+
+  const now = Date.now();
+  const scheduledTime = data.scheduledAt.getTime();
+  if (scheduledTime <= now) {
+    throw new HttpError(
+      400,
+      "La fecha y hora de la cita debe ser en el futuro.",
+    );
+  }
+
+  const medico = await context.entities.User.findFirst({
+    where: {
+      id: data.medicoId,
+      isMedico: true,
+      isActive: true,
+      isAdmin: false,
+    },
+    select: { id: true, fullName: true },
+  });
+
+  if (!medico) {
+    throw new HttpError(404, "Médico no encontrado o no disponible.");
+  }
+
+  const durationMinutes = data.durationMinutes ?? 30;
+
+  await validateNoOverlap({
+    citaDelegate: context.entities.Cita,
+    medicoId: data.medicoId,
+    scheduledAt: data.scheduledAt,
+    durationMinutes,
+  });
+
+  const cita = await context.entities.Cita.create({
+    data: {
+      medicoId: data.medicoId,
+      patientId: patient.id,
+      scheduledAt: data.scheduledAt,
+      durationMinutes,
+      status: "SCHEDULED",
+      reason: data.reason || "Solicitud de cita desde Portal de Paciente",
+    },
+    include: {
+      medico: {
+        select: {
+          id: true,
+          fullName: true,
+          specialty: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "MANAGE_CITA",
+    resourceType: "CITA",
+    resourceId: cita.id,
+    patientId: patient.id,
+    citaId: cita.id,
+    metadata: {
+      action: "PATIENT_REQUEST_APPOINTMENT",
+      status: cita.status,
+      medicoId: data.medicoId,
+      scheduledAt: data.scheduledAt.toISOString(),
+    },
+  });
+
+  return {
+    success: true,
+    cita,
   };
 };

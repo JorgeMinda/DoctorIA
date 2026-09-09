@@ -7,12 +7,22 @@ import {
   getPatientAppointments,
   getPatientClinicalHistory,
   getMyLinkRequestStatus,
+  getActiveDoctorsForPatient,
 } from "./queries" with { type: "ref" };
-import { updateMyPatientProfile } from "./actions" with { type: "ref" };
+import {
+  updateMyPatientProfile,
+  requestPatientAppointment,
+} from "./actions" with { type: "ref" };
 
 export const patientSpec: Spec = [
   action(updateMyPatientProfile, {
     entities: ["SyntheticPatient", "User", "AuditLog"],
+  }),
+  action(requestPatientAppointment, {
+    entities: ["SyntheticPatient", "Cita", "User", "AuditLog"],
+  }),
+  query(getActiveDoctorsForPatient, {
+    entities: ["User"],
   }),
   query(getPatientAppointments, {
     entities: ["SyntheticPatient", "Cita", "User"],

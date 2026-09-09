@@ -12,9 +12,11 @@ import { Badge } from "../../client/components/ui/badge";
 import { StatusBadge } from "../../clinical/components/StatusBadge";
 import { toast } from "../../client/hooks/use-toast";
 import { PatientProfileModal } from "../components/PatientProfileModal";
+import { RequestAppointmentModal } from "../components/RequestAppointmentModal";
 import {
   CalendarDays,
   CalendarClock,
+  CalendarPlus,
   Clock,
   Download,
   FileText,
@@ -64,6 +66,7 @@ function PatientDashboardContent() {
   const [activeTab, setActiveTab] = useState<PatientTab>("resumen");
   const [citasViewMode, setCitasViewMode] = useState<"list" | "calendar">("list");
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showRequestAppointmentModal, setShowRequestAppointmentModal] = useState(false);
   const [isFirstTimeOnboarding, setIsFirstTimeOnboarding] = useState(false);
 
   const {
@@ -193,6 +196,15 @@ function PatientDashboardContent() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <Button
+            size="sm"
+            onClick={() => setShowRequestAppointmentModal(true)}
+            className="gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+          >
+            <CalendarPlus className="size-3.5" />
+            Solicitar Cita Médica
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -424,12 +436,22 @@ function PatientDashboardContent() {
             </Card>
           ) : (
             <Card className="border-outline-variant bg-surface/50">
-              <CardContent className="p-6 text-center space-y-1.5">
+              <CardContent className="p-6 text-center space-y-2">
                 <CalendarDays className="size-8 text-muted-foreground/60 mx-auto mb-1" />
                 <p className="text-sm font-semibold text-foreground">No tienes citas médicas pendientes</p>
                 <p className="text-xs text-muted-foreground">
-                  Comunícate con recepción o con tu médico tratante para programar tu próxima consulta.
+                  Comunícate con recepción o solicita tu próxima consulta seleccionando tu médico y horario.
                 </p>
+                <div className="pt-2">
+                  <Button
+                    size="sm"
+                    onClick={() => setShowRequestAppointmentModal(true)}
+                    className="gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <CalendarPlus className="size-3.5" />
+                    Solicitar Cita Médica
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -449,54 +471,48 @@ function PatientDashboardContent() {
                     Sin indicaciones médicas recientes.
                   </p>
                 ) : (
-                  <div className="rounded-lg bg-surface-container/60 border border-outline-variant/60 p-3 text-xs space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>Consulta del {new Date(notes[0].createdAt).toLocaleDateString("es-ES")}</span>
-                      <span>Dr(a). {notes[0].author?.fullName || "Médico"}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        Dr(a). {notes[0]?.author?.fullName || "Médico Tratante"}
+                      </span>
+                      <span>
+                        {new Date(notes[0]?.confirmedAt || notes[0]?.createdAt).toLocaleDateString("es-ES")}
+                      </span>
                     </div>
-                    <p className="text-foreground whitespace-pre-wrap leading-relaxed font-medium">
+                    <div className="rounded-lg bg-surface-container/60 border border-outline-variant/40 p-3 text-xs leading-relaxed text-foreground whitespace-pre-wrap font-sans">
                       {notes[0].planIndicaciones}
-                    </p>
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             <Card className="border-outline-variant shadow-sm">
-              <CardHeader className="border-b border-outline-variant/60 bg-surface-container/40 pb-3 flex flex-row items-center justify-between">
+              <CardHeader className="border-b border-outline-variant/60 bg-surface-container/40 pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <HeartPulse className="size-4 text-primary" />
-                  Información del Paciente
+                  <UserRound className="size-4 text-primary" />
+                  Datos Clínicos de Emergencia
                 </CardTitle>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setIsFirstTimeOnboarding(false);
-                    setShowProfileModal(true);
-                  }}
-                  className="h-7 px-2 text-xs text-primary gap-1 hover:bg-primary/10"
-                >
-                  <Edit3 className="size-3" />
-                  Editar
-                </Button>
               </CardHeader>
-              <CardContent className="p-4 text-xs space-y-2">
+              <CardContent className="p-4 space-y-2 text-xs">
                 <div className="flex justify-between py-1 border-b border-outline-variant/40">
-                  <span className="text-muted-foreground">Código de Ficha:</span>
-                  <span className="font-mono font-bold text-primary">{patient?.syntheticId}</span>
+                  <span className="text-muted-foreground">Contacto de Emergencia:</span>
+                  <span className="font-semibold text-foreground">
+                    {patient?.emergencyName || "No registrado"} {patient?.emergencyPhone ? `(${patient.emergencyPhone})` : ""}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/40">
-                  <span className="text-muted-foreground">Documento:</span>
-                  <span className="font-medium text-foreground">{patient?.documento || "No registrado"}</span>
+                  <span className="text-muted-foreground">Seguro Médico:</span>
+                  <span className="font-medium text-foreground">{patient?.insurance || "Particular / Ninguno"}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/40">
-                  <span className="text-muted-foreground">Teléfono:</span>
-                  <span className="font-mono font-medium text-foreground">{patient?.phone || "No registrado"}</span>
+                  <span className="text-muted-foreground">Teléfono de Contacto:</span>
+                  <span className="font-medium text-foreground">{patient?.phone || "No registrado"}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/40">
                   <span className="text-muted-foreground">Dirección:</span>
-                  <span className="font-medium text-foreground truncate max-w-[180px]" title={patient?.address || ""}>
+                  <span className="font-medium text-foreground truncate max-w-[200px]" title={patient?.address || ""}>
                     {patient?.address || "No registrada"}
                   </span>
                 </div>
@@ -533,34 +549,45 @@ function PatientDashboardContent() {
       {/* CONTENIDO DE PESTAÑA: MIS CITAS */}
       {activeTab === "citas" && (
         <div className="space-y-4 animate-in fade-in">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-base font-bold text-foreground flex items-center gap-2">
               <CalendarDays className="size-4 text-primary" />
               Historial de Citas Médicas ({citas.length})
             </h3>
-            <div className="flex items-center rounded-lg border border-outline-variant bg-surface p-0.5 text-xs">
-              <button
-                type="button"
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  citasViewMode === "list"
-                    ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() => setCitasViewMode("list")}
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowRequestAppointmentModal(true)}
+                className="gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/10 h-8"
               >
-                Lista
-              </button>
-              <button
-                type="button"
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  citasViewMode === "calendar"
-                    ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() => setCitasViewMode("calendar")}
-              >
-                Calendario
-              </button>
+                <CalendarPlus className="size-3.5" />
+                Nueva Solicitud
+              </Button>
+              <div className="flex items-center rounded-lg border border-outline-variant bg-surface p-0.5 text-xs">
+                <button
+                  type="button"
+                  className={`px-2.5 py-1 rounded-md transition-all ${
+                    citasViewMode === "list"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => setCitasViewMode("list")}
+                >
+                  Lista
+                </button>
+                <button
+                  type="button"
+                  className={`px-2.5 py-1 rounded-md transition-all ${
+                    citasViewMode === "calendar"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => setCitasViewMode("calendar")}
+                >
+                  Calendario
+                </button>
+              </div>
             </div>
           </div>
 
@@ -570,8 +597,22 @@ function PatientDashboardContent() {
             <Card className="border-outline-variant shadow-sm overflow-hidden">
               <CardContent className="p-0 divide-y divide-outline-variant/40">
                 {citas.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-muted-foreground">
-                    No tienes citas médicas registradas en el sistema.
+                  <div className="p-8 text-center space-y-3">
+                    <CalendarDays className="size-8 text-muted-foreground/60 mx-auto" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">No tienes citas médicas registradas en el sistema</p>
+                      <p className="text-xs text-muted-foreground">
+                        Solicita tu primera cita seleccionando el médico de tu preferencia y un horario disponible.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowRequestAppointmentModal(true)}
+                      className="gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <CalendarPlus className="size-3.5" />
+                      Solicitar Cita Médica
+                    </Button>
                   </div>
                 ) : (
                   citas.map((c: any) => (
@@ -779,6 +820,17 @@ function PatientDashboardContent() {
         onSuccess={() => {
           refetchAppts();
           refetchHistory();
+        }}
+      />
+
+      <RequestAppointmentModal
+        open={showRequestAppointmentModal}
+        onOpenChange={setShowRequestAppointmentModal}
+        patientName={displayName}
+        patientId={patient?.id}
+        onDone={() => {
+          refetchAppts();
+          setActiveTab("citas");
         }}
       />
     </div>

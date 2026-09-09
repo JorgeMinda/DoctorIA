@@ -1,5 +1,17 @@
 import { HttpError } from "wasp/server";
-import { ensurePaciente } from "../clinical/services/guards";
+import { ensurePaciente, ensureRole } from "../clinical/services/guards";
+
+export const getActiveDoctorsForPatient: any = async (
+  _rawArgs: any,
+  context: any,
+) => {
+  ensureRole(context.user, "paciente", "admin", "secretaria", "medico");
+  return await context.entities.User.findMany({
+    where: { isMedico: true, isAdmin: false, isActive: true },
+    select: { id: true, fullName: true, specialty: true, email: true },
+    orderBy: { fullName: "asc" },
+  });
+};
 
 export const getPatientAppointments: any = async (_rawArgs: any, context: any) => {
   const user = ensurePaciente(context.user);
