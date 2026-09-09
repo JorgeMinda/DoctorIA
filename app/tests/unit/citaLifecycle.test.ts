@@ -101,7 +101,7 @@ describe("canTransitionCita", () => {
   });
 
   it("saltos inválidos", () => {
-    expect(canTransitionCita("SCHEDULED", "COMPLETED")).toBe(false);
+    expect(canTransitionCita("COMPLETED", "SCHEDULED")).toBe(false);
     expect(canTransitionCita("IN_PROGRESS", "NO_SHOW")).toBe(false);
   });
 });

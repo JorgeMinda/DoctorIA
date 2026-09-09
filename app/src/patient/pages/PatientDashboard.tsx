@@ -317,7 +317,11 @@ function PatientDashboardContent() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Consultas</p>
-              <p className="text-sm font-bold text-foreground truncate">{notes.length} confirmadas</p>
+              <p className="text-sm font-bold text-foreground truncate">
+                {notes.length > 0
+                  ? `${notes.length} confirmada${notes.length > 1 ? "s" : ""}`
+                  : `${citas.filter((c: any) => c.status === "COMPLETED").length} realizada${citas.filter((c: any) => c.status === "COMPLETED").length !== 1 ? "s" : ""}`}
+              </p>
             </div>
           </div>
         </Card>
@@ -738,72 +742,134 @@ function PatientDashboardContent() {
 
       {/* CONTENIDO DE PESTAÑA: CONSULTAS & NOTAS */}
       {activeTab === "historial" && (
-        <div className="space-y-4 animate-in fade-in">
-          <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-            <FileText className="size-4 text-primary" />
-            Consultas Médicas & Indicaciones Confirmadas ({notes.length})
-          </h3>
-
+        <div className="space-y-6 animate-in fade-in">
+          {/* Sección de Consultas / Citas Médicas Completadas */}
           <div className="space-y-4">
-            {notes.length === 0 ? (
-              <Card className="border-outline-variant">
-                <CardContent className="p-8 text-center text-xs text-muted-foreground">
-                  Aún no tienes notas de consultas médicas confirmadas por tus doctores.
+            <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+              <CheckCircle2 className="size-4 text-emerald-400" />
+              Consultas Médicas Atendidas & Completadas ({citas.filter((c: any) => c.status === "COMPLETED").length})
+            </h3>
+
+            {citas.filter((c: any) => c.status === "COMPLETED").length === 0 ? (
+              <Card className="border-outline-variant bg-surface/50">
+                <CardContent className="p-6 text-center text-xs text-muted-foreground">
+                  Aún no tienes citas médicas marcadas como completadas.
                 </CardContent>
               </Card>
             ) : (
-              notes.map((n: any) => (
-                <Card key={n.id} className="border-outline-variant shadow-sm">
-                  <CardHeader className="border-b border-outline-variant/60 bg-surface-container/40 p-4 pb-3">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <FileText className="size-4 text-primary" />
-                        <span className="text-sm font-bold text-foreground">
-                          Consulta con Dr(a). {n.author?.fullName || "Médico Tratante"}
+              <div className="space-y-3">
+                {citas
+                  .filter((c: any) => c.status === "COMPLETED")
+                  .map((c: any) => (
+                    <Card key={c.id} className="border-emerald-500/30 bg-emerald-500/5 shadow-sm">
+                      <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-bold text-foreground">
+                              {new Date(c.scheduledAt).toLocaleDateString("es-ES", {
+                                weekday: "short",
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                            <span className="text-xs font-semibold text-primary">
+                              {new Date(c.scheduledAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                            <PatientCitaBadge cita={c} />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Médico: <strong className="text-foreground">{c.medico?.fullName || "Médico Asignado"}</strong> ({c.medico?.specialty || "Medicina General"})
+                            {c.reason && ` · Motivo: ${c.reason}`}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs gap-1.5 border-outline-variant"
+                            onClick={() => handleExportIcs(c)}
+                          >
+                            <Download className="size-3.5" />
+                            Descargar .ics
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sección de Notas e Indicaciones Confirmadas */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+              <FileText className="size-4 text-primary" />
+              Notas Clínicas & Indicaciones Confirmadas ({notes.length})
+            </h3>
+
+            {notes.length === 0 ? (
+              <Card className="border-outline-variant bg-surface/50">
+                <CardContent className="p-6 text-center text-xs text-muted-foreground">
+                  Aún no tienes notas clínicas confirmadas por tus doctores.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {notes.map((n: any) => (
+                  <Card key={n.id} className="border-outline-variant shadow-sm">
+                    <CardHeader className="border-b border-outline-variant/60 bg-surface-container/40 p-4 pb-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="size-4 text-primary" />
+                          <span className="text-sm font-bold text-foreground">
+                            Consulta con Dr(a). {n.author?.fullName || "Médico Tratante"}
+                          </span>
+                          <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-400">
+                            Confirmada
+                          </Badge>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(n.createdAt).toLocaleDateString("es-ES", {
+                            day: "2-digit",
+                            month: "long",
+                            year: "numeric",
+                          })}
                         </span>
-                        <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-400">
-                          Confirmada
-                        </Badge>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(n.createdAt).toLocaleDateString("es-ES", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-3 text-xs">
-                    {n.motivoConsulta && (
-                      <div>
-                        <strong className="text-muted-foreground block mb-0.5">Motivo de Consulta:</strong>
-                        <p className="text-foreground font-medium">{n.motivoConsulta}</p>
-                      </div>
-                    )}
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-3 text-xs">
+                      {n.motivoConsulta && (
+                        <div>
+                          <strong className="text-muted-foreground block mb-0.5">Motivo de Consulta:</strong>
+                          <p className="text-foreground font-medium">{n.motivoConsulta}</p>
+                        </div>
+                      )}
 
-                    {n.planIndicaciones && (
-                      <div className="rounded-lg bg-surface-container/80 border border-primary/20 p-3 space-y-1">
-                        <strong className="text-primary font-bold flex items-center gap-1.5">
-                          <Pill className="size-3.5" />
-                          Plan de Tratamiento e Indicaciones Médicas:
-                        </strong>
-                        <p className="text-foreground whitespace-pre-wrap leading-relaxed">
-                          {n.planIndicaciones}
-                        </p>
-                      </div>
-                    )}
+                      {n.planIndicaciones && (
+                        <div className="rounded-lg bg-surface-container/80 border border-primary/20 p-3 space-y-1">
+                          <strong className="text-primary font-bold flex items-center gap-1.5">
+                            <Pill className="size-3.5" />
+                            Plan de Tratamiento e Indicaciones Médicas:
+                          </strong>
+                          <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                            {n.planIndicaciones}
+                          </p>
+                        </div>
+                      )}
 
-                    {n.cie11Code && (
-                      <div className="pt-1">
-                        <Badge variant="outline" className="text-[11px] border-primary/40 text-primary font-medium">
-                          Diagnóstico CIE-11: {n.cie11Code} - {n.cie11Description}
-                        </Badge>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
+                      {n.cie11Code && (
+                        <div className="pt-1">
+                          <Badge variant="outline" className="text-[11px] border-primary/40 text-primary font-medium">
+                            Diagnóstico CIE-11: {n.cie11Code} - {n.cie11Description}
+                          </Badge>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
           </div>
         </div>

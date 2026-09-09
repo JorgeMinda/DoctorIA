@@ -932,13 +932,7 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
   startOfToday.setHours(0, 0, 0, 0);
   const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
 
-  const currentStatus = citas.some(
-    (c: any) =>
-      c.status === statusRef.IN_PROGRESS ||
-      (c.status === statusRef.SCHEDULED &&
-        c.scheduledAt.getTime() <= now.getTime() &&
-        now.getTime() < c.scheduledAt.getTime() + c.durationMinutes * 60_000),
-  )
+  const currentStatus = citas.some((c: any) => c.status === "IN_PROGRESS")
     ? ("EN_CITA" as const)
     : ("DESOCUPADO" as const);
 
@@ -1126,13 +1120,7 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
       ).length;
       const atencionesHoy = notesToday + epicrisisToday + citasCompletadasHoy;
 
-      const currentStatus = citas.some(
-        (c: any) =>
-          c.status === "IN_PROGRESS" ||
-          (c.status === "SCHEDULED" &&
-            c.scheduledAt.getTime() <= now.getTime() &&
-            now.getTime() < c.scheduledAt.getTime() + c.durationMinutes * 60_000),
-      )
+      const currentStatus = citas.some((c: any) => c.status === "IN_PROGRESS")
         ? ("EN_CITA" as const)
         : ("DESOCUPADO" as const);
 

@@ -22,13 +22,18 @@ export const CITA_ACTIVE_STATES: ReadonlySet<string> = new Set<CitaStatus>([
 const CITA_TRANSITIONS: Record<CitaStatus, CitaStatus[]> = {
   SCHEDULED: [
     CITA_STATES.IN_PROGRESS,
+    CITA_STATES.COMPLETED,
     CITA_STATES.CANCELLED,
     CITA_STATES.NO_SHOW,
     CITA_STATES.NOT_STARTED,
   ],
   IN_PROGRESS: [CITA_STATES.COMPLETED, CITA_STATES.CANCELLED],
-  // El profesional puede atenderla tarde (IN_PROGRESS) o cancelarla.
-  NOT_STARTED: [CITA_STATES.IN_PROGRESS, CITA_STATES.CANCELLED],
+  // El profesional puede atenderla tarde (IN_PROGRESS), completarla o cancelarla.
+  NOT_STARTED: [
+    CITA_STATES.IN_PROGRESS,
+    CITA_STATES.COMPLETED,
+    CITA_STATES.CANCELLED,
+  ],
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: [],
