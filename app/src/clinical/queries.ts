@@ -858,6 +858,7 @@ type AgendaCita = {
   durationMinutes: number;
   status: string;
   reason: string | null;
+  secretaryId: string | null;
   patient: {
     id: string;
     syntheticId: string;
