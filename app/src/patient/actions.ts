@@ -232,7 +232,7 @@ export const requestPatientAppointment: any = async (
       status: cita.status,
       medicoId: data.medicoId,
       scheduledAt: data.scheduledAt.toISOString(),
-      assignedDoctor: !existingAccess,
+      assignedDoctor: String(!existingAccess),
     },
   });
 
