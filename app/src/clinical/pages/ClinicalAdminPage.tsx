@@ -2634,7 +2634,7 @@ export function ClinicalAdminPage() {
   );
 }
 
-type TabKey = "pacientes" | "medicos" | "asignaciones" | "citas" | "solicitudes";
+type TabKey = "pacientes" | "medicos" | "asignaciones" | "citas" | "solicitudes" | "whatsapp";
 
 function ClinicalAdminPageContent() {
   const { data: user } = useAuth();
