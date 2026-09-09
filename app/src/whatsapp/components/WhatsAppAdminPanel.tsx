@@ -234,6 +234,29 @@ export function WhatsAppAdminPanel({
                 </Badge>
               </div>
             ) : (
+              <div className="p-4 rounded-xl border bg-muted/30 text-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-medium text-foreground">
+                    <QrCode className="size-4 text-primary" />
+                    Generar Conexión WhatsApp
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => refetch()}
+                    disabled={isLoading}
+                    className="gap-1.5"
+                  >
+                    <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                    Obtener Código QR
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  El Gateway de Evolution API está corriendo. Haz clic en <b>Obtener Código QR</b> para cargar el código de emparejamiento con WhatsApp.
+                </p>
+              </div>
+            )}
+
             {/* Gateway URL Configuration */}
             <form onSubmit={handleSaveGatewayUrl} className="p-3 rounded-lg border bg-background/50 space-y-2">
               <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
@@ -253,7 +276,11 @@ export function WhatsAppAdminPanel({
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Si ejecutas Docker en tu PC y DoctorIA en Render, ingresa una URL pública de ngrok/Cloudflare o abre <a href="http://localhost:8080/manager" target="_blank" rel="noreferrer" className="text-primary underline font-medium inline-flex items-center gap-0.5">Evolution Manager local <ExternalLink className="size-2.5" /></a> para escanear el QR en tu PC.
+                Si ejecutas Docker en tu PC y DoctorIA en Render, ingresa una URL pública de ngrok/Cloudflare o abre{" "}
+                <a href="http://localhost:8080/manager" target="_blank" rel="noreferrer" className="text-primary underline font-medium inline-flex items-center gap-0.5">
+                  Evolution Manager local <ExternalLink className="size-2.5" />
+                </a>{" "}
+                para escanear el QR en tu PC.
               </p>
             </form>
 

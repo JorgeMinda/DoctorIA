@@ -105,12 +105,21 @@ export async function classifyIntentWithAI(
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-  // Atajos directos para respuestas rápidas de recordatorio
+  // Atajos directos rápidos
   if (normalizedText === "1" || normalizedText.includes("confirmo") || normalizedText.includes("si asistire")) {
     return { intent: "CONFIRM" };
   }
   if (normalizedText === "2" || normalizedText.includes("cancelo") || normalizedText.includes("cancelar") || normalizedText.includes("no podre")) {
     return { intent: "CANCEL" };
+  }
+  if (
+    normalizedText.startsWith("hola") ||
+    normalizedText.startsWith("buenos") ||
+    normalizedText.startsWith("buenas") ||
+    normalizedText === "hola" ||
+    normalizedText === "saludos"
+  ) {
+    return { intent: "GREETING" };
   }
 
   // Si hay OpenRouter configurado, clasificar con LLM
