@@ -730,7 +730,7 @@ export function ClinicalAgendaPage() {
         new Date(c.scheduledAt).getTime() < now - 15 * 60_000,
     ) ?? [];
 
-  const isEnCita = agenda?.currentStatus === "EN_CITA";
+  const isEnCita = (agenda?.citas ?? []).some((c: any) => c.status === "IN_PROGRESS");
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">

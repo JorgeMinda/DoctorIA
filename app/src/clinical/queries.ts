@@ -947,6 +947,7 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
       confirmedPatients1,
       authoredEpicrisisPatients,
       confirmedEpicrisisPatients,
+      completedCitaPatients,
     ] = await Promise.all([
       context.entities.ClinicalNote.findMany({
         where: { authorId: scopeMedicoId },
@@ -968,6 +969,14 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
         select: { patientId: true },
         distinct: ["patientId" as const],
       }),
+      context.entities.Cita.findMany({
+        where: {
+          medicoId: scopeMedicoId,
+          status: { in: ["COMPLETED", "IN_PROGRESS"] },
+        },
+        select: { patientId: true },
+        distinct: ["patientId" as const],
+      }),
     ]);
     const ids = new Set<string>();
     [
@@ -975,6 +984,7 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
       ...confirmedPatients1,
       ...authoredEpicrisisPatients,
       ...confirmedEpicrisisPatients,
+      ...completedCitaPatients,
     ].forEach((p) => ids.add(p.patientId));
     pacientesAtendidos = ids.size;
 
@@ -999,12 +1009,22 @@ export const getAgenda: GetAgenda<GetAgendaInput, GetAgendaOutput> = async (
     ).length;
     atencionesHoy = notesToday + epicrisisToday + citasCompletadasHoy;
   } else {
-    const todayCitas = await context.entities.Cita.findMany({
-      where: {
-        scheduledAt: { gte: startOfToday, lt: endOfToday },
-      },
-      select: { status: true },
-    });
+    const [allCompletedCitaPatients, todayCitas] = await Promise.all([
+      context.entities.Cita.findMany({
+        where: { status: { in: ["COMPLETED", "IN_PROGRESS"] } },
+        select: { patientId: true },
+        distinct: ["patientId" as const],
+      }),
+      context.entities.Cita.findMany({
+        where: {
+          scheduledAt: { gte: startOfToday, lt: endOfToday },
+        },
+        select: { status: true },
+      }),
+    ]);
+    const allPatientIds = new Set<string>();
+    allCompletedCitaPatients.forEach((p: any) => allPatientIds.add(p.patientId));
+    pacientesAtendidos = allPatientIds.size;
     citasHoy = todayCitas.length;
     citasCompletadasHoy = todayCitas.filter(
       (c: any) => c.status === "COMPLETED",
@@ -1069,6 +1089,7 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
         confirmedNotes,
         authoredEpicrises,
         confirmedEpicrises,
+        completedCitaPatients,
       ] = await Promise.all([
         context.entities.ClinicalNote.findMany({
           where: { authorId: medico.id },
@@ -1090,6 +1111,14 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
           select: { patientId: true },
           distinct: ["patientId" as const],
         }),
+        context.entities.Cita.findMany({
+          where: {
+            medicoId: medico.id,
+            status: { in: ["COMPLETED", "IN_PROGRESS"] },
+          },
+          select: { patientId: true },
+          distinct: ["patientId" as const],
+        }),
       ]);
       const patientIds = new Set<string>();
       [
@@ -1097,6 +1126,7 @@ export const getDoctorsAgenda: GetDoctorsAgenda<
         ...confirmedNotes,
         ...authoredEpicrises,
         ...confirmedEpicrises,
+        ...completedCitaPatients,
       ].forEach((p) => patientIds.add(p.patientId));
 
       const todayWhere = {

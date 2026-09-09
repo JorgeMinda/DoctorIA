@@ -230,7 +230,7 @@ function EditCitaForm({ cita, onCancel }: { cita: any; onCancel: () => void }) {
 }
 
 export function MedicoAgendaPanel({ medicoId }: { medicoId: string }) {
-  const { data: agenda, isLoading } = useQuery(getAgenda, { medicoId });
+  const { data: agenda, isLoading, refetch } = useQuery(getAgenda, { medicoId });
   const [showNew, setShowNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -247,6 +247,7 @@ export function MedicoAgendaPanel({ medicoId }: { medicoId: string }) {
     try {
       await updateStatusFn({ citaId, status });
       toast({ title: label });
+      await refetch();
     } catch (err: any) {
       toast({
         title: "No se pudo actualizar la cita",
