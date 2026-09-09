@@ -1,8 +1,10 @@
-// WhatsApp Admin Actions (DoctorIA)
-
 import { HttpError } from "wasp/server";
 import { ensureAdmin } from "../clinical/services/guards";
-import { sendWhatsAppMessage } from "./services/whatsappGateway";
+import {
+  sendWhatsAppMessage,
+  setDynamicGatewayUrl,
+  getEffectiveGatewayUrl,
+} from "./services/whatsappGateway";
 import { runAppointmentReminders } from "./jobs/reminderJob";
 
 export const sendWhatsAppTestMessage = async (rawArgs: any, context: any) => {
@@ -32,4 +34,11 @@ export const triggerAppointmentRemindersAction = async (_rawArgs: any, context: 
 
   const summary = await runAppointmentReminders({}, context);
   return summary;
+};
+
+export const updateWhatsAppGatewayConfig = async (rawArgs: any, context: any) => {
+  ensureAdmin(context.user);
+  const url = rawArgs?.gatewayUrl;
+  setDynamicGatewayUrl(url);
+  return { success: true, gatewayUrl: getEffectiveGatewayUrl() };
 };

@@ -16,6 +16,16 @@ export interface WhatsAppStatus {
   qrCode?: string | null;
 }
 
+let dynamicGatewayUrl: string | null = null;
+
+export function setDynamicGatewayUrl(url: string | null) {
+  dynamicGatewayUrl = url ? url.replace(/\/+$/, "") : null;
+}
+
+export function getEffectiveGatewayUrl(): string | null {
+  return dynamicGatewayUrl || (env as any).WHATSAPP_GATEWAY_URL?.replace(/\/+$/, "") || null;
+}
+
 // Normaliza el número de teléfono removiendo caracteres no numéricos
 export function normalizePhoneNumber(phone: string): string {
   if (!phone) return "";
@@ -34,8 +44,8 @@ export function normalizePhoneNumber(phone: string): string {
 export async function sendWhatsAppMessage(options: SendMessageOptions): Promise<{ success: boolean; messageId?: string }> {
   const { to, text } = options;
   const targetNumber = normalizePhoneNumber(to);
-  const gatewayUrl = (env as any).WHATSAPP_GATEWAY_URL?.replace(/\/+$/, "");
-  const apiKey = (env as any).WHATSAPP_API_KEY;
+  const gatewayUrl = getEffectiveGatewayUrl();
+  const apiKey = (env as any).WHATSAPP_API_KEY || "doctoria_secret_key_2026";
   const instanceName = (env as any).WHATSAPP_INSTANCE_NAME || "doctoria";
 
   if (!targetNumber) {
@@ -92,7 +102,7 @@ export async function sendWhatsAppMessage(options: SendMessageOptions): Promise<
  * Obtiene el estado actual de la instancia en el Gateway QR.
  */
 export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
-  const gatewayUrl = (env as any).WHATSAPP_GATEWAY_URL?.replace(/\/+$/, "") || "http://localhost:8080";
+  const gatewayUrl = getEffectiveGatewayUrl() || "http://localhost:8080";
   const apiKey = (env as any).WHATSAPP_API_KEY || "doctoria_secret_key_2026";
   const instanceName = (env as any).WHATSAPP_INSTANCE_NAME || "doctoria";
 
@@ -139,7 +149,7 @@ export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
  * Si la instancia no existe en Evolution API, la crea automáticamente.
  */
 export async function getWhatsAppQrCode(): Promise<{ qr: string | null; pairingCode?: string | null }> {
-  const gatewayUrl = (env as any).WHATSAPP_GATEWAY_URL?.replace(/\/+$/, "") || "http://localhost:8080";
+  const gatewayUrl = getEffectiveGatewayUrl() || "http://localhost:8080";
   const apiKey = (env as any).WHATSAPP_API_KEY || "doctoria_secret_key_2026";
   const instanceName = (env as any).WHATSAPP_INSTANCE_NAME || "doctoria";
 

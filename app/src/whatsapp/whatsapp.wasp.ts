@@ -6,6 +6,7 @@ import { handleWhatsAppWebhook } from "./api/webhook" with { type: "ref" };
 import {
   sendWhatsAppTestMessage,
   triggerAppointmentRemindersAction,
+  updateWhatsAppGatewayConfig,
 } from "./actions" with { type: "ref" };
 import { getWhatsAppConnectionInfo } from "./queries" with { type: "ref" };
 import { runAppointmentReminders } from "./jobs/reminderJob" with { type: "ref" };
@@ -35,5 +36,8 @@ export const whatsappSpec: Spec = [
   }),
   action(triggerAppointmentRemindersAction, {
     entities: ["Cita", "SyntheticPatient", "User"],
+  }),
+  action(updateWhatsAppGatewayConfig, {
+    entities: ["User"],
   }),
 ];
