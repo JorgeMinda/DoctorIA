@@ -55,7 +55,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
 
 export function statusLabel(status: string): string {
   return (
-    NOTE_STATUS_LABELS[status] ?? EPICRISIS_STATUS_LABELS[status] ?? status
+    NOTE_STATUS_LABELS[status] ??
+    EPICRISIS_STATUS_LABELS[status] ??
+    CITA_STATUS_LABELS[status] ??
+    status
   );
 }
 

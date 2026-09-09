@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Button } from "../../client/components/ui/button";
 import { Badge } from "../../client/components/ui/badge";
 import { StatusBadge } from "../../clinical/components/StatusBadge";
+import { citaStatusLabel } from "../../clinical/services/statusLabels";
 import { toast } from "../../client/hooks/use-toast";
 import { PatientProfileModal } from "../components/PatientProfileModal";
 import { RequestAppointmentModal } from "../components/RequestAppointmentModal";
@@ -38,13 +39,78 @@ import {
   Edit3,
 } from "lucide-react";
 
+export function PatientCitaBadge({
+  cita,
+}: {
+  cita: { status: string; secretaryId?: string | null };
+}) {
+  if (cita.status === "SCHEDULED") {
+    if (!cita.secretaryId) {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-sm" title="Solicitud recibida, en espera de validación">
+          <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
+          Por confirmar
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm" title="Cita confirmada por secretaría">
+        <span className="size-1.5 rounded-full bg-emerald-400" />
+        Confirmada
+      </span>
+    );
+  }
+
+  if (cita.status === "IN_PROGRESS") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 animate-pulse shadow-sm">
+        <span className="size-1.5 rounded-full bg-cyan-400" />
+        En curso
+      </span>
+    );
+  }
+
+  if (cita.status === "COMPLETED") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400/90 border border-emerald-500/20 shadow-sm">
+        <span className="size-1.5 rounded-full bg-emerald-400/80" />
+        Completada
+      </span>
+    );
+  }
+
+  if (cita.status === "CANCELLED") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30 shadow-sm">
+        <span className="size-1.5 rounded-full bg-rose-400" />
+        Cancelada
+      </span>
+    );
+  }
+
+  if (cita.status === "NO_SHOW") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-slate-500/15 text-slate-400 border border-slate-500/30 shadow-sm">
+        <span className="size-1.5 rounded-full bg-slate-400" />
+        No asistió
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground border border-outline-variant">
+      {citaStatusLabel(cita.status)}
+    </span>
+  );
+}
+
 function getGoogleCalendarUrl(cita: any, patientName: string) {
   const start = new Date(cita.scheduledAt);
   const end = new Date(start.getTime() + (cita.durationMinutes || 30) * 60 * 1000);
   const formatGDate = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, "");
   const title = encodeURIComponent(`Cita Médica DoctorIA - ${patientName}`);
   const details = encodeURIComponent(
-    `Cita Médica en DoctorIA\nPaciente: ${patientName}\nMédico: ${cita.medico?.fullName || cita.medico?.email} (${cita.medico?.specialty || "Medicina General"})\nMotivo: ${cita.reason || "Consulta médica general"}\nEstado: ${cita.status}`
+    `Cita Médica en DoctorIA\nPaciente: ${patientName}\nMédico: ${cita.medico?.fullName || cita.medico?.email} (${cita.medico?.specialty || "Medicina General"})\nMotivo: ${cita.reason || "Consulta médica general"}\nEstado: ${cita.secretaryId ? "Confirmada" : "Por confirmar"}`
   );
   const location = encodeURIComponent("Consultorio DoctorIA");
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${formatGDate(start)}/${formatGDate(end)}&details=${details}&location=${location}`;
@@ -375,9 +441,11 @@ function PatientDashboardContent() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-sm font-bold text-primary">
                     <CalendarClock className="size-4" />
-                    Próxima Cita Médica Confirmada
+                    {upcomingCita.status === "SCHEDULED" && !upcomingCita.secretaryId
+                      ? "Solicitud de Cita Médica (Por confirmar)"
+                      : "Próxima Cita Médica Confirmada"}
                   </CardTitle>
-                  <StatusBadge status={upcomingCita.status} />
+                  <PatientCitaBadge cita={upcomingCita} />
                 </div>
               </CardHeader>
               <CardContent className="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -630,7 +698,7 @@ function PatientDashboardContent() {
                           <span className="text-xs font-semibold text-primary">
                             {new Date(c.scheduledAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
                           </span>
-                          <StatusBadge status={c.status} />
+                          <PatientCitaBadge cita={c} />
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Médico: <strong className="text-foreground">{c.medico?.fullName || "Médico Asignado"}</strong> ({c.medico?.specialty || "Medicina General"})
