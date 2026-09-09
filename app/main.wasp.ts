@@ -12,7 +12,6 @@ import { patientSpec } from "./src/patient/patient.wasp";
 import { head } from "./src/client/head.wasp";
 import { emailSender } from "./src/server/emailSender.wasp";
 import { userSpec } from "./src/user/user.wasp";
-import { whatsappSpec } from "./src/whatsapp/whatsapp.wasp";
 
 export default app({
   name: "DoctorIA",
@@ -39,6 +38,5 @@ export default app({
     userSpec,
     clinicalSpec,
     patientSpec,
-    whatsappSpec,
   ],
 });

@@ -46,7 +46,6 @@ import {
   UserPlus,
   Users,
   XCircle,
-  Bot,
 } from "lucide-react";
 import { Button } from "../../client/components/ui/button";
 import { Input } from "../../client/components/ui/input";
@@ -62,7 +61,6 @@ import { patientAge, sexLabel } from "../services/clinicalFormat";
 import { citaStatusLabel } from "../services/statusLabels";
 import { MedicoAgendaPanel } from "../components/MedicoAgendaPanel";
 import { EditAppointmentModal } from "../components/EditAppointmentModal";
-import { WhatsAppAdminPanel } from "../../whatsapp/components/WhatsAppAdminPanel";
 
 type Notice = (message: string) => void;
 type ReportError = (message: string) => void;
@@ -2634,7 +2632,7 @@ export function ClinicalAdminPage() {
   );
 }
 
-type TabKey = "pacientes" | "medicos" | "asignaciones" | "citas" | "solicitudes" | "whatsapp";
+type TabKey = "pacientes" | "medicos" | "asignaciones" | "citas" | "solicitudes";
 
 function ClinicalAdminPageContent() {
   const { data: user } = useAuth();
@@ -2719,11 +2717,6 @@ function ClinicalAdminPageContent() {
       label: "Citas",
       icon: <CalendarClock className="size-4" />,
     },
-    {
-      key: "whatsapp",
-      label: "Asistente WhatsApp",
-      icon: <Bot className="size-4" />,
-    },
   ];
 
   return (
@@ -2736,7 +2729,7 @@ function ClinicalAdminPageContent() {
           Administración
         </h1>
         <p className="text-sm text-muted-foreground">
-          Gestión de pacientes, solicitudes de vinculación, médicos, citas y Asistente WhatsApp.
+          Gestión de pacientes, solicitudes de vinculación, médicos y asignaciones.
         </p>
       </div>
 
@@ -2778,9 +2771,6 @@ function ClinicalAdminPageContent() {
       )}
       {tab === "citas" && (
         <AdminCitasTab notice={showNotice} reportError={reportError} />
-      )}
-      {tab === "whatsapp" && (
-        <WhatsAppAdminPanel notice={showNotice} reportError={reportError} />
       )}
     </div>
   );
