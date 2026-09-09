@@ -1,0 +1,26 @@
+# Docker Compose para levantar Evolution API v2 (Gateway WhatsApp QR 100% Gratuito)
+# Ejecución en local o servidor VPS/Cloud con: docker compose up -d
+
+version: "3.8"
+
+services:
+  evolution-api:
+    image: atendai/evolution-api:v2.1.2
+    container_name: evolution_api_doctoria
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_API_KEY=doctoria_secret_key_2026
+      - DATABASE_ENABLED=false
+      - REDIS_ENABLED=false
+      - WEBHOOK_GLOBAL_URL=https://doctoria-server.onrender.com/whatsapp/webhook
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+      - QRCODE_LIMIT=30
+    volumes:
+      - evolution_instances:/evolution/instances
+
+volumes:
+  evolution_instances:

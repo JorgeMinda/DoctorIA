@@ -3,6 +3,7 @@
 
 import type { MiddlewareConfigFn } from "wasp/server";
 import { processIncomingWhatsAppMessage } from "../services/whatsappAiAgent";
+import { transcribeWhatsAppAudio } from "../services/whatsappAudioService";
 
 export const handleWhatsAppWebhook = async (req: any, res: any, context: any) => {
   // Responder 200 inmediatamente para evitar reintentos duplicados del gateway
@@ -19,6 +20,8 @@ export const handleWhatsAppWebhook = async (req: any, res: any, context: any) =>
     let text = "";
     let pushName = "";
     let fromMe = false;
+    let audioData: string | null = null;
+    let mimeType = "audio/ogg";
 
     // Formato 1: Evolution API (messages.upsert)
     if (body.event === "messages.upsert" && body.data) {
@@ -35,6 +38,12 @@ export const handleWhatsAppWebhook = async (req: any, res: any, context: any) =>
         msg.buttonsResponseMessage?.selectedDisplayText ||
         msg.listResponseMessage?.title ||
         "";
+
+      // Detectar notas de voz y audios
+      if (msg.audioMessage) {
+        audioData = msg.audioMessage.base64 || msg.audioMessage.url || msg.audioMessage.directPath || "audio-detected";
+        mimeType = msg.audioMessage.mimetype || "audio/ogg";
+      }
     }
     // Formato 2: Baileys directo
     else if (body.key && body.message) {
@@ -45,6 +54,11 @@ export const handleWhatsAppWebhook = async (req: any, res: any, context: any) =>
         body.message.conversation ||
         body.message.extendedTextMessage?.text ||
         "";
+
+      if (body.message.audioMessage) {
+        audioData = body.message.audioMessage.base64 || "audio-detected";
+        mimeType = body.message.audioMessage.mimetype || "audio/ogg";
+      }
     }
     // Formato 3: Payload genérico / simplificado
     else {
@@ -52,6 +66,18 @@ export const handleWhatsAppWebhook = async (req: any, res: any, context: any) =>
       text = body.text || body.message || body.body || "";
       pushName = body.name || body.pushName || "";
       fromMe = !!body.fromMe;
+      if (body.audio || body.audioBase64 || body.voiceNote) {
+        audioData = body.audio || body.audioBase64 || body.voiceNote;
+        mimeType = body.mimeType || "audio/ogg";
+      }
+    }
+
+    // Si viene un audio de voz y no hay texto, transcribirlo con IA (Whisper)
+    if (audioData && !text) {
+      const transcription = await transcribeWhatsAppAudio(audioData, mimeType);
+      if (transcription.success && transcription.text) {
+        text = transcription.text;
+      }
     }
 
     // Ignorar mensajes enviados por el propio bot o mensajes de grupos (@g.us)

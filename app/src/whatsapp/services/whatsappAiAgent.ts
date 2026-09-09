@@ -9,6 +9,7 @@ import {
   validateNoOverlap,
 } from "../../clinical/services/appointmentAvailability";
 import { normalizePhoneNumber, sendWhatsAppMessage } from "./whatsappGateway";
+import { notifyWaitlistOnSlotFreed } from "./smartWaitlistService";
 
 export interface IncomingWhatsAppMessage {
   from: string; // Número del paciente remitente
@@ -305,6 +306,14 @@ Muchas gracias ${patientDisplayName}. Tu cita con el Dr. ${doctorName} para el $
           details: JSON.stringify({ citaId: nextCita.id, phone: from }),
         },
       }).catch(() => null);
+
+      // Disparar notificación proactiva a lista de espera (Fase 4)
+      notifyWaitlistOnSlotFreed({
+        entities,
+        medicoId: nextCita.medicoId,
+        freedScheduledAt: new Date(nextCita.scheduledAt),
+        doctorName: nextCita.medico?.fullName || "Especialista",
+      }).catch((e) => console.warn("[SmartWaitlist] Error notificando lista de espera:", e));
 
       const dateStr = formatDateSpanish(new Date(nextCita.scheduledAt));
       const timeStr = new Date(nextCita.scheduledAt).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });

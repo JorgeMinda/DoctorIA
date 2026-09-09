@@ -272,6 +272,59 @@ export function WhatsAppAdminPanel({
           </CardContent>
         </Card>
       </div>
+
+      {/* Deployment & Setup Guide in 1-Click */}
+      <Card className="border border-outline-variant bg-surface-container/30">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-foreground">
+            <Zap className="size-5 text-amber-500" />
+            Guía de Conexión en 1 Clic (Gateway Evolution API / Baileys)
+          </CardTitle>
+          <CardDescription>
+            Sigue estos 3 sencillos pasos para tener tu número de WhatsApp conectado y respondiendo a los pacientes gratis:
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-xs text-muted-foreground">
+          <div className="flex items-start gap-3 p-3 rounded-lg border bg-background/60">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary font-bold text-xs">
+              1
+            </span>
+            <div>
+              <p className="font-semibold text-foreground">Levantar el Gateway Gratuito</p>
+              <p className="mt-0.5">
+                En tu terminal, dentro de la carpeta <code className="bg-muted px-1 py-0.5 rounded text-[11px]">whatsapp-gateway/</code> ejecuta:
+              </p>
+              <pre className="mt-1 p-2 rounded bg-slate-900 text-emerald-400 font-mono text-[11px] overflow-x-auto">
+                docker compose up -d
+              </pre>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 rounded-lg border bg-background/60">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary font-bold text-xs">
+              2
+            </span>
+            <div>
+              <p className="font-semibold text-foreground">Escanear el Código QR</p>
+              <p className="mt-0.5">
+                Regresa a esta pantalla, recarga el estado y escanea el código QR desde tu WhatsApp móvil en <i>Dispositivos Vinculados</i>.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 rounded-lg border bg-background/60">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary font-bold text-xs">
+              3
+            </span>
+            <div>
+              <p className="font-semibold text-foreground">¡Listo para atender pacientes!</p>
+              <p className="mt-0.5">
+                Los pacientes pueden escribir o enviar notas de voz para pedir turnos, confirmar asistencia (1) o cancelar (2).
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
