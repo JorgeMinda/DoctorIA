@@ -36,6 +36,7 @@ import {
   rejectPatientLinkRequest,
   directVerifyUserEmail,
   manageCitaByMedico,
+  confirmPatientAppointment,
 } from "./actions" with { type: "ref" };
 import {
   adminGetPatients,
@@ -235,6 +236,15 @@ export const clinicalSpec: Spec = [
   }),
   action(updateCitaStatus, {
     entities: ["Cita", "User", "AuditLog", "MedicoPatientAccess"],
+  }),
+  action(confirmPatientAppointment, {
+    entities: [
+      "Cita",
+      "User",
+      "SyntheticPatient",
+      "MedicoPatientAccess",
+      "AuditLog",
+    ],
   }),
   action(createNoteFromVoice, {
     entities: [

@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useAction, useQuery } from "wasp/client/operations";
-import { getAgenda, updateCitaStatus } from "wasp/client/operations";
+import {
+  getAgenda,
+  updateCitaStatus,
+  confirmPatientAppointment,
+} from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
 import {
   Activity,
@@ -113,6 +117,31 @@ export function ClinicalAgendaPage() {
     { enabled: Boolean(user) },
   );
   const updateStatusFn = useAction(updateCitaStatus);
+  const confirmPatientAppointmentFn = useAction(confirmPatientAppointment);
+
+  const handleConfirmRequest = async (
+    citaId: string,
+    patientName: string,
+    doctorName: string,
+  ) => {
+    setBusyId(citaId);
+    try {
+      await confirmPatientAppointmentFn({ citaId });
+      toast({
+        title: "✅ Solicitud y Asignación Aprobadas",
+        description: `La cita de ${patientName} con el Dr(a). ${doctorName} ha sido validada y la asignación médica formalizada.`,
+      });
+      await refetch();
+    } catch (err: any) {
+      toast({
+        title: "Error al validar solicitud",
+        description: err?.message || "No se pudo confirmar la cita.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const runTransition = async (
     citaId: string,
@@ -159,6 +188,10 @@ export function ClinicalAgendaPage() {
       (c) => c.status !== "SCHEDULED" && c.status !== "IN_PROGRESS",
     );
 
+    const pendingPatientRequests = (agenda?.citas ?? []).filter(
+      (c: any) => c.status === "SCHEDULED" && !c.secretaryId,
+    );
+
     const activeCitas =
       statusFilter === "ALL"
         ? rawActiveCitas
@@ -177,7 +210,7 @@ export function ClinicalAgendaPage() {
               Gestión de citas
             </h1>
             <p className="text-sm text-muted-foreground">
-              Programa citas, confirma asistencia o cancela turnos para liberar y ocupar horarios.
+              Programa citas, valida solicitudes de pacientes, confirma asistencia o cancela turnos.
             </p>
           </div>
           <Button
@@ -191,6 +224,131 @@ export function ClinicalAgendaPage() {
             Nueva cita
           </Button>
         </div>
+
+        {/* Sección destacada: Solicitudes de Pacientes Pendientes de Validación */}
+        {pendingPatientRequests.length > 0 && (
+          <Card className="border-amber-500/40 bg-amber-500/10 shadow-md">
+            <CardHeader className="border-b border-amber-500/20 pb-2.5">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold text-amber-300 flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className="border-amber-400 bg-amber-500/20 text-amber-300 font-mono text-xs"
+                  >
+                    {pendingPatientRequests.length}
+                  </Badge>
+                  Solicitudes de Cita y Asignación de Pacientes Pendientes de Validación
+                </CardTitle>
+                <span className="text-[11px] text-muted-foreground">
+                  Portal de Pacientes
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 divide-y divide-amber-500/20">
+              {pendingPatientRequests.map((req: any) => (
+                <div
+                  key={req.id}
+                  className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-surface/40"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm text-foreground">
+                        {req.patient?.firstName} {req.patient?.lastName}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="font-mono text-xs text-primary border-primary/30"
+                      >
+                        {req.patient?.syntheticId}
+                      </Badge>
+                      <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px]">
+                        Solicitud Paciente
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                        <Clock className="size-3.5 text-primary" />
+                        {new Date(req.scheduledAt).toLocaleString("es-ES", {
+                          weekday: "short",
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1">
+                        <UserRound className="size-3.5 text-primary" />
+                        Médico:{" "}
+                        <strong className="text-foreground">
+                          {req.medico?.fullName || req.medico?.email}
+                        </strong>
+                      </span>
+                      {req.reason && (
+                        <span>
+                          · Motivo: <em className="text-foreground">{req.reason}</em>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    <Button
+                      size="sm"
+                      disabled={busyId === req.id}
+                      onClick={() =>
+                        handleConfirmRequest(
+                          req.id,
+                          `${req.patient?.firstName} ${req.patient?.lastName}`,
+                          req.medico?.fullName || req.medico?.email || "Médico",
+                        )
+                      }
+                      className="gap-1.5 text-xs bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm font-semibold"
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      Aprobar Cita y Asignación
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busyId === req.id}
+                      onClick={() => setEditingCita(req)}
+                      className="gap-1 text-xs"
+                    >
+                      <Edit3 className="size-3.5" />
+                      Reagendar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busyId === req.id}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: "¿Rechazar solicitud de cita?",
+                          description: `Se cancelará la solicitud de ${req.patient?.firstName} ${req.patient?.lastName} y se liberará el horario del médico.`,
+                          confirmText: "Sí, rechazar solicitud",
+                          variant: "destructive",
+                        });
+                        if (ok) {
+                          await runTransition(
+                            req.id,
+                            "CANCELLED",
+                            "Solicitud rechazada (horario liberado)",
+                          );
+                        }
+                      }}
+                      className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <XCircle className="size-3.5" />
+                      Rechazar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Selector de Modo: Calendario Google vs Lista */}
         <div className="flex items-center justify-between border-b border-outline-variant/40 pb-3">
@@ -326,6 +484,11 @@ export function ClinicalAgendaPage() {
                         {cita.patient.syntheticId}
                       </Badge>
                       <CitaBadge status={cita.status} />
+                      {!cita.secretaryId && cita.status === "SCHEDULED" && (
+                        <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px]">
+                          Solicitud Paciente
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
@@ -343,6 +506,24 @@ export function ClinicalAgendaPage() {
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {!cita.secretaryId && cita.status === "SCHEDULED" && (
+                      <Button
+                        size="sm"
+                        disabled={busyId === cita.id}
+                        onClick={() =>
+                          handleConfirmRequest(
+                            cita.id,
+                            `${cita.patient?.firstName} ${cita.patient?.lastName}`,
+                            cita.medico?.fullName || cita.medico?.email || "Médico",
+                          )
+                        }
+                        className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-sm"
+                      >
+                        <CheckCircle2 className="size-3.5" />
+                        Aprobar
+                      </Button>
+                    )}
+
                     <WaspRouterLink
                       to={routes.ClinicalPatientDetailRoute.to}
                       params={{ patientId: cita.patient.id }}

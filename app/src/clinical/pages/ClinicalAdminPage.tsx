@@ -18,6 +18,7 @@ import {
   getPendingLinkRequests,
   approvePatientLinkRequest,
   rejectPatientLinkRequest,
+  confirmPatientAppointment,
 } from "wasp/client/operations";
 import { useAuth } from "wasp/client/auth";
 import {
@@ -1781,6 +1782,25 @@ function AdminCitasTab({
     }
   };
 
+  const confirmPatientAppointmentFn = useAction(confirmPatientAppointment);
+
+  const handleConfirmRequest = async (
+    citaId: string,
+    patientName: string,
+    doctorName: string,
+  ) => {
+    setBusyId(citaId);
+    try {
+      await confirmPatientAppointmentFn({ citaId });
+      notice(`Solicitud de ${patientName} aprobada y Dr(a). ${doctorName} asignado.`);
+      await refetch();
+    } catch (err: any) {
+      reportError(err?.message ?? "No se pudo confirmar la cita");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleDelete = async (cita: any) => {
     const ok = await confirm({
       title: "¿Eliminar esta cita?",
@@ -1806,6 +1826,10 @@ function AdminCitasTab({
   const sorted = [...allCitas].sort(
     (a, b) =>
       new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime(),
+  );
+
+  const pendingPatientRequests = allCitas.filter(
+    (c: any) => c.status === "SCHEDULED" && !c.secretaryId,
   );
 
   // Generador de cuadrícula del mes
@@ -1838,6 +1862,129 @@ function AdminCitasTab({
 
   return (
     <div className="space-y-4">
+      {/* Solicitudes de Pacientes Pendientes de Validación */}
+      {pendingPatientRequests.length > 0 && (
+        <Card className="border-amber-500/40 bg-amber-500/10 shadow-md">
+          <div className="border-b border-amber-500/20 px-4 py-2.5 flex items-center justify-between">
+            <h4 className="text-sm font-bold text-amber-300 flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className="border-amber-400 bg-amber-500/20 text-amber-300 font-mono text-xs"
+              >
+                {pendingPatientRequests.length}
+              </Badge>
+              Solicitudes de Citas y Asignaciones Pendientes de Validación
+            </h4>
+            <span className="text-[11px] text-muted-foreground">
+              Portal de Pacientes
+            </span>
+          </div>
+          <div className="divide-y divide-amber-500/20">
+            {pendingPatientRequests.map((req: any) => (
+              <div
+                key={req.id}
+                className="p-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-surface/40"
+              >
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-foreground">
+                      {req.patient?.firstName} {req.patient?.lastName}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-xs text-primary border-primary/30"
+                    >
+                      {req.patient?.syntheticId}
+                    </Badge>
+                    <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px]">
+                      Solicitud Paciente
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                      <Clock className="size-3.5 text-primary" />
+                      {new Date(req.scheduledAt).toLocaleString("es-ES", {
+                        weekday: "short",
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <span>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <UserCheck className="size-3.5 text-primary" />
+                      Médico Solicitado:{" "}
+                      <strong className="text-foreground">
+                        {req.medico?.fullName || req.medico?.email}
+                      </strong>
+                    </span>
+                    {req.reason && (
+                      <span>
+                        · Motivo: <em className="text-foreground">{req.reason}</em>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <Button
+                    size="sm"
+                    disabled={busyId === req.id}
+                    onClick={() =>
+                      handleConfirmRequest(
+                        req.id,
+                        `${req.patient?.firstName} ${req.patient?.lastName}`,
+                        req.medico?.fullName || req.medico?.email || "Médico",
+                      )
+                    }
+                    className="gap-1.5 text-xs bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm font-semibold"
+                  >
+                    <CheckCircle2 className="size-3.5" />
+                    Aprobar Cita y Asignación
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busyId === req.id}
+                    onClick={() => setEditingCita(req)}
+                    className="gap-1 text-xs"
+                  >
+                    <Edit3 className="size-3.5" />
+                    Reagendar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busyId === req.id}
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: "¿Rechazar solicitud de cita?",
+                        description: `Se cancelará la solicitud de ${req.patient?.firstName} ${req.patient?.lastName} y se liberará el horario del médico.`,
+                        confirmText: "Sí, rechazar solicitud",
+                        variant: "destructive",
+                      });
+                      if (ok) {
+                        await runTransition(
+                          req.id,
+                          "CANCELLED",
+                          "Solicitud rechazada (horario liberado)",
+                        );
+                      }
+                    }}
+                    className="gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <XCircle className="size-3.5" />
+                    Rechazar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <AdminScheduleForm notice={notice} reportError={reportError} />
 
       <Card className="overflow-hidden border-outline-variant/60 bg-surface/40 backdrop-blur-md">
@@ -2024,14 +2171,33 @@ function AdminCitasTab({
                           Google Calendar
                         </a>
                         {cita.status === "SCHEDULED" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs h-7"
-                            onClick={() => runTransition(cita.id, "IN_PROGRESS", "Cita iniciada")}
-                          >
-                            Iniciar
-                          </Button>
+                          <>
+                            {!cita.secretaryId && (
+                              <Button
+                                size="sm"
+                                className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                disabled={busyId === cita.id}
+                                onClick={() =>
+                                  handleConfirmRequest(
+                                    cita.id,
+                                    `${cita.patient.firstName} ${cita.patient.lastName}`,
+                                    cita.medico.fullName ?? cita.medico.email
+                                  )
+                                }
+                              >
+                                <CheckCircle2 className="size-3 mr-1" />
+                                Aprobar
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7"
+                              onClick={() => runTransition(cita.id, "IN_PROGRESS", "Cita iniciada")}
+                            >
+                              Iniciar
+                            </Button>
+                          </>
                         )}
                         {cita.status === "IN_PROGRESS" && (
                           <Button
@@ -2084,6 +2250,11 @@ function AdminCitasTab({
                         {cita.patient.syntheticId}
                       </Badge>
                       <AdminCitaBadge status={cita.status} />
+                      {!cita.secretaryId && cita.status === "SCHEDULED" && (
+                        <Badge variant="outline" className="border-amber-500/50 bg-amber-500/10 text-amber-500 text-[10px]">
+                          Solicitud Paciente
+                        </Badge>
+                      )}
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
@@ -2108,6 +2279,23 @@ function AdminCitasTab({
 
                     {cita.status === "SCHEDULED" && (
                       <>
+                        {!cita.secretaryId && (
+                          <Button
+                            size="sm"
+                            disabled={busyId === cita.id}
+                            onClick={() =>
+                              handleConfirmRequest(
+                                cita.id,
+                                `${cita.patient.firstName} ${cita.patient.lastName}`,
+                                cita.medico.fullName ?? cita.medico.email
+                              )
+                            }
+                            className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+                          >
+                            <CheckCircle2 className="size-3.5" />
+                            Aprobar
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"

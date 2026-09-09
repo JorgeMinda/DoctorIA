@@ -3305,3 +3305,105 @@ export const directVerifyUserEmail: any = async (rawArgs: any, context: any) => 
     message: "Cuenta verificada con éxito. Ya puedes iniciar sesión.",
   };
 };
+
+// ---------------------------------------------------------------------------
+// confirmPatientAppointment (Secretaria / Admin) - Valida solicitud de cita
+// y confirma formalmente la asignación del médico seleccionado.
+// ---------------------------------------------------------------------------
+
+const confirmPatientAppointmentInputSchema = z.object({
+  citaId: z.string().min(1),
+});
+
+type ConfirmPatientAppointmentInput = z.infer<
+  typeof confirmPatientAppointmentInputSchema
+>;
+
+export const confirmPatientAppointment: any = async (
+  rawArgs: any,
+  context: any,
+) => {
+  const user = ensureRole(context.user, "admin", "secretaria");
+
+  const { citaId } = ensureArgsSchemaOrThrowHttpError(
+    confirmPatientAppointmentInputSchema,
+    rawArgs,
+  );
+
+  const cita = await context.entities.Cita.findUnique({
+    where: { id: citaId },
+    include: {
+      patient: true,
+      medico: true,
+    },
+  });
+
+  if (!cita) {
+    throw new HttpError(404, "Cita no encontrada");
+  }
+
+  // Asegurar la asignación médica si aún no está creada
+  const existingAccess = await context.entities.MedicoPatientAccess.findUnique({
+    where: {
+      medicoId_patientId: {
+        medicoId: cita.medicoId,
+        patientId: cita.patientId,
+      },
+    },
+  });
+
+  if (!existingAccess) {
+    await context.entities.MedicoPatientAccess.create({
+      data: {
+        medicoId: cita.medicoId,
+        patientId: cita.patientId,
+        grantedById: user.id,
+      },
+    });
+
+    await createAuditEntry({
+      userId: user.id,
+      action: "ASSIGN_PATIENT_TO_MEDICO",
+      resourceType: "PATIENT",
+      resourceId: cita.patientId,
+      patientId: cita.patientId,
+      metadata: {
+        action: "CONFIRM_PATIENT_ASSIGNMENT",
+        medicoId: cita.medicoId,
+        citaId: cita.id,
+      },
+    });
+  }
+
+  // Marcar la cita como validada y aprobada por secretaría/admin
+  const updatedCita = await context.entities.Cita.update({
+    where: { id: citaId },
+    data: {
+      secretaryId: user.id,
+    },
+    include: {
+      patient: true,
+      medico: true,
+    },
+  });
+
+  await createAuditEntry({
+    userId: user.id,
+    action: "MANAGE_CITA",
+    resourceType: "CITA",
+    resourceId: cita.id,
+    patientId: cita.patientId,
+    citaId: cita.id,
+    metadata: {
+      action: "CONFIRM_PATIENT_APPOINTMENT",
+      status: updatedCita.status,
+      medicoId: updatedCita.medicoId,
+      validatedBy: user.id,
+    },
+  });
+
+  return {
+    success: true,
+    cita: updatedCita,
+  };
+};
