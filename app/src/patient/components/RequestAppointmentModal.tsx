@@ -32,6 +32,7 @@ import {
   ExternalLink,
   Loader2,
   Stethoscope,
+  UserCheck,
 } from "lucide-react";
 
 interface RequestAppointmentModalProps {
@@ -162,8 +163,8 @@ export function RequestAppointmentModal({
       });
 
       toast({
-        title: "✅ Solicitud de Cita Registrada",
-        description: "Tu cita ha sido agendada y está pendiente de confirmación por secretaría o recepción.",
+        title: "✅ Solicitud de Cita y Asignación Registrada",
+        description: `Tu cita con ${selectedDoctor?.fullName || "el médico"} ha sido agendada y el profesional ha sido asignado a tu ficha clínica.`,
       });
 
       if (onDone) {
@@ -198,10 +199,10 @@ export function RequestAppointmentModal({
               <CheckCircle2 className="size-6 shrink-0 text-emerald-400 mt-0.5" />
               <div className="space-y-1">
                 <h4 className="font-bold text-sm text-foreground">
-                  ¡Cita solicitada exitosamente!
+                  ¡Cita agendada y médico asignado con éxito!
                 </h4>
                 <p className="text-xs text-muted-foreground">
-                  Tu turno ha quedado registrado en la agenda médica y en tu historial de citas.
+                  Tu turno ha quedado registrado en la agenda médica y el profesional podrá acceder a tus antecedentes para la atención.
                 </p>
               </div>
             </div>
@@ -306,6 +307,15 @@ export function RequestAppointmentModal({
                   ))}
                 </SelectContent>
               </Select>
+
+              {selectedDoctor && (
+                <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground mt-1.5">
+                  <UserCheck className="size-3.5 text-primary shrink-0" />
+                  <span>
+                    El profesional <strong className="text-foreground">{selectedDoctor.fullName || selectedDoctor.email}</strong> quedará asignado para revisar tu ficha médica en esta cita.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* 2. Selección de Fecha */}

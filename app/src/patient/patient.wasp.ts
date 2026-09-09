@@ -19,7 +19,13 @@ export const patientSpec: Spec = [
     entities: ["SyntheticPatient", "User", "AuditLog"],
   }),
   action(requestPatientAppointment, {
-    entities: ["SyntheticPatient", "Cita", "User", "AuditLog"],
+    entities: [
+      "SyntheticPatient",
+      "Cita",
+      "User",
+      "AuditLog",
+      "MedicoPatientAccess",
+    ],
   }),
   query(getActiveDoctorsForPatient, {
     entities: ["User"],

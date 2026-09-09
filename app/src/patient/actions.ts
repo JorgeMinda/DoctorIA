@@ -186,6 +186,40 @@ export const requestPatientAppointment: any = async (
     },
   });
 
+  // Asignación de acceso médico (MedicoPatientAccess): garantiza que el médico seleccionado
+  // tenga acceso a la ficha clínica del paciente para la consulta programada.
+  const existingAccess = await context.entities.MedicoPatientAccess.findUnique({
+    where: {
+      medicoId_patientId: {
+        medicoId: data.medicoId,
+        patientId: patient.id,
+      },
+    },
+  });
+
+  if (!existingAccess) {
+    await context.entities.MedicoPatientAccess.create({
+      data: {
+        medicoId: data.medicoId,
+        patientId: patient.id,
+        grantedById: user.id,
+      },
+    });
+
+    await createAuditEntry({
+      userId: user.id,
+      action: "ASSIGN_PATIENT_TO_MEDICO",
+      resourceType: "PATIENT",
+      resourceId: patient.id,
+      patientId: patient.id,
+      metadata: {
+        action: "PATIENT_AUTO_ASSIGN_MEDICO",
+        medicoId: data.medicoId,
+        citaId: cita.id,
+      },
+    });
+  }
+
   await createAuditEntry({
     userId: user.id,
     action: "MANAGE_CITA",
@@ -198,11 +232,13 @@ export const requestPatientAppointment: any = async (
       status: cita.status,
       medicoId: data.medicoId,
       scheduledAt: data.scheduledAt.toISOString(),
+      assignedDoctor: !existingAccess,
     },
   });
 
   return {
     success: true,
     cita,
+    assignedDoctor: !existingAccess,
   };
 };

@@ -109,6 +109,9 @@ describe("requestPatientAppointment action", () => {
       },
     };
 
+    const mockAccessFindUnique = vi.fn().mockResolvedValue(null);
+    const mockAccessCreate = vi.fn().mockResolvedValue({ id: "access-1" });
+
     const context = {
       user: pacienteUser,
       entities: {
@@ -121,6 +124,10 @@ describe("requestPatientAppointment action", () => {
         Cita: {
           findMany: vi.fn().mockResolvedValue([]), // sin solapamiento
           create: vi.fn().mockResolvedValue(mockCreatedCita),
+        },
+        MedicoPatientAccess: {
+          findUnique: mockAccessFindUnique,
+          create: mockAccessCreate,
         },
       },
     };
@@ -139,6 +146,13 @@ describe("requestPatientAppointment action", () => {
     expect(res.cita.status).toBe("SCHEDULED");
     expect(res.cita.id).toBe("cita-123");
     expect(context.entities.Cita.create).toHaveBeenCalled();
+    expect(mockAccessCreate).toHaveBeenCalledWith({
+      data: {
+        medicoId,
+        patientId: mockPatient.id,
+        grantedById: pacienteUser.id,
+      },
+    });
   });
 
   it("rechaza si el usuario no tiene rol de paciente", async () => {
