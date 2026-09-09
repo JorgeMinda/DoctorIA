@@ -140,7 +140,7 @@ export function RequestAppointmentModal({
 
     setIsSubmitting(true);
     try {
-      const res = await requestAppointmentFn({
+      const res: any = await requestAppointmentFn({
         medicoId,
         scheduledAt: scheduledAt.toISOString(),
         durationMinutes: 30,
@@ -148,7 +148,7 @@ export function RequestAppointmentModal({
       });
 
       setSubmittedCita({
-        ...res.cita,
+        ...(res?.cita || {}),
         doctorName: selectedDoctor?.fullName || selectedDoctor?.email,
         specialty: selectedDoctor?.specialty || "Medicina General",
         date,
