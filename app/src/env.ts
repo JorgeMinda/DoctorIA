@@ -17,5 +17,13 @@ export const serverEnvValidationSchema = defineEnvValidationSchema(
     // ICD-11 (CIE-11) — API oficial de la OMS.
     ICD11_CLIENT_ID: z.string().optional(),
     ICD11_CLIENT_SECRET: z.string().optional(),
+    // WhatsApp Gateway (Opción 1: QR Bridge / Evolution API)
+    WHATSAPP_GATEWAY_URL: z.string().optional(),
+    WHATSAPP_API_KEY: z.string().optional(),
+    WHATSAPP_INSTANCE_NAME: z.string().optional().default("doctoria"),
+    WHATSAPP_ENABLED: z
+      .string()
+      .optional()
+      .transform((val) => val === "true" || val === "1" || val === undefined),
   }),
 );
