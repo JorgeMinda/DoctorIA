@@ -8,8 +8,9 @@ services:
     region: oregon
     branch: main
     buildCommand: >-
-      curl -sSL https://get.wasp.sh/installer.sh | sh -s -- -v 0.25.0 &&
-      export PATH="$HOME/.local/bin:$PATH" &&
+      npm config set prefix "$HOME/.npm-global" &&
+      npm install -g @wasp.sh/wasp-cli@0.25 &&
+      export PATH="$HOME/.npm-global/bin:$PATH" &&
       wasp install &&
       wasp build &&
       cd .wasp/out/server &&
@@ -40,8 +41,9 @@ services:
     rootDir: app
     branch: main
     buildCommand: >-
-      curl -sSL https://get.wasp.sh/installer.sh | sh -s -- -v 0.25.0 &&
-      export PATH="$HOME/.local/bin:$PATH" &&
+      npm config set prefix "$HOME/.npm-global" &&
+      npm install -g @wasp.sh/wasp-cli@0.25 &&
+      export PATH="$HOME/.npm-global/bin:$PATH" &&
       wasp install &&
       wasp build &&
       npx vite build
