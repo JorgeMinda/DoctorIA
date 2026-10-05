@@ -8,15 +8,15 @@ services:
     region: oregon
     branch: main
     buildCommand: >-
-      npm install -g @wasp.sh/wasp-cli@0.25 &&
-      export PATH="$(npm prefix -g)/bin:$PATH" &&
+      curl -sSL https://get.wasp.sh/installer.sh | sh -s -- -v 0.25.0 &&
+      export PATH="$HOME/.local/bin:$PATH" &&
       wasp install &&
       wasp build &&
       cd .wasp/out/server &&
       npm install &&
       npx prisma generate --schema=../db/schema.prisma &&
-       npm run bundle
-     startCommand: cd .wasp/out/server && (npm run db-migrate-prod || true) && npx prisma db push --accept-data-loss --schema=../db/schema.prisma && (WASP_DB_SEED_NAME=seedSyntheticClinicalData node --enable-source-maps -r dotenv/config bundle/dbSeed.js || true) && NODE_ENV=production npm run start
+      npm run bundle
+    startCommand: cd .wasp/out/server && (npm run db-migrate-prod || true) && npx prisma db push --accept-data-loss --schema=../db/schema.prisma && (WASP_DB_SEED_NAME=seedSyntheticClinicalData node --enable-source-maps -r dotenv/config bundle/dbSeed.js || true) && NODE_ENV=production npm run start
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -31,7 +31,7 @@ services:
       - key: ADMIN_EMAILS
         sync: false
       - key: NODE_VERSION
-        value: "24"
+        value: "22"
 
   # React client -- sitio estático construido con Vite
   - type: web
@@ -40,8 +40,8 @@ services:
     rootDir: app
     branch: main
     buildCommand: >-
-      npm install -g @wasp.sh/wasp-cli@0.25 &&
-      export PATH="$(npm prefix -g)/bin:$PATH" &&
+      curl -sSL https://get.wasp.sh/installer.sh | sh -s -- -v 0.25.0 &&
+      export PATH="$HOME/.local/bin:$PATH" &&
       wasp install &&
       wasp build &&
       npx vite build
@@ -50,7 +50,7 @@ services:
       - key: REACT_APP_API_URL
         sync: false
       - key: NODE_VERSION
-        value: "24"
+        value: "22"
     routes:
       - type: rewrite
         source: /*
