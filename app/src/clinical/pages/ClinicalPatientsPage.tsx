@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useQuery, useAction } from "wasp/client/operations";
 import { getPatients, manageSyntheticPatients } from "wasp/client/operations";
