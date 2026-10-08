@@ -78,13 +78,13 @@ export function ClinicalPatientDetailPage() {
     {
       patientId: patientId ?? "",
     },
-    { enabled: isAuthResolved },
+    { enabled: isAuthResolved, staleTime: 30_000, refetchOnWindowFocus: false },
   );
   const { data: history, isLoading: loadingHistory, refetch: refetchHistory } =
     useQuery(
       getPatientHistory,
       { patientId: patientId ?? "" },
-      { enabled: isAuthResolved },
+      { enabled: isAuthResolved, staleTime: 30_000, refetchOnWindowFocus: false },
     );
 
   const createNoteFn = useAction(createClinicalNote);
@@ -107,7 +107,7 @@ export function ClinicalPatientDetailPage() {
     {
       patientId: patientId ?? "",
     },
-    { enabled: isAuthResolved },
+    { enabled: isAuthResolved, staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
   if (!(user?.isMedico || user?.isSecretaria || user?.isAdmin)) {
@@ -517,7 +517,7 @@ export function ClinicalPatientDetailPage() {
         </>
       )}
 
-      {canEditPatient && (
+      {canEditPatient && showEdit && (
         <PatientFormModal
           open={showEdit}
           onOpenChange={setShowEdit}
@@ -526,22 +526,26 @@ export function ClinicalPatientDetailPage() {
         />
       )}
 
-      <NewAppointmentModal
-        open={Boolean(showNewCita)}
-        onOpenChange={setShowNewCita}
-        defaultPatientId={patient.id}
-        onDone={() => refetch()}
-      />
+      {showNewCita && (
+        <NewAppointmentModal
+          open={Boolean(showNewCita)}
+          onOpenChange={setShowNewCita}
+          defaultPatientId={patient.id}
+          onDone={() => refetch()}
+        />
+      )}
 
-      <EditAppointmentModal
-        open={Boolean(editingCita)}
-        onOpenChange={(v) => !v && setEditingCita(null)}
-        cita={editingCita}
-        onDone={() => {
-          setEditingCita(null);
-          refetch();
-        }}
-      />
+      {editingCita && (
+        <EditAppointmentModal
+          open={Boolean(editingCita)}
+          onOpenChange={(v) => !v && setEditingCita(null)}
+          cita={editingCita}
+          onDone={() => {
+            setEditingCita(null);
+            refetch();
+          }}
+        />
+      )}
 
       {printEpicrisisId && (
         <EpicrisisPrintView

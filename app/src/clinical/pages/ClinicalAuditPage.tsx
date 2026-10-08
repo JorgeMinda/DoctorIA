@@ -23,7 +23,7 @@ export function ClinicalAuditPage() {
     {
       page,
     },
-    { enabled: Boolean(user) },
+    { enabled: Boolean(user), staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
   if (!user) {

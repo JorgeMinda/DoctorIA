@@ -42,6 +42,7 @@ export function NewAppointmentModal({
   const [medicoId, setMedicoId] = useState("");
   const [patientId, setPatientId] = useState(defaultPatientId ?? "");
   const [date, setDate] = useState("");
+  const [debouncedDate, setDebouncedDate] = useState("");
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -57,10 +58,17 @@ export function NewAppointmentModal({
   // Duración estándar fijada a 30 minutos
   const DURATION_MINUTES = 30;
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedDate(date);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [date]);
+
   const { data: medicosData, isLoading: loadingMedicos } = useQuery(
     getDoctorsAgenda,
     {},
-    { enabled: open },
+    { enabled: open, staleTime: 60_000, refetchOnWindowFocus: false },
   );
 
   const { data: patientsData, isLoading: loadingPatients } = useQuery(
@@ -69,21 +77,23 @@ export function NewAppointmentModal({
       page: 1,
       pageSize: 200,
     },
-    { enabled: open },
+    { enabled: open, staleTime: 60_000, refetchOnWindowFocus: false },
   );
 
-  const hasSlotParams = Boolean(open && medicoId && date);
+  const hasSlotParams = Boolean(
+    open && medicoId && /^\d{4}-\d{2}-\d{2}$/.test(debouncedDate),
+  );
   const { data: slots, isLoading: loadingSlots } = useQuery(
     getAvailableSlots,
     hasSlotParams
       ? {
           medicoId,
-          date,
+          date: debouncedDate,
           durationMinutes: DURATION_MINUTES,
           timezoneOffset: new Date().getTimezoneOffset(),
         }
       : ({} as any),
-    { enabled: hasSlotParams },
+    { enabled: hasSlotParams, staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
   const createCitaFn = useAction(manageCita);

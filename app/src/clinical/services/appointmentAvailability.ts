@@ -24,17 +24,40 @@ export function hasConflict(
   return intervals.some((iv) => iv.startMs < endMs && iv.endMs > startMs);
 }
 
-// Slots del día completo (24h): "HH:mm" cada slotMinutes desde las 00:00.
-export function buildDaySlots(slotMinutes = 30): string[] {
+// Horario de atención clínica estándar: 08:00 a 19:30 (último turno inicia a las 19:30).
+export const CLINICAL_HOURS_START = "08:00";
+export const CLINICAL_HOURS_END = "19:30";
+
+// Slots de jornada médica: "HH:mm" cada slotMinutes dentro del rango de atención.
+export function buildDaySlots(
+  slotMinutes = 30,
+  startHour = CLINICAL_HOURS_START,
+  endHour = CLINICAL_HOURS_END,
+): string[] {
+  const [startH, startM] = startHour.split(":").map(Number);
+  const [endH, endM] = endHour.split(":").map(Number);
+  const startTotalMinutes = startH * 60 + startM;
+  const endTotalMinutes = endH * 60 + endM;
+
   const slots: string[] = [];
-  const total = Math.floor((24 * 60) / slotMinutes);
-  for (let m = 0; m < total; m++) {
-    const minutes = m * slotMinutes;
-    const hh = String(Math.floor(minutes / 60)).padStart(2, "0");
-    const mm = String(minutes % 60).padStart(2, "0");
+  for (let m = startTotalMinutes; m <= endTotalMinutes; m += slotMinutes) {
+    const hh = String(Math.floor(m / 60)).padStart(2, "0");
+    const mm = String(m % 60).padStart(2, "0");
     slots.push(`${hh}:${mm}`);
   }
   return slots;
+}
+
+export function isWithinClinicalHours(
+  hhmm: string,
+  startHour = CLINICAL_HOURS_START,
+  endHour = CLINICAL_HOURS_END,
+): boolean {
+  const [h, m] = hhmm.split(":").map(Number);
+  const total = h * 60 + m;
+  const [startH, startM] = startHour.split(":").map(Number);
+  const [endH, endM] = endHour.split(":").map(Number);
+  return total >= startH * 60 + startM && total <= endH * 60 + endM;
 }
 
 // Calcula el timestamp UTC en milisegundos de un slot local ("HH:mm") en una fecha local ("YYYY-MM-DD")

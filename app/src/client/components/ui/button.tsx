@@ -10,16 +10,18 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary/15 border border-primary/35 text-primary shadow-[0_0_15px_rgba(0,218,243,0.15)] hover:bg-primary/25 hover:border-primary/50 backdrop-blur-md active:scale-[0.98]",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-[0.98]",
         destructive:
-          "bg-destructive/15 border border-destructive/35 text-destructive shadow-sm hover:bg-destructive/25 hover:border-destructive/50 backdrop-blur-sm active:scale-[0.98]",
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:scale-[0.98]",
         outline:
-          "border border-outline-variant/80 bg-surface/50 text-foreground shadow-sm hover:bg-surface-high hover:border-outline backdrop-blur-sm active:scale-[0.98]",
+          "border border-outline-variant bg-surface text-foreground shadow-sm hover:bg-surface-high hover:border-outline backdrop-blur-sm active:scale-[0.98]",
         secondary:
-          "bg-surface/80 border border-outline-variant/60 text-foreground shadow-sm hover:bg-surface-high hover:border-outline backdrop-blur-sm active:scale-[0.98]",
+          "bg-surface-high border border-outline-variant text-foreground shadow-sm hover:bg-surface-highest hover:border-outline backdrop-blur-sm active:scale-[0.98]",
         ghost: "hover:bg-surface-high/60 hover:text-foreground active:scale-[0.98]",
         link: "text-primary underline-offset-4 hover:underline",
-        ai: "bg-gradient-to-r from-primary/15 via-accent/20 to-primary/15 border border-primary/40 text-primary shadow-[0_0_15px_rgba(0,218,243,0.22)] hover:bg-primary/25 hover:border-primary/60 backdrop-blur-md active:scale-[0.98]",
+        ai: "bg-primary/15 border border-primary/40 text-primary shadow-[0_0_15px_rgba(0,218,243,0.22)] hover:bg-primary/25 hover:border-primary/60 backdrop-blur-md active:scale-[0.98]",
+        glass:
+          "bg-primary/15 border border-primary/35 text-primary shadow-[0_0_15px_rgba(0,218,243,0.15)] hover:bg-primary/25 hover:border-primary/50 backdrop-blur-md active:scale-[0.98]",
       },
       size: {
         default: "h-9 px-4 py-2",

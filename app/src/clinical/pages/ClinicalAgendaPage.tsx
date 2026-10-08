@@ -114,7 +114,7 @@ export function ClinicalAgendaPage() {
   const { data: agenda, isLoading, refetch } = useQuery(
     getAgenda,
     {},
-    { enabled: Boolean(user) },
+    { enabled: Boolean(user), staleTime: 15_000, refetchOnWindowFocus: false },
   );
   const updateStatusFn = useAction(updateCitaStatus);
   const confirmPatientAppointmentFn = useAction(confirmPatientAppointment);
@@ -698,18 +698,22 @@ export function ClinicalAgendaPage() {
         </>
         )}
 
-        <NewAppointmentModal
-          open={Boolean(showNewCita)}
-          onOpenChange={setShowNewCita}
-          onDone={() => refetch()}
-        />
+        {showNewCita && (
+          <NewAppointmentModal
+            open={Boolean(showNewCita)}
+            onOpenChange={setShowNewCita}
+            onDone={() => refetch()}
+          />
+        )}
 
-        <EditAppointmentModal
-          open={Boolean(editingCita)}
-          onOpenChange={(v) => !v && setEditingCita(null)}
-          cita={editingCita}
-          onDone={() => refetch()}
-        />
+        {editingCita && (
+          <EditAppointmentModal
+            open={Boolean(editingCita)}
+            onOpenChange={(v) => !v && setEditingCita(null)}
+            cita={editingCita}
+            onDone={() => refetch()}
+          />
+        )}
 
         {ConfirmDialog}
       </div>

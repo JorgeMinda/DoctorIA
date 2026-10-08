@@ -44,11 +44,10 @@ interface RequestAppointmentModalProps {
 }
 
 const ALL_DAY_SLOTS = [
-  "07:00", "07:30", "08:00", "08:30", "09:00", "09:30",
-  "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
-  "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
-  "16:00", "16:30", "17:00", "17:30", "18:00", "18:30",
-  "19:00", "19:30", "20:00", "20:30",
+  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
+  "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+  "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+  "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
 ];
 
 export function RequestAppointmentModal({
@@ -58,29 +57,39 @@ export function RequestAppointmentModal({
 }: RequestAppointmentModalProps) {
   const [medicoId, setMedicoId] = useState("");
   const [date, setDate] = useState("");
+  const [debouncedDate, setDebouncedDate] = useState("");
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedCita, setSubmittedCita] = useState<any | null>(null);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedDate(date);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [date]);
+
   const { data: doctorsData, isLoading: loadingDoctors } = useQuery(
     getActiveDoctorsForPatient,
     {},
-    { enabled: open }
+    { enabled: open, staleTime: 60_000, refetchOnWindowFocus: false }
   );
 
-  const hasSlotParams = Boolean(open && medicoId && date);
+  const hasSlotParams = Boolean(
+    open && medicoId && /^\d{4}-\d{2}-\d{2}$/.test(debouncedDate)
+  );
   const { data: slotsData, isLoading: loadingSlots } = useQuery(
     getAvailableSlots,
     hasSlotParams
       ? {
           medicoId,
-          date,
+          date: debouncedDate,
           durationMinutes: 30,
           timezoneOffset: new Date().getTimezoneOffset(),
         }
       : ({} as any),
-    { enabled: hasSlotParams }
+    { enabled: hasSlotParams, staleTime: 30_000, refetchOnWindowFocus: false }
   );
 
   const requestAppointmentFn = useAction(requestPatientAppointment);

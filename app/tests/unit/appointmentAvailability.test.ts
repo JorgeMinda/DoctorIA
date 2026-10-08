@@ -45,8 +45,15 @@ describe("hasConflict", () => {
 });
 
 describe("buildDaySlots", () => {
-  it("genera 48 slots cada 30 minutos cubriendo las 24 horas", () => {
+  it("genera los slots del horario clínico diurno (08:00 a 19:30 por defecto)", () => {
     const slots = buildDaySlots(30);
+    expect(slots.length).toBe(24);
+    expect(slots[0]).toBe("08:00");
+    expect(slots[slots.length - 1]).toBe("19:30");
+  });
+
+  it("permite especificar rango completo si se solicita", () => {
+    const slots = buildDaySlots(30, "00:00", "23:30");
     expect(slots.length).toBe(48);
     expect(slots[0]).toBe("00:00");
     expect(slots[slots.length - 1]).toBe("23:30");

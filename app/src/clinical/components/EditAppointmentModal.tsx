@@ -40,30 +40,40 @@ export function EditAppointmentModal({
 }) {
   const [medicoId, setMedicoId] = useState("");
   const [date, setDate] = useState("");
+  const [debouncedDate, setDebouncedDate] = useState("");
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
   const DURATION_MINUTES = 30;
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedDate(date);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [date]);
+
   const { data: medicosData, isLoading: loadingMedicos } = useQuery(
     getDoctorsAgenda,
     {},
-    { enabled: open && Boolean(cita) },
+    { enabled: open && Boolean(cita), staleTime: 60_000, refetchOnWindowFocus: false },
   );
 
-  const hasSlotParams = Boolean(open && Boolean(cita) && medicoId && date);
+  const hasSlotParams = Boolean(
+    open && Boolean(cita) && medicoId && /^\d{4}-\d{2}-\d{2}$/.test(debouncedDate),
+  );
   const { data: slots, isLoading: loadingSlots } = useQuery(
     getAvailableSlots,
     hasSlotParams
       ? {
           medicoId,
-          date,
+          date: debouncedDate,
           durationMinutes: DURATION_MINUTES,
           timezoneOffset: new Date().getTimezoneOffset(),
         }
       : ({} as any),
-    { enabled: hasSlotParams },
+    { enabled: hasSlotParams, staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
   const manageCitaFn = useAction(manageCita);

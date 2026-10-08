@@ -1533,35 +1533,45 @@ function AdminScheduleForm({
   const [medicoId, setMedicoId] = useState("");
   const [patientId, setPatientId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [debouncedDate, setDebouncedDate] = useState(date);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedDate(date);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [date]);
 
   // Duración estándar fijada a 30 minutos
   const DURATION_MINUTES = 30;
 
-  const hasSlotParams = Boolean(medicoId && date);
+  const hasSlotParams = Boolean(
+    medicoId && /^\d{4}-\d{2}-\d{2}$/.test(debouncedDate),
+  );
   const { data: slotsData, isLoading: loadingSlots } = useQuery(
     getAvailableSlots,
     hasSlotParams
       ? {
           medicoId,
-          date,
+          date: debouncedDate,
           durationMinutes: DURATION_MINUTES,
           timezoneOffset: new Date().getTimezoneOffset(),
         }
       : ({} as any),
-    { enabled: hasSlotParams },
+    { enabled: hasSlotParams, staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Horario de atención 24h: slots cada 30 minutos, 00:00 a 23:30.
-  const SLOTS: string[] = [];
-  for (let h = 0; h < 24; h++) {
-    for (const m of ["00", "30"]) {
-      SLOTS.push(`${String(h).padStart(2, "0")}:${m}`);
-    }
-  }
+  // Horario de atención clínica estándar: slots cada 30 minutos, 08:00 a 19:30.
+  const SLOTS: string[] = [
+    "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
+    "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+    "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+    "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
+  ];
 
   const buildScheduledAt = () => {
     if (!date || !time) return null;

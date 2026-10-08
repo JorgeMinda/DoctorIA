@@ -85,7 +85,7 @@ function ClinicalEpicrisisPageContent() {
     {
       epicrisisId: epicrisisId ?? "",
     },
-    { enabled: Boolean(user && epicrisisId) },
+    { enabled: Boolean(user && epicrisisId), staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
   const updateDraftFn = useAction(updateEpicrisisDraft);

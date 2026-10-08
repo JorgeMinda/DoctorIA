@@ -66,7 +66,7 @@ function ClinicalNotePageContent() {
     {
       noteId: noteId ?? "",
     },
-    { enabled: Boolean(user && noteId) },
+    { enabled: Boolean(user && noteId), staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
   const updateDraftFn = useAction(updateClinicalNoteDraft);

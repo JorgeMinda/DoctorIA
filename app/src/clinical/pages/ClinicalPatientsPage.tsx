@@ -28,18 +28,27 @@ import { EmergencyAppointmentModal } from "../components/EmergencyAppointmentMod
 export function ClinicalPatientsPage() {
   const { data: user } = useAuth();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data, isLoading, error, refetch } = useQuery(
     getPatients,
     {
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       page,
       pageSize: 20,
     },
-    { enabled: Boolean(user) },
+    { enabled: Boolean(user), staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
   const canCreatePatient = Boolean(user?.isSecretaria || user?.isAdmin);
@@ -283,7 +292,7 @@ export function ClinicalPatientsPage() {
         )}
       </Card>
 
-      {canCreatePatient && (
+      {canCreatePatient && showCreate && (
         <PatientFormModal
           open={showCreate}
           onOpenChange={setShowCreate}
@@ -291,7 +300,7 @@ export function ClinicalPatientsPage() {
         />
       )}
 
-      {user?.isSecretaria && (
+      {user?.isSecretaria && showEmergency && (
         <EmergencyAppointmentModal
           open={showEmergency}
           onOpenChange={setShowEmergency}
