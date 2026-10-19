@@ -38,6 +38,7 @@ import {
 import { Badge } from "../../client/components/ui/badge";
 import { StatusBadge } from "../components/StatusBadge";
 import { CIE11SearchDialog, type CIE11Result } from "../components/CIE11SearchDialog";
+import { extractSuggestedDiagnoses } from "../services/clinicalFormat";
 import {
   EpicrisisPDFDocument,
   type EpicrisisPDFData,
@@ -158,6 +159,11 @@ function ClinicalEpicrisisPageContent() {
 
   const isConfirmed = epicrisis.status === "CONFIRMED";
 
+  const suggestedCieTerms = extractSuggestedDiagnoses(
+    epicrisis.validatedDiagnoses,
+    epicrisis.reasonForAdmission,
+  );
+
   const handleExportPdf = async () => {
     setExporting(true);
     setError(null);
@@ -222,12 +228,22 @@ function ClinicalEpicrisisPageContent() {
   };
 
   const handleConfirm = async () => {
+    const ok = await confirm({
+      title: "¿Confirmar y sellar epicrisis?",
+      description:
+        "Una vez confirmada, la epicrisis quedará sellada permanentemente e inmutable (RNF-004). Cualquier corrección o aclaración requerirá una adenda formal de epicrisis.",
+      confirmText: "Sí, confirmar y sellar",
+      cancelText: "Seguir revisando",
+      variant: "default",
+    });
+    if (!ok) return;
+
     setSaving(true);
     setError(null);
     try {
       await confirmFn({ epicrisisId: epicrisis.id });
       await refetch();
-      toast({ title: "Epicrisis confirmada" });
+      toast({ title: "Epicrisis confirmada correctamente" });
     } catch (err: any) {
       setError(err?.message ?? "No se pudo confirmar");
     } finally {
@@ -388,13 +404,26 @@ function ClinicalEpicrisisPageContent() {
                 <Save className="size-4" />
                 Guardar cambios
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setCie11Open(true)}
-                disabled={saving}
-              >
-                Asignar CIE-11
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCie11Open(true)}
+                  disabled={saving}
+                >
+                  Asignar CIE-11
+                </Button>
+                {suggestedCieTerms.length > 0 && !epicrisis.cie11Code && (
+                  <button
+                    type="button"
+                    onClick={() => setCie11Open(true)}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer"
+                    title="Buscar código sugerido en catálogo CIE-11"
+                  >
+                    <Sparkles className="size-3" />
+                    Sugerencia: {suggestedCieTerms[0]}
+                  </button>
+                )}
+              </div>
               <Button onClick={handleConfirm} disabled={saving}>
                 <ShieldCheck className="size-4" />
                 Confirmar epicrisis
@@ -509,6 +538,8 @@ function ClinicalEpicrisisPageContent() {
         open={cie11Open}
         onOpenChange={setCie11Open}
         onSelect={handleSelectCIE11}
+        initialQuery={suggestedCieTerms[0] ?? ""}
+        suggestedTerms={suggestedCieTerms}
       />
       {ConfirmDialog}
     </div>

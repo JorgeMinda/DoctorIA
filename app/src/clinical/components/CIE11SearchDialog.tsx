@@ -9,7 +9,8 @@ import {
 } from "../../client/components/ui/dialog";
 import { Input } from "../../client/components/ui/input";
 import { Button } from "../../client/components/ui/button";
-import { Loader2, Search } from "lucide-react";
+import { Badge } from "../../client/components/ui/badge";
+import { Loader2, Search, Sparkles } from "lucide-react";
 
 export type CIE11Result = {
   code: string;
@@ -21,15 +22,27 @@ interface CIE11SearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (result: CIE11Result) => void;
+  initialQuery?: string;
+  suggestedTerms?: string[];
 }
 
 export function CIE11SearchDialog({
   open,
   onOpenChange,
   onSelect,
+  initialQuery = "",
+  suggestedTerms = [],
 }: CIE11SearchDialogProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedTerm, setDebouncedTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
+  const [debouncedTerm, setDebouncedTerm] = useState(initialQuery);
+
+  useEffect(() => {
+    if (open) {
+      const init = initialQuery?.trim() ?? "";
+      setSearchTerm(init);
+      setDebouncedTerm(init);
+    }
+  }, [open, initialQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -77,6 +90,27 @@ export function CIE11SearchDialog({
               autoFocus
             />
           </div>
+          {suggestedTerms.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                <Sparkles className="size-3 text-primary" />
+                Sugerencias clínicas:
+              </span>
+              {suggestedTerms.map((term) => (
+                <Badge
+                  key={term}
+                  variant="secondary"
+                  className="cursor-pointer text-xs transition-colors hover:bg-primary/20 hover:text-primary"
+                  onClick={() => {
+                    setSearchTerm(term);
+                    setDebouncedTerm(term);
+                  }}
+                >
+                  {term}
+                </Badge>
+              ))}
+            </div>
+          )}
           <div className="min-h-[200px] max-h-[300px] overflow-y-auto border rounded-md p-1">
             {error ? (
               <div className="p-4 text-sm text-destructive text-center">

@@ -45,6 +45,8 @@ import {
 import { StatusBadge } from "../components/StatusBadge";
 import { CIE11SearchDialog, type CIE11Result } from "../components/CIE11SearchDialog";
 import type { SectionKey } from "../services/noteValidation";
+import { extractSuggestedDiagnoses } from "../services/clinicalFormat";
+import { useConfirm } from "../../client/hooks/use-confirm";
 import { RoleGuard } from "../../client/components/RoleGuard";
 import { toast } from "../../client/hooks/use-toast";
 
@@ -97,6 +99,7 @@ function ClinicalNotePageContent() {
   const [aiAddendumOpen, setAiAddendumOpen] = useState(false);
   const [aiInstruction, setAiInstruction] = useState("");
   const [cie11Open, setCie11Open] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   // Dictado por voz a nivel de nota
   const [isDictating, setIsDictating] = useState(false);
@@ -238,6 +241,13 @@ function ClinicalNotePageContent() {
 
   const isConfirmed = note.status === "CONFIRMED";
 
+  const suggestedCieTerms = extractSuggestedDiagnoses(
+    draft.sections.valoracionClinica,
+    note.valoracionClinica,
+    draft.sections.motivoConsulta,
+    note.motivoConsulta,
+  );
+
   const persistDraft = (next: SectionDraft) => {
     setDraft(next);
     if (note.status === "CONFIRMED") {
@@ -356,13 +366,23 @@ function ClinicalNotePageContent() {
   };
 
   const handleConfirm = async () => {
+    const ok = await confirm({
+      title: "¿Confirmar y sellar nota clínica?",
+      description:
+        "Una vez confirmada, la nota clínica quedará sellada legalmente e inmutable (RNF-004). No podrá editarse directamente y cualquier corrección futura requerirá una adenda formal vinculada.",
+      confirmText: "Sí, confirmar y sellar",
+      cancelText: "Seguir revisando",
+      variant: "default",
+    });
+    if (!ok) return;
+
     setSaving(true);
     setError(null);
     try {
       await persistNow();
       await confirmFn({ noteId: note.id });
       await refetch();
-      toast({ title: "Nota clínica confirmada" });
+      toast({ title: "Nota clínica confirmada correctamente" });
     } catch (err: any) {
       setError(err?.message ?? "No se pudo confirmar");
     } finally {
@@ -391,11 +411,16 @@ function ClinicalNotePageContent() {
   };
 
   const handleDeleteNote = async () => {
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
-      window.setTimeout(() => setConfirmingDelete(false), 6000);
-      return;
-    }
+    const ok = await confirm({
+      title: "¿Eliminar este borrador de nota clínica?",
+      description:
+        "Esta acción descartará el borrador permanentemente. Solo los borradores no confirmados pueden eliminarse.",
+      confirmText: "Sí, eliminar borrador",
+      cancelText: "Cancelar",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
     setSaving(true);
     setError(null);
     try {
@@ -408,7 +433,6 @@ function ClinicalNotePageContent() {
       );
     } catch (err: any) {
       setError(err?.message ?? "No se pudo eliminar la nota");
-      setConfirmingDelete(false);
     } finally {
       setSaving(false);
     }
@@ -630,13 +654,26 @@ function ClinicalNotePageContent() {
                 <Save className="size-4" />
                 Actualizar nota
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setCie11Open(true)}
-                disabled={saving || aiBusy}
-              >
-                Asignar CIE-11
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCie11Open(true)}
+                  disabled={saving || aiBusy}
+                >
+                  Asignar CIE-11
+                </Button>
+                {suggestedCieTerms.length > 0 && !note.cie11Code && (
+                  <button
+                    type="button"
+                    onClick={() => setCie11Open(true)}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer"
+                    title="Buscar código sugerido en catálogo CIE-11"
+                  >
+                    <Sparkles className="size-3" />
+                    Sugerencia: {suggestedCieTerms[0]}
+                  </button>
+                )}
+              </div>
               <Button onClick={handleConfirm} disabled={saving || aiBusy}>
                 <ShieldCheck className="size-4" />
                 Confirmar nota
@@ -851,7 +888,10 @@ function ClinicalNotePageContent() {
         open={cie11Open}
         onOpenChange={setCie11Open}
         onSelect={handleSelectCIE11}
+        initialQuery={suggestedCieTerms[0] ?? ""}
+        suggestedTerms={suggestedCieTerms}
       />
+      {ConfirmDialog}
     </div>
   );
 }
