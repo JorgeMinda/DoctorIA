@@ -9,11 +9,15 @@ import { authEnvSchema } from "./auth/env";
 export const serverEnvValidationSchema = defineEnvValidationSchema(
   z.object({
     ...authEnvSchema.shape,
-    OPENROUTER_API_KEY: z.string(),
+    OPENROUTER_API_KEY: z.string().default(""),
     // Modelo de IA configurable (default: meta-llama/llama-3.3-70b-instruct:free o configurable vía env).
     OPENROUTER_MODEL: z
       .string()
       .default("meta-llama/llama-3.3-70b-instruct:free"),
+    // Soporte para OpenJarvis / Inferencia Local (On-Premise / Edge AI)
+    OPENJARVIS_BASE_URL: z.string().optional(),
+    OPENJARVIS_MODEL: z.string().optional(),
+    OPENJARVIS_API_KEY: z.string().optional(),
     // ICD-11 (CIE-11) — API oficial de la OMS.
     ICD11_CLIENT_ID: z.string().optional(),
     ICD11_CLIENT_SECRET: z.string().optional(),

@@ -279,6 +279,109 @@ async function callOpenRouter(messages: ChatMessage[]): Promise<any> {
   throw lastError;
 }
 
+// ─────────────────────────── TRANSPORTE OpenJarvis (Local / Edge AI) ───────────────────────────
+
+function getOpenJarvisEndpoint(): string | null {
+  const raw = (
+    process.env.OPENJARVIS_BASE_URL || (env as any).OPENJARVIS_BASE_URL
+  )?.trim();
+  if (!raw) return null;
+  const base = raw.replace(/\/+$/, "");
+  return base.endsWith("/chat/completions")
+    ? base
+    : base.endsWith("/v1")
+      ? `${base}/chat/completions`
+      : `${base}/v1/chat/completions`;
+}
+
+async function callOpenJarvisOnce(
+  messages: ChatMessage[],
+  endpoint: string,
+): Promise<any> {
+  const modelName =
+    process.env.OPENJARVIS_MODEL ||
+    (env as any).OPENJARVIS_MODEL ||
+    env.OPENROUTER_MODEL ||
+    "open-jarvis-clinical";
+  const apiKey =
+    process.env.OPENJARVIS_API_KEY ||
+    (env as any).OPENJARVIS_API_KEY ||
+    "open-jarvis-local";
+
+  const body = {
+    model: modelName,
+    messages,
+    response_format: { type: "json_object" },
+    temperature: 0,
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "X-Title": "DoctorIA-Local",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(
+        `OpenJarvis local retornó código ${response.status} para ${modelName}: ${errText}`,
+      );
+    }
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error("OpenJarvis devolvió una respuesta vacía o inválida.");
+    }
+
+    try {
+      return JSON.parse(content);
+    } catch {
+      throw new Error("OpenJarvis no devolvió un JSON válido.");
+    }
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      throw new Error(
+        `Timeout al llamar a OpenJarvis local (${AI_TIMEOUT_MS / 1000}s superados).`,
+      );
+    }
+    throw error;
+  }
+}
+
+// Enrutador unificado: prefiere OpenJarvis si está configurado en el entorno local;
+// si no está configurado o falla, recurre a OpenRouter sin interrumpir el servicio.
+async function callAIProvider(messages: ChatMessage[]): Promise<any> {
+  const openJarvisEndpoint = getOpenJarvisEndpoint();
+  if (openJarvisEndpoint) {
+    try {
+      return await callOpenJarvisOnce(messages, openJarvisEndpoint);
+    } catch (localErr: any) {
+      console.warn(
+        `[aiService] OpenJarvis local no respondió (${localErr?.message}). Probando fallback a OpenRouter...`,
+      );
+      if (env.OPENROUTER_API_KEY) {
+        return await callOpenRouter(messages);
+      }
+      throw localErr;
+    }
+  }
+
+  return await callOpenRouter(messages);
+}
+
 // ───────────────────────────── OPERACIONES DE IA ─────────────────────────────
 
 // Structures free clinical text into the 5 clinical sections.
@@ -309,7 +412,7 @@ Reglas estrictas:
 Texto libre clínico a estructurar:
 "${input.text}"`;
 
-  const raw = await callOpenRouter(buildMessages(prompt));
+  const raw = await callAIProvider(buildMessages(prompt));
   const parsed = parseAIResponse(structuredNoteResponseSchema, raw);
 
   const sections = parsed.sections;
@@ -360,7 +463,7 @@ Reglas estrictas:
 Historial de notas del paciente:
 ${notesSummary}`;
 
-  const raw = await callOpenRouter(buildMessages(prompt));
+  const raw = await callAIProvider(buildMessages(prompt));
   const parsed = parseAIResponse(epicrisisResponseSchema, raw);
 
   return {
@@ -404,7 +507,7 @@ ${originalDoc}
 Instrucción del profesional:
 "${instruction}"`;
 
-  const raw = await callOpenRouter(buildMessages(prompt));
+  const raw = await callAIProvider(buildMessages(prompt));
   const parsed = parseAIResponse(structuredNoteResponseSchema, raw);
 
   return {

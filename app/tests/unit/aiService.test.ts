@@ -1,4 +1,4 @@
-﻿// Tests unitarios del servicio de IA (herméticos: mockean fetch de OpenRouter).
+// Tests unitarios del servicio de IA (herméticos: mockean fetch de OpenRouter).
 // FASE 2/10: aserciones originales conservadas + validación Zod
 // (AI_INVALID_RESPONSE_ERROR), timeout, reintentos e interfaz AIService.
 
@@ -277,3 +277,75 @@ describe("aiService mock — generateEpicrisisFromHistory", () => {
     expect(result.elements.followUpInstructions).toBeTruthy();
   });
 });
+
+describe("aiService — OpenJarvis local transport", () => {
+  const originalOpenJarvisUrl = process.env.OPENJARVIS_BASE_URL;
+  const originalOpenJarvisModel = process.env.OPENJARVIS_MODEL;
+
+  afterEach(() => {
+    if (originalOpenJarvisUrl !== undefined) {
+      process.env.OPENJARVIS_BASE_URL = originalOpenJarvisUrl;
+    } else {
+      delete process.env.OPENJARVIS_BASE_URL;
+    }
+    if (originalOpenJarvisModel !== undefined) {
+      process.env.OPENJARVIS_MODEL = originalOpenJarvisModel;
+    } else {
+      delete process.env.OPENJARVIS_MODEL;
+    }
+  });
+
+  it("utiliza endpoint local de OpenJarvis si OPENJARVIS_BASE_URL está definida", async () => {
+    process.env.OPENJARVIS_BASE_URL = "http://localhost:8000/v1";
+    process.env.OPENJARVIS_MODEL = "qwen2.5:14b";
+
+    let calledUrl = "";
+    let calledHeaders: Record<string, string> = {};
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, opts?: any) => {
+        calledUrl = url;
+        calledHeaders = opts?.headers || {};
+        return openRouterJsonResponse(VALID_NOTE_RESPONSE);
+      }),
+    );
+
+    const result = await structureClinicalText({
+      text: "Dolor en molar superior",
+      mode: "NOTE",
+    });
+
+    expect(calledUrl).toBe("http://localhost:8000/v1/chat/completions");
+    expect(calledHeaders["X-Title"]).toBe("DoctorIA-Local");
+    expect(result.sections.motivoConsulta).toBeTruthy();
+    expect(result.originalTextPreserved).toBe(true);
+  });
+
+  it("recurre a fallback de OpenRouter si OpenJarvis falla y hay clave de OpenRouter", async () => {
+    process.env.OPENJARVIS_BASE_URL = "http://localhost:9999/v1"; // endpoint no disponible
+
+    const urlsCalled: string[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        urlsCalled.push(url);
+        if (url.includes("localhost:9999")) {
+          throw new Error("Connection refused (ECONNREFUSED)");
+        }
+        return openRouterJsonResponse(VALID_NOTE_RESPONSE);
+      }),
+    );
+
+    const result = await structureClinicalText({
+      text: "Dolor en molar superior",
+      mode: "NOTE",
+    });
+
+    expect(urlsCalled[0]).toBe("http://localhost:9999/v1/chat/completions");
+    expect(urlsCalled.some((u) => u.includes("openrouter.ai"))).toBe(true);
+    expect(result.originalTextPreserved).toBe(true);
+  });
+});
+

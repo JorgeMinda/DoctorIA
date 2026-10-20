@@ -12,21 +12,21 @@ export function Topbar({ onOpenMobile }: { onOpenMobile: () => void }) {
   const title = getClinicalSectionTitle(location.pathname);
 
   return (
-    <header className="bg-background/80 sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border px-4 backdrop-blur-lg sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/40 bg-surface/75 dark:bg-slate-950/70 px-4 backdrop-blur-xl sm:px-6 lg:px-8 shadow-sm">
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
+        className="lg:hidden text-muted-foreground hover:text-foreground"
         onClick={onOpenMobile}
         aria-label="Abrir menú de navegación"
       >
         <Menu className="size-5" />
       </Button>
       <div className="flex min-w-0 items-baseline gap-3">
-        <h1 className="text-foreground truncate text-lg font-semibold">
+        <h1 className="text-foreground truncate text-lg font-bold tracking-tight">
           {title}
         </h1>
-        <span className="mono-label text-muted-foreground hidden truncate text-[11px] md:inline">
+        <span className="mono-label text-muted-foreground/80 hidden truncate text-[11px] md:inline">
           {location.pathname}
         </span>
       </div>
