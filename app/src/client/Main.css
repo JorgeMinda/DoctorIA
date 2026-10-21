@@ -533,31 +533,31 @@
 .global-futuristic-bg {
   position: fixed;
   inset: 0;
-  z-index: -10;
+  z-index: 0;
   pointer-events: none;
   background-size: cover;
-  background-position: center;
+  background-position: center center;
   background-attachment: fixed;
   background-repeat: no-repeat;
-  /* Modo Claro: Capa semitransparente blanca (0.75 a 0.85) */
+  /* Modo Claro: Overlay suave y equilibrado que permite apreciar claramente la imagen */
   background-image: linear-gradient(
       to bottom,
-      rgba(255, 255, 255, 0.75),
-      rgba(240, 243, 248, 0.85)
+      rgba(255, 255, 255, 0.35),
+      rgba(240, 243, 248, 0.50)
     ),
-    url('/assets/bg-medical-futuristic.webp');
+    url('/doctoria_hud_hologram_doctor.jpg');
   transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
 }
 
-/* Modo Oscuro: Overlay oscuro semitransparente (0.65 a 0.85) */
+/* Modo Oscuro: Overlay oscuro que destaca los hologramas neón cian */
 :where(.dark, .dark *) .global-futuristic-bg,
 .dark .global-futuristic-bg {
   background-image: linear-gradient(
       to bottom,
-      rgba(10, 15, 30, 0.65),
-      rgba(5, 10, 20, 0.85)
+      rgba(10, 15, 30, 0.50),
+      rgba(5, 10, 20, 0.75)
     ),
-    url('/assets/bg-medical-futuristic.webp');
+    url('/doctoria_hud_hologram_doctor.jpg');
 }
 
 /* ========== GLASSMORPHISM (CRISTAL ESMERILADO) ========== */

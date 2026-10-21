@@ -30,22 +30,25 @@ export function ClinicalLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="relative min-h-screen text-foreground selection:bg-primary/20">
+    <div className="relative min-h-screen text-foreground selection:bg-primary/20 bg-transparent">
       {/* Fondo Global Fijo con soporte Light / Dark Mode y Glassmorphism */}
       <div className="global-futuristic-bg" aria-hidden="true" />
 
-      {/* Sidebar Expandible con Glassmorphism */}
-      <Sidebar isExpanded={isExpanded} onToggleExpand={toggleExpanded} />
+      {/* Contenido en capa superior */}
+      <div className="relative z-10">
+        {/* Sidebar Expandible con Glassmorphism */}
+        <Sidebar isExpanded={isExpanded} onToggleExpand={toggleExpanded} />
 
-      {/* Área principal con padding adaptativo */}
-      <div
-        className={cn(
-          "transition-[padding] duration-300 ease-in-out",
-          isExpanded ? "lg:pl-72" : "lg:pl-20",
-        )}
-      >
-        <Topbar onOpenMobile={() => setMobileOpen(true)} />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        {/* Área principal con padding adaptativo */}
+        <div
+          className={cn(
+            "transition-[padding] duration-300 ease-in-out",
+            isExpanded ? "lg:pl-72" : "lg:pl-20",
+          )}
+        >
+          <Topbar onOpenMobile={() => setMobileOpen(true)} />
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        </div>
       </div>
 
       {/* Cajón móvil */}

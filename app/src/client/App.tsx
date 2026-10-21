@@ -7,6 +7,7 @@ import { NavBar } from "./components/NavBar/NavBar";
 import { marketingNavigationItems } from "./components/NavBar/constants";
 import { ClinicalLayout } from "./components/clinical-layout/ClinicalLayout";
 import { CookieConsentBanner } from "./components/cookie-consent/Banner";
+import { cn } from "./utils";
 
 /**
  * use this component to wrap all child components
@@ -45,7 +46,12 @@ export function App() {
 
   return (
     <>
-      <div className="bg-background text-foreground min-h-screen">
+      <div
+        className={cn(
+          "min-h-screen text-foreground",
+          isClinicalArea ? "bg-transparent" : "bg-background"
+        )}
+      >
         {shouldDisplayAppNavBar ? (
           isClinicalArea ? (
             <ClinicalLayout>
