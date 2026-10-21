@@ -2924,16 +2924,33 @@ function ClinicalAdminPageContent() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-primary">
-          Gestión · Administración
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Administración
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Gestión de pacientes, solicitudes de vinculación, médicos y asignaciones.
-        </p>
+      {/* Banner Institucional DoctorIA */}
+      <div className="relative overflow-hidden rounded-2xl border border-outline-variant/60 bg-gradient-to-r from-surface-container/90 via-surface/80 to-surface-container/60 shadow-xl backdrop-blur-md">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6">
+          <div className="flex-1 space-y-2 text-center md:text-left">
+            <p className="mono-label text-[11px] uppercase tracking-widest text-primary font-semibold">
+              Gestión · Administración Hospitalaria
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Centro de Operaciones DoctorIA
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-xl">
+              Supervisión de equipos médicos, pacientes sintéticos protegidos, asignación de accesos clínicos y auditoría institucional con trazabilidad inmutable.
+            </p>
+          </div>
+          <div className="relative h-28 w-44 shrink-0 overflow-hidden rounded-xl border border-primary/30 shadow-[0_0_20px_rgba(0,218,243,0.2)]">
+            <img
+              src="/doctoria_research_team.jpg"
+              alt="Equipo Médico DoctorIA"
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+            <div className="absolute bottom-1.5 left-2 flex items-center gap-1.5 text-[10px] font-semibold text-primary">
+              <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+              Gobernanza Activa
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-lg border border-outline-variant bg-surface-container/60 p-1">

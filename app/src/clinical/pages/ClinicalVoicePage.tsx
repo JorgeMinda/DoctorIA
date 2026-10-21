@@ -527,6 +527,36 @@ function ClinicalVoicePageContent() {
           </div>
         </div>
 
+        {/* DoctorIA Companion Card */}
+        <div className="mb-6 overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-surface/80 to-surface/60 p-4 shadow-[0_4px_24px_rgba(0,218,243,0.08)] backdrop-blur-md">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl border-2 border-primary/40 shadow-[0_0_20px_rgba(0,218,243,0.35)]">
+              <img
+                src="/doctoria_robot_assistant.jpg"
+                alt="DoctorIA Asistente Clínico"
+                className="h-full w-full object-cover"
+              />
+              <span className="absolute bottom-1 right-1 flex size-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-3 rounded-full border border-background bg-emerald-500" />
+              </span>
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <h2 className="text-base font-bold tracking-tight text-foreground">
+                  DoctorIA Copiloto de Voz
+                </h2>
+                <span className="rounded-full border border-primary/30 bg-primary/15 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider text-primary uppercase">
+                  IA Médica Activa
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
+                Asistente ambiental de consulta clínica y dictado inteligente. Diseñado para estructurar notas clínicas y consultar resúmenes en tiempo real.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Orbe + estado */}
         <div className="relative flex flex-col items-center rounded-2xl border border-outline-variant/60 bg-surface/40 py-10 backdrop-blur-sm">
           <VoiceOrb

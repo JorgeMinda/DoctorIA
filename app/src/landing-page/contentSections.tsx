@@ -82,7 +82,7 @@ export const testimonials = [
   {
     name: "Dra. Laura Méndez",
     role: "Medicina Interna",
-    avatarSrc: avatarPlaceholder,
+    avatarSrc: "/doctoria_female_doctor_vintage.jpg",
     socialUrl: "#",
     quote:
       "La IA me ahorra tiempo: dicto la evolución y DoctorIA la estructura en la nota clínica al instante.",
@@ -90,18 +90,18 @@ export const testimonials = [
   {
     name: "Dr. Carlos Vega",
     role: "Cardiología",
-    avatarSrc: avatarPlaceholder,
+    avatarSrc: "/doctoria_doctor_workspace.jpg",
     socialUrl: "#",
     quote:
       "Las epicrisis asistidas salen listas para revisión. Solo valido los campos y confirmo.",
   },
   {
     name: "Dra. Sofía Herrera",
-    role: "Pediatría",
-    avatarSrc: avatarPlaceholder,
+    role: "Pediatría y Asistencia IA",
+    avatarSrc: "/doctoria_robot_assistant.jpg",
     socialUrl: "#",
     quote:
-      "La auditoría me da tranquilidad: sé exactamente quién tocó cada historia y cuándo.",
+      "La auditoría y el control de roles dan tranquilidad total: sé exactamente quién tocó cada historia y cuándo.",
   },
 ];
 

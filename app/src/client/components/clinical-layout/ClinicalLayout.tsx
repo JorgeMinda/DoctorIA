@@ -35,7 +35,7 @@ export function ClinicalLayout({ children }: { children: ReactNode }) {
       <div
         className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat pointer-events-none transition-opacity duration-700"
         style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(11, 17, 32, 0.88), rgba(11, 17, 32, 0.94)), url('https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=1920&auto=format&fit=crop')`,
+          backgroundImage: `linear-gradient(to bottom, rgba(11, 17, 32, 0.88), rgba(11, 17, 32, 0.94)), url('/doctoria_doctor_workspace.jpg')`,
         }}
       />
 

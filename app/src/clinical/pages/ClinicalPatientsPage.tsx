@@ -150,14 +150,25 @@ export function ClinicalPatientsPage() {
         </Card>
         <Card className="border-outline-variant bg-surface">
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
-              <Sparkles className="size-5 text-primary" />
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-primary/30 shadow-[0_0_12px_rgba(0,218,243,0.25)]">
+              <img
+                src="/doctoria_robot_assistant.jpg"
+                alt="DoctorIA"
+                className="h-full w-full object-cover"
+              />
+              <span className="absolute bottom-0.5 right-0.5 flex size-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+              </span>
             </div>
             <div className="min-w-0">
               <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
                 Asistencia IA
               </p>
-              <Badge variant="success">Operativa</Badge>
+              <div className="mt-0.5 flex items-center gap-2">
+                <Badge variant="success">Operativa</Badge>
+                <span className="text-[11px] text-muted-foreground">DoctorIA v1.0</span>
+              </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Estructuración clínica disponible
               </p>
@@ -208,10 +219,24 @@ export function ClinicalPatientsPage() {
             </div>
           )}
           {data && data.patients.length === 0 && (
-            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-              {search
-                ? "Sin resultados para la búsqueda."
-                : "No hay pacientes asignados a su cuenta."}
+            <div className="flex flex-col items-center justify-center px-5 py-12 text-center">
+              <div className="relative mb-3 size-16 overflow-hidden rounded-2xl border border-primary/30 shadow-[0_0_16px_rgba(0,218,243,0.2)]">
+                <img
+                  src="/doctoria_robot_assistant.jpg"
+                  alt="DoctorIA Assistant"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                {search
+                  ? "Sin resultados para la búsqueda"
+                  : "No hay pacientes asignados a su cuenta"}
+              </p>
+              <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                {search
+                  ? "Verifica el término ingresado o intenta con el código sintético (PAC-XXX)."
+                  : "Un administrador o secretaria debe otorgarte autorización médica para visualizar historias clínicas."}
+              </p>
             </div>
           )}
           {data &&

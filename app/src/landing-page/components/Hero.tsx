@@ -65,6 +65,20 @@ export function Hero() {
           <p className="text-muted-foreground/70 mt-1.5 text-xs">
             Toca el orbe para probar la interfaz de voz.
           </p>
+
+          <div className="mt-5 flex items-center gap-3 rounded-full border border-primary/20 bg-surface/60 px-4 py-1.5 shadow-lg backdrop-blur-md">
+            <div className="relative size-7 shrink-0 overflow-hidden rounded-full border border-primary/40">
+              <img
+                src="/doctoria_robot_assistant.jpg"
+                alt="DoctorIA"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="text-left">
+              <p className="text-xs font-semibold text-foreground">Copiloto DoctorIA</p>
+              <p className="text-[10px] text-muted-foreground">Reconocimiento clínico y síntesis de voz</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
