@@ -13,6 +13,8 @@ const cardVariants = cva(
         faded: "text-card-faded-foreground scale-95 opacity-50",
         bento:
           "bg-card-subtle text-card-subtle-foreground hover:scale-[1.02] border-none shadow-none",
+        glass:
+          "clinical-glass-card text-card-foreground shadow-xl hover:shadow-2xl transition-all duration-300",
       },
     },
   },

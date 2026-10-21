@@ -12,6 +12,7 @@ import { Button } from "../client/components/ui/button";
 import { Input } from "../client/components/ui/input";
 import { useAction } from "wasp/client/operations";
 import { directVerifyUserEmail, requestPatientLink } from "wasp/client/operations";
+import { DoctorMascot, useMascotState } from "../client/components/DoctorMascot";
 
 const fieldClass =
   "bg-surface/60 border-outline-variant text-foreground placeholder:text-muted-foreground focus-visible:ring-primary";
@@ -36,6 +37,7 @@ function FieldSuccess({ message }: { message?: string | null }) {
 
 export function LoginFormES() {
   const navigate = useNavigate();
+  const mascot = useMascotState();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -51,11 +53,14 @@ export function LoginFormES() {
       return;
     }
     setVerifying(true);
+    mascot.startValidating();
     try {
       const res: any = await directVerifyFn({ email: email.trim() });
       setVerifyNotice(res?.message || "Cuenta verificada con éxito. Ya puedes ingresar con tu contraseña.");
       setError(null);
+      mascot.setSuccess();
     } catch (err: any) {
+      mascot.setError();
       setError(err?.message || "No se pudo verificar la cuenta.");
     } finally {
       setVerifying(false);
@@ -67,10 +72,13 @@ export function LoginFormES() {
     setError(null);
     setVerifyNotice(null);
     setLoading(true);
+    mascot.startValidating();
     try {
       await login({ email, password });
+      mascot.setSuccess();
       navigate("/patient/link");
     } catch (err: any) {
+      mascot.setError();
       setError(err?.message ?? "No se pudo iniciar sesión. Verifica tus credenciales.");
     } finally {
       setLoading(false);
@@ -79,6 +87,11 @@ export function LoginFormES() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {/* Mascota Médica Interactiva */}
+      <div className="-mt-3 mb-2 flex justify-center transition-transform duration-300 hover:scale-105">
+        <DoctorMascot state={mascot.state} lookX={mascot.lookX} />
+      </div>
+
       <div className="space-y-1.5">
         <label className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
           Correo electrónico
@@ -90,7 +103,12 @@ export function LoginFormES() {
           required
           placeholder="medico@doctoria.app"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            mascot.onUserInput(e.target.value);
+          }}
+          onFocus={mascot.onUserFocus}
+          onBlur={mascot.onFieldBlur}
         />
       </div>
       <div className="space-y-1.5">
@@ -105,6 +123,8 @@ export function LoginFormES() {
           placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onFocus={mascot.onPasswordFocus}
+          onBlur={mascot.onFieldBlur}
         />
       </div>
       {error && (

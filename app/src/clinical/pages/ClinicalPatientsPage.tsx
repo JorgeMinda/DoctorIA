@@ -115,7 +115,7 @@ export function ClinicalPatientsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="border-outline-variant bg-surface">
+        <Card className="clinical-glass-card">
           <CardContent className="flex items-center gap-4 p-5">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
               <Users className="size-5 text-primary" />
@@ -130,7 +130,7 @@ export function ClinicalPatientsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-outline-variant bg-surface">
+        <Card className="clinical-glass-card">
           <CardContent className="flex items-center gap-4 p-5">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
               <Activity className="size-5 text-primary" />
@@ -148,7 +148,7 @@ export function ClinicalPatientsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-outline-variant bg-surface">
+        <Card className="clinical-glass-card">
           <CardContent className="flex items-center gap-4 p-5">
             <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-primary/30 shadow-[0_0_12px_rgba(0,218,243,0.25)]">
               <img
@@ -180,7 +180,7 @@ export function ClinicalPatientsPage() {
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          className="border-outline-variant bg-surface pl-9"
+          className="clinical-glass-input pl-9"
           placeholder="Buscar por nombre, apellido o identificador sintético (PAC-…)"
           value={search}
           onChange={(e) => {
@@ -198,8 +198,8 @@ export function ClinicalPatientsPage() {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-outline-variant">
-        <div className="flex items-center justify-between border-b border-outline-variant/50 bg-surface-container/60 px-5 py-3">
+      <Card className="overflow-hidden clinical-glass-card">
+        <div className="flex items-center justify-between border-b border-border/40 bg-surface/30 dark:bg-surface-container/30 px-5 py-3 backdrop-blur-sm">
           <p className="mono-label text-[11px] uppercase tracking-wider text-muted-foreground">
             Lista de pacientes asignados
           </p>
@@ -293,7 +293,7 @@ export function ClinicalPatientsPage() {
         </div>
 
         {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 border-t border-outline-variant/50 bg-surface-container/60 px-5 py-3">
+          <div className="flex items-center justify-center gap-2 border-t border-border/40 bg-surface/30 dark:bg-surface-container/30 px-5 py-3 backdrop-blur-sm">
             <Button
               variant="outline"
               size="sm"

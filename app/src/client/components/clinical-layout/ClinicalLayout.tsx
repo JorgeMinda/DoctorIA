@@ -31,13 +31,8 @@ export function ClinicalLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative min-h-screen text-foreground selection:bg-primary/20">
-      {/* Fondo fotográfico médico con superposición translúcida */}
-      <div
-        className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat pointer-events-none transition-opacity duration-700"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(11, 17, 32, 0.88), rgba(11, 17, 32, 0.94)), url('/doctoria_doctor_workspace.jpg')`,
-        }}
-      />
+      {/* Fondo Global Fijo con soporte Light / Dark Mode y Glassmorphism */}
+      <div className="global-futuristic-bg" aria-hidden="true" />
 
       {/* Sidebar Expandible con Glassmorphism */}
       <Sidebar isExpanded={isExpanded} onToggleExpand={toggleExpanded} />

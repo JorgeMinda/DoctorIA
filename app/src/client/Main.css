@@ -509,3 +509,238 @@
     animation: none !important;
   }
 }
+
+/* ====================================================
+   DOCTORIA AURORA, MASCOT & GLASSMORPHISM DESIGN SYSTEM
+   ==================================================== */
+
+:root {
+  --aurora-base: #0b1220;
+  --aurora-1: #0ea5a4;
+  --aurora-2: #6366f1;
+  --aurora-3: #10b981;
+  --aurora-warn: #f59e0b;
+  --aurora-danger: #ef4444;
+}
+
+@property --aura-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0ea5a4;
+}
+
+/* ========== FONDO GLOBAL FIJO (LIGHT & DARK MODE) ========== */
+.global-futuristic-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  /* Modo Claro: Capa semitransparente blanca (0.75 a 0.85) */
+  background-image: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.75),
+      rgba(240, 243, 248, 0.85)
+    ),
+    url('/assets/bg-medical-futuristic.webp');
+  transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
+}
+
+/* Modo Oscuro: Overlay oscuro semitransparente (0.65 a 0.85) */
+:where(.dark, .dark *) .global-futuristic-bg,
+.dark .global-futuristic-bg {
+  background-image: linear-gradient(
+      to bottom,
+      rgba(10, 15, 30, 0.65),
+      rgba(5, 10, 20, 0.85)
+    ),
+    url('/assets/bg-medical-futuristic.webp');
+}
+
+/* ========== GLASSMORPHISM (CRISTAL ESMERILADO) ========== */
+.clinical-glass-card {
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  /* Modo Claro: rgba(255, 255, 255, 0.65) con borde sutil 1px solid rgba(255, 255, 255, 0.4) */
+  background-color: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+}
+
+:where(.dark, .dark *) .clinical-glass-card,
+.dark .clinical-glass-card {
+  /* Modo Oscuro: rgba(18, 28, 45, 0.55) con borde cian brillante 1px solid rgba(0, 210, 255, 0.2) */
+  background-color: rgba(18, 28, 45, 0.55);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+}
+
+.clinical-glass-input {
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: inherit;
+}
+
+:where(.dark, .dark *) .clinical-glass-input,
+.dark .clinical-glass-input {
+  background-color: rgba(18, 28, 45, 0.55);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  color: inherit;
+}
+
+/* ========== FONDO AURORA (BLOOM & BLOBS) ========== */
+.aurora-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(60% 50% at 12% 18%, color-mix(in srgb, var(--aurora-1) 55%, transparent), transparent 70%),
+    radial-gradient(50% 55% at 88% 22%, color-mix(in srgb, var(--aurora-2) 50%, transparent), transparent 70%),
+    radial-gradient(65% 60% at 50% 95%, color-mix(in srgb, var(--aurora-3) 45%, transparent), transparent 70%),
+    var(--aurora-base);
+  z-index: 0;
+  transition: background 0.5s ease;
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  animation: aurora-drift 22s ease-in-out infinite alternate;
+}
+.aurora-blob.b1 { width: 38vw; height: 38vw; top: -10%; left: -8%; background: var(--aurora-1); }
+.aurora-blob.b2 { width: 34vw; height: 34vw; top: 10%; right: -10%; background: var(--aurora-2); animation-duration: 28s; animation-delay: -6s; }
+.aurora-blob.b3 { width: 40vw; height: 40vw; bottom: -18%; left: 25%; background: var(--aurora-3); animation-duration: 32s; animation-delay: -12s; }
+
+@keyframes aurora-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(6vw, -4vh, 0) scale(1.15); }
+  100% { transform: translate3d(-5vw, 5vh, 0) scale(0.95); }
+}
+
+/* Esferas 3D flotantes */
+.login-bg-sphere {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 28%,
+    rgba(255,255,255,.85) 0%,
+    var(--sphere-color) 38%,
+    color-mix(in srgb, var(--sphere-color) 40%, #000) 100%);
+  box-shadow:
+    inset -10px -14px 28px rgba(0,0,0,.35),
+    inset 8px 10px 20px rgba(255,255,255,.25),
+    0 24px 50px rgba(0,0,0,.35);
+  animation: sphere-float var(--dur, 14s) ease-in-out infinite;
+}
+.login-bg-sphere.s1 { --sphere-color: var(--aurora-1); width: 90px; height: 90px; top: 14%; left: 10%; --dur: 13s; }
+.login-bg-sphere.s2 { --sphere-color: var(--aurora-2); width: 140px; height: 140px; top: 62%; left: 6%; --dur: 17s; animation-delay: -4s; }
+.login-bg-sphere.s3 { --sphere-color: var(--aurora-3); width: 70px; height: 70px; top: 20%; right: 12%; --dur: 11s; animation-delay: -2s; }
+.login-bg-sphere.s4 { --sphere-color: var(--aurora-1); width: 110px; height: 110px; bottom: 10%; right: 9%; --dur: 19s; animation-delay: -8s; }
+
+@keyframes sphere-float {
+  0%, 100% { transform: translateY(0) translateX(0) rotate(0deg); }
+  33%      { transform: translateY(-26px) translateX(12px) rotate(4deg); }
+  66%      { transform: translateY(14px) translateX(-10px) rotate(-3deg); }
+}
+
+/* ========== AURA DE LA MASCOTA ========== */
+.mascot-stage {
+  --aura-color: var(--aurora-1);
+  position: relative;
+  display: grid;
+  place-items: center;
+  transition: --aura-color .6s ease;
+}
+.mascot-stage[data-state="focus-user"]     { --aura-color: var(--aurora-1); }
+.mascot-stage[data-state="focus-password"] { --aura-color: var(--aurora-2); }
+.mascot-stage[data-state="validating"]     { --aura-color: var(--aurora-warn); }
+.mascot-stage[data-state="success"]        { --aura-color: var(--aurora-3); }
+.mascot-stage[data-state="error"]          { --aura-color: var(--aurora-danger); }
+
+.mascot-ambient-aura {
+  position: absolute;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--aura-color) 75%, transparent) 0%,
+    color-mix(in srgb, var(--aura-color) 25%, transparent) 45%,
+    transparent 70%);
+  filter: blur(20px);
+  animation: aura-breathe 4s ease-in-out infinite;
+  pointer-events: none;
+  transition: all 0.5s ease;
+}
+@keyframes aura-breathe {
+  0%, 100% { transform: scale(1); opacity: .75; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+
+/* ========== MASCOTA (DOCTOR) ========== */
+.doctor-mascot {
+  --dm-skin: #f5c9a6;
+  --dm-coat: #ffffff;
+  --dm-cap: var(--aurora-1);
+  --dm-steth: var(--aurora-2);
+  position: relative;
+  width: 170px;
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 12px 22px rgba(0,0,0,.4));
+  transition: filter 0.3s ease;
+}
+
+/* idle: respiración */
+.doctor-mascot .dm-body-group { transform-origin: 50% 100%; animation: dm-breathe 3.6s ease-in-out infinite; }
+@keyframes dm-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.025, 1.04); } }
+
+/* parpadeo */
+.doctor-mascot .dm-eye { transform-box: fill-box; transform-origin: center; animation: dm-blink 5s infinite; }
+@keyframes dm-blink { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+
+/* pupilas siguen el texto */
+.doctor-mascot .dm-pupil { transform: translateX(var(--look-x, 0px)); transition: transform .25s ease; }
+.doctor-mascot[data-state="focus-user"] .dm-pupil { transform: translate(var(--look-x, 0px), 3px); }
+
+/* bocas */
+.doctor-mascot .dm-mouth { opacity: 0; transition: opacity .2s; }
+.doctor-mascot[data-state="idle"] .dm-mouth-neutral,
+.doctor-mascot[data-state="focus-user"] .dm-mouth-neutral,
+.doctor-mascot[data-state="focus-password"] .dm-mouth-neutral,
+.doctor-mascot[data-state="validating"] .dm-mouth-neutral { opacity: 1; }
+.doctor-mascot[data-state="success"] .dm-mouth-happy { opacity: 1; }
+.doctor-mascot[data-state="error"] .dm-mouth-sad { opacity: 1; }
+
+/* manos tapando los ojos */
+.doctor-mascot .dm-hand { transition: transform .45s cubic-bezier(.34, 1.56, .64, 1); }
+.doctor-mascot[data-state="focus-password"] .dm-hand-l { transform: translate(19px, -108px); }
+.doctor-mascot[data-state="focus-password"] .dm-hand-r { transform: translate(-19px, -108px); }
+
+/* validando: pulso */
+.doctor-mascot[data-state="validating"] .dm-head { transform-box: fill-box; transform-origin: center; animation: dm-pulse 0.9s ease-in-out infinite; }
+@keyframes dm-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+/* éxito: saltito + destellos */
+.doctor-mascot[data-state="success"] .dm-body-group { animation: dm-hop .6s ease-out 1; }
+@keyframes dm-hop { 0% { transform: translateY(0); } 40% { transform: translateY(-14px); } 100% { transform: translateY(0); } }
+.doctor-mascot .dm-sparkles { opacity: 0; }
+.doctor-mascot[data-state="success"] .dm-sparkles { opacity: 1; }
+.doctor-mascot[data-state="success"] .dm-spark { transform-box: fill-box; transform-origin: center; animation: dm-twinkle 1.1s ease-in-out infinite; }
+.doctor-mascot .dm-spark:nth-child(2) { animation-delay: .25s; }
+.doctor-mascot .dm-spark:nth-child(3) { animation-delay: .5s; }
+.doctor-mascot .dm-spark:nth-child(4) { animation-delay: .75s; }
+@keyframes dm-twinkle { 0%,100% { transform: scale(.4) rotate(0); opacity: .3; } 50% { transform: scale(1.1) rotate(25deg); opacity: 1; } }
+
+/* error: sacudida */
+.doctor-mascot[data-state="error"] { animation: dm-shake .45s ease-in-out 1; }
+@keyframes dm-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob, .login-bg-sphere, .mascot-ambient-aura,
+  .doctor-mascot .dm-body-group, .doctor-mascot .dm-eye { animation: none !important; }
+}

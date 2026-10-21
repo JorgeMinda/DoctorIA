@@ -12,7 +12,7 @@ export function Topbar({ onOpenMobile }: { onOpenMobile: () => void }) {
   const title = getClinicalSectionTitle(location.pathname);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/40 bg-surface/75 dark:bg-slate-950/70 px-4 backdrop-blur-xl sm:px-6 lg:px-8 shadow-sm">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/40 bg-white/60 dark:bg-slate-950/65 px-4 backdrop-blur-xl sm:px-6 lg:px-8 shadow-sm">
       <Button
         variant="ghost"
         size="icon"

@@ -156,7 +156,7 @@ export function Sidebar({ isExpanded, onToggleExpand }: SidebarProps) {
     <aside
       className={cn(
         "fixed inset-y-0 left-0 z-40 hidden border-r border-border/40 lg:block transition-all duration-300 ease-in-out",
-        "bg-surface/75 dark:bg-slate-950/75 backdrop-blur-2xl shadow-2xl",
+        "bg-white/60 dark:bg-slate-950/65 backdrop-blur-2xl shadow-2xl",
         isExpanded ? "w-72" : "w-20",
       )}
     >
