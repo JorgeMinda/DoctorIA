@@ -72,13 +72,13 @@ export function ClinicalPatientsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-cyan-400 font-semibold">
+          <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-cyan-600 dark:text-cyan-400 font-semibold">
             Panel clínico
           </p>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             Pacientes
           </h1>
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
             Historia clínica asistida por DoctorIA · datos 100% sintéticos
           </p>
         </div>
@@ -87,7 +87,7 @@ export function ClinicalPatientsPage() {
             <Button
               variant="outline"
               onClick={() => setShowCreate(true)}
-              className="gap-1.5 border-white/20 bg-white/5 hover:bg-white/10 text-white"
+              className="gap-1.5 border-slate-300 dark:border-white/20 bg-white/80 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
             >
               <Plus className="size-4" />
               Nuevo paciente
@@ -105,7 +105,7 @@ export function ClinicalPatientsPage() {
           )}
           {user?.isMedico && (
             <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
-              <Button className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold shadow-[0_0_20px_rgba(0,218,243,0.35)]">
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-cyan-500 dark:hover:bg-cyan-400 dark:text-slate-950 font-semibold shadow-[0_0_20px_rgba(0,218,243,0.35)]">
                 <Mic className="size-4" />
                 Asistente de voz
               </Button>
@@ -117,14 +117,14 @@ export function ClinicalPatientsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="clinical-glass-card">
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/15 text-cyan-400">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary dark:border-cyan-400/30 dark:bg-cyan-500/15 dark:text-cyan-400">
               <Users className="size-5" />
             </div>
             <div className="min-w-0">
-              <p className="mono-label text-[11px] uppercase tracking-wider text-slate-300 font-medium">
+              <p className="mono-label text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-300 font-medium">
                 Pacientes en vista
               </p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
                 {data ? data.patients.length : "—"}
               </p>
             </div>
@@ -132,17 +132,17 @@ export function ClinicalPatientsPage() {
         </Card>
         <Card className="clinical-glass-card">
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/15 text-cyan-400">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary dark:border-cyan-400/30 dark:bg-cyan-500/15 dark:text-cyan-400">
               <Activity className="size-5" />
             </div>
             <div className="min-w-0">
-              <p className="mono-label text-[11px] uppercase tracking-wider text-slate-300 font-medium">
+              <p className="mono-label text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-300 font-medium">
                 Paginación
               </p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">
                 {data ? `${page} / ${data.totalPages}` : "—"}
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {search ? `Búsqueda activa · ${data?.patients.length ?? 0} coincidencia(s)` : "Lista asignada por autorización"}
               </p>
             </div>
@@ -150,7 +150,7 @@ export function ClinicalPatientsPage() {
         </Card>
         <Card className="clinical-glass-card">
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-cyan-400/40 shadow-[0_0_15px_rgba(0,218,243,0.3)]">
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-primary/30 dark:border-cyan-400/40 shadow-[0_0_15px_rgba(0,218,243,0.3)]">
               <img
                 src="/doctoria_robot_assistant.jpg"
                 alt="DoctorIA"
@@ -162,14 +162,14 @@ export function ClinicalPatientsPage() {
               </span>
             </div>
             <div className="min-w-0">
-              <p className="mono-label text-[11px] uppercase tracking-wider text-slate-300 font-medium">
+              <p className="mono-label text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-300 font-medium">
                 Asistencia IA
               </p>
               <div className="mt-0.5 flex items-center gap-2">
-                <Badge variant="success" className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Operativa</Badge>
-                <span className="text-[11px] text-slate-300">DoctorIA v1.0</span>
+                <Badge variant="success" className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">Operativa</Badge>
+                <span className="text-[11px] text-slate-600 dark:text-slate-300">DoctorIA v1.0</span>
               </div>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Estructuración clínica disponible
               </p>
             </div>
@@ -178,9 +178,9 @@ export function ClinicalPatientsPage() {
       </div>
 
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
         <Input
-          className="clinical-glass-input pl-9 text-white placeholder:text-slate-400 focus:border-cyan-400 focus:ring-cyan-400/20"
+          className="clinical-glass-input pl-9 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:border-primary dark:focus:border-cyan-400 focus:ring-primary/20 dark:focus:ring-cyan-400/20"
           placeholder="Buscar por nombre, apellido o identificador sintético (PAC-…)"
           value={search}
           onChange={(e) => {
@@ -199,11 +199,11 @@ export function ClinicalPatientsPage() {
       )}
 
       <Card className="overflow-hidden clinical-glass-card">
-        <div className="flex items-center justify-between border-b border-white/10 bg-slate-950/40 px-5 py-3 backdrop-blur-sm">
-          <p className="mono-label text-[11px] uppercase tracking-wider text-slate-300 font-medium">
+        <div className="flex items-center justify-between border-b border-slate-200/70 dark:border-white/10 bg-slate-50/60 dark:bg-slate-950/40 px-5 py-3 backdrop-blur-sm">
+          <p className="mono-label text-[11px] uppercase tracking-wider text-slate-700 dark:text-slate-300 font-semibold">
             Lista de pacientes asignados
           </p>
-          <Badge variant="outline" className="mono-label border-white/20 bg-white/5 text-slate-200">
+          <Badge variant="outline" className="mono-label border-slate-300 dark:border-white/20 bg-white/80 dark:bg-white/5 text-slate-700 dark:text-slate-200">
             {data
               ? search
                 ? `${data.patients.length} resultado(s)`
@@ -212,9 +212,9 @@ export function ClinicalPatientsPage() {
           </Badge>
         </div>
 
-        <div className="divide-y divide-white/10">
+        <div className="divide-y divide-slate-200/60 dark:divide-white/10">
           {isLoading && (
-            <div className="px-5 py-10 text-center text-sm text-slate-400">
+            <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
               Cargando pacientes…
             </div>
           )}
@@ -227,12 +227,12 @@ export function ClinicalPatientsPage() {
                   className="h-full w-full object-cover"
                 />
               </div>
-              <p className="text-sm font-medium text-white">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">
                 {search
                   ? "Sin resultados para la búsqueda"
                   : "No hay pacientes asignados a su cuenta"}
               </p>
-              <p className="mt-1 max-w-sm text-xs text-slate-400">
+              <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
                 {search
                   ? "Verifica el término ingresado o intenta con el código sintético (PAC-XXX)."
                   : "Un administrador o secretaria debe otorgarte autorización médica para visualizar historias clínicas."}
@@ -244,22 +244,22 @@ export function ClinicalPatientsPage() {
             data.patients.map((patient) => (
               <div
                 key={patient.id}
-                className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-cyan-500/10"
+                className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary/5 dark:hover:bg-cyan-500/10"
               >
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/15 text-sm font-bold text-cyan-300">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary dark:border-cyan-400/30 dark:bg-cyan-500/15 text-sm font-bold dark:text-cyan-300">
                   {patient.firstName[0]}
                   {patient.lastName[0]}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate text-base font-semibold text-white">
+                    <span className="truncate text-base font-semibold text-slate-900 dark:text-white">
                       {patient.firstName} {patient.lastName}
                     </span>
-                    <Badge variant="outline" className="mono-label border-white/20 bg-white/5 text-slate-200">
+                    <Badge variant="outline" className="mono-label border-slate-300 dark:border-white/20 bg-slate-100/80 dark:bg-white/5 text-slate-700 dark:text-slate-200">
                       {patient.syntheticId}
                     </Badge>
                   </div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-300">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
                     <span>{sexLabel(patient.sex)}</span>
                     <span>·</span>
                     <span>{patientAge(patient.birthDate)} años</span>
@@ -271,7 +271,7 @@ export function ClinicalPatientsPage() {
                     {patient.allergies && patient.allergies.trim() !== "" && (
                       <>
                         <span>·</span>
-                        <span className="text-amber-400 font-medium">
+                        <span className="text-amber-600 dark:text-amber-400 font-semibold">
                           Alergias: {patient.allergies}
                         </span>
                       </>
@@ -283,7 +283,7 @@ export function ClinicalPatientsPage() {
                   params={{ patientId: patient.id }}
                   className="shrink-0"
                 >
-                  <Button variant="outline" size="sm" className="gap-1.5 border-white/20 bg-white/5 hover:bg-cyan-500/25 hover:border-cyan-400 text-white shadow-sm transition-all">
+                  <Button variant="outline" size="sm" className="gap-1.5 border-slate-300 dark:border-white/20 bg-white/80 dark:bg-white/5 hover:bg-primary hover:text-white hover:border-primary dark:hover:bg-cyan-500/25 dark:hover:border-cyan-400 dark:hover:text-white text-slate-800 dark:text-white shadow-sm transition-all">
                     Ver historia
                     <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                   </Button>
@@ -293,17 +293,17 @@ export function ClinicalPatientsPage() {
         </div>
 
         {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 border-t border-white/10 bg-slate-950/40 px-5 py-3 backdrop-blur-sm">
+          <div className="flex items-center justify-center gap-2 border-t border-slate-200/70 dark:border-white/10 bg-slate-50/60 dark:bg-slate-950/40 px-5 py-3 backdrop-blur-sm">
             <Button
               variant="outline"
               size="sm"
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="border-white/20 bg-white/5 text-white hover:bg-white/10"
+              className="border-slate-300 dark:border-white/20 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10"
             >
               Anterior
             </Button>
-            <span className="mono-label text-xs text-slate-300">
+            <span className="mono-label text-xs text-slate-600 dark:text-slate-300">
               {page} / {data.totalPages}
             </span>
             <Button
@@ -311,7 +311,7 @@ export function ClinicalPatientsPage() {
               size="sm"
               disabled={page >= data.totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="border-white/20 bg-white/5 text-white hover:bg-white/10"
+              className="border-slate-300 dark:border-white/20 bg-white/80 dark:bg-white/5 text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10"
             >
               Siguiente
             </Button>

@@ -529,7 +529,7 @@
   initial-value: #0ea5a4;
 }
 
-/* ========== FONDO GLOBAL FIJO (DOCTORIA HOLOGRAPHIC COCKPIT) ========== */
+/* ========== FONDO GLOBAL FIJO (DOCTORIA HOLOGRAPHIC AMBIANCE) ========== */
 .global-futuristic-bg {
   position: fixed;
   inset: 0;
@@ -539,11 +539,11 @@
   background-position: center center;
   background-attachment: fixed;
   background-repeat: no-repeat;
-  /* Holographic cockpit overlay: preserva el médico y los hologramas neón cian con alto contraste */
+  /* Modo Claro: Atmósfera ártica luminosa cristalina (permite ver al doctor con alta luminosidad y viveza) */
   background-image: linear-gradient(
       to bottom,
-      rgba(8, 14, 28, 0.45),
-      rgba(4, 8, 18, 0.70)
+      rgba(224, 242, 254, 0.65),
+      rgba(186, 230, 253, 0.78)
     ),
     url('/doctoria_hud_hologram_doctor.jpg');
   transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
@@ -551,44 +551,51 @@
 
 :where(.dark, .dark *) .global-futuristic-bg,
 .dark .global-futuristic-bg {
+  /* Modo Oscuro: Cabina nocturna profunda con hologramas cian de alto contraste */
   background-image: linear-gradient(
       to bottom,
-      rgba(6, 12, 24, 0.55),
-      rgba(2, 6, 14, 0.80)
+      rgba(5, 10, 24, 0.70),
+      rgba(2, 6, 16, 0.88)
     ),
     url('/doctoria_hud_hologram_doctor.jpg');
 }
 
-/* ========== GLASSMORPHISM (CRISTAL ESMERILADO COCKPIT) ========== */
+/* ========== GLASSMORPHISM (CRISTAL CLARO vs CABINA OSCURA) ========== */
 .clinical-glass-card {
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  background-color: rgba(12, 20, 36, 0.60);
-  border: 1px solid rgba(0, 218, 243, 0.28);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  color: #ffffff;
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  /* Modo Claro: Cristal blanco puro translúcido con reflejo especular y sombra celeste sutil */
+  background-color: rgba(255, 255, 255, 0.80);
+  border: 1px solid rgba(255, 255, 255, 0.90);
+  box-shadow: 0 10px 30px -5px rgba(14, 116, 144, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1);
+  color: #0f172a;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
 }
 
 :where(.dark, .dark *) .clinical-glass-card,
 .dark .clinical-glass-card {
-  background-color: rgba(10, 18, 32, 0.65);
-  border: 1px solid rgba(0, 218, 243, 0.35);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 218, 243, 0.1);
+  /* Modo Oscuro: Cristal obsidiana profundo con microborde cian neón */
+  background-color: rgba(10, 18, 32, 0.70);
+  border: 1px solid rgba(0, 218, 243, 0.32);
+  box-shadow: 0 10px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 218, 243, 0.1);
   color: #ffffff;
 }
 
 .clinical-glass-input {
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  background-color: rgba(12, 20, 36, 0.60);
-  border: 1px solid rgba(0, 218, 243, 0.28);
-  color: #ffffff;
+  backdrop-filter: blur(16px) saturate(190%);
+  -webkit-backdrop-filter: blur(16px) saturate(190%);
+  /* Modo Claro */
+  background-color: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  color: #0f172a;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 :where(.dark, .dark *) .clinical-glass-input,
 .dark .clinical-glass-input {
-  background-color: rgba(10, 18, 32, 0.65);
-  border: 1px solid rgba(0, 218, 243, 0.35);
+  /* Modo Oscuro */
+  background-color: rgba(10, 18, 32, 0.70);
+  border: 1px solid rgba(0, 218, 243, 0.32);
   color: #ffffff;
 }
 

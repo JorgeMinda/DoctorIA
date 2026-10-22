@@ -32,7 +32,7 @@ export function SidebarContent({
       <div className="pointer-events-none absolute -left-16 -top-16 h-56 w-36 rotate-12 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       {/* Header con botones estilo macOS y logo */}
-      <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 dark:border-white/10 px-4">
         <div className="flex items-center gap-3 overflow-hidden">
           {/* Botones de ventana tipo macOS */}
           <div className="flex items-center gap-1.5 shrink-0">
@@ -45,8 +45,8 @@ export function SidebarContent({
             <div className="flex items-center gap-2.5 pl-2 overflow-hidden transition-all duration-300">
               <img src={logo} alt="DoctorIA" className="size-7 rounded-md shadow-sm shrink-0" />
               <div className="flex flex-col leading-tight min-w-0">
-                <span className="text-white font-bold tracking-tight text-sm truncate">DoctorIA</span>
-                <span className="mono-label text-cyan-400 text-[9px] uppercase tracking-widest truncate">
+                <span className="text-slate-900 dark:text-white font-bold tracking-tight text-sm truncate">DoctorIA</span>
+                <span className="mono-label text-cyan-600 dark:text-cyan-400 text-[9px] uppercase tracking-widest truncate">
                   Clinical AI
                 </span>
               </div>
@@ -60,7 +60,7 @@ export function SidebarContent({
             variant="ghost"
             size="icon"
             onClick={onToggleExpand}
-            className="size-7 text-slate-400 hover:bg-white/10 hover:text-white transition-colors shrink-0"
+            className="size-7 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white transition-colors shrink-0"
             title={isExpanded ? "Colapsar menú" : "Expandir menú"}
           >
             {isExpanded ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
@@ -73,7 +73,7 @@ export function SidebarContent({
         {navGroups.map((group) => (
           <div key={group.label}>
             {(isExpanded || isMobile) && (
-              <p className="mono-label text-slate-400/80 px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider">
+              <p className="mono-label text-slate-500 dark:text-slate-400/80 px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider">
                 {group.label}
               </p>
             )}
@@ -92,8 +92,8 @@ export function SidebarContent({
                           ? "gap-3 px-3 py-2.5"
                           : "justify-center p-2.5",
                         active
-                          ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-300 shadow-[0_0_20px_rgba(0,218,243,0.25)] font-semibold backdrop-blur-md"
-                          : "text-slate-300 hover:bg-white/10 hover:text-white",
+                          ? "border-primary/40 bg-primary/15 text-primary shadow-[0_0_15px_rgba(14,165,233,0.2)] font-semibold backdrop-blur-md dark:border-cyan-400/40 dark:bg-cyan-500/20 dark:text-cyan-300 dark:shadow-[0_0_20px_rgba(0,218,243,0.25)]"
+                          : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white",
                       )}
                     >
                       <item.icon className="size-5 shrink-0 transition-transform group-hover:scale-105" aria-hidden />
@@ -103,7 +103,7 @@ export function SidebarContent({
                       {active && (
                         <span
                           className={cn(
-                            "rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(0,218,243,0.8)]",
+                            "rounded-full bg-primary shadow-[0_0_10px_rgba(14,165,233,0.8)] dark:bg-cyan-400 dark:shadow-[0_0_10px_rgba(0,218,243,0.8)]",
                             isExpanded || isMobile ? "ml-auto size-2" : "absolute right-1.5 top-1.5 size-1.5",
                           )}
                         />
@@ -119,22 +119,22 @@ export function SidebarContent({
 
       {/* Perfil del profesional */}
       {user && (
-        <div className="shrink-0 border-t border-white/10 p-3">
+        <div className="shrink-0 border-t border-slate-200/70 dark:border-white/10 p-3">
           <div
             className={cn(
-              "flex items-center rounded-xl bg-white/5 p-2 transition-all",
+              "flex items-center rounded-xl bg-slate-100/70 dark:bg-white/5 p-2 transition-all",
               isExpanded || isMobile ? "gap-3" : "justify-center",
             )}
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-cyan-400/30 bg-cyan-500/20 text-xs font-bold uppercase text-cyan-300 shadow-sm">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/15 text-xs font-bold uppercase text-primary dark:border-cyan-400/30 dark:bg-cyan-500/20 dark:text-cyan-300 shadow-sm">
               {(user.username ?? "?").slice(0, 2)}
             </div>
             {(isExpanded || isMobile) && (
               <div className="min-w-0 flex-1">
-                <p className="text-white truncate text-xs font-semibold">
+                <p className="text-slate-900 dark:text-white truncate text-xs font-semibold">
                   {user.username}
                 </p>
-                <p className="mono-label text-slate-400 truncate text-[10px]">
+                <p className="mono-label text-slate-500 dark:text-slate-400 truncate text-[10px]">
                   {user.email}
                 </p>
               </div>
@@ -155,8 +155,8 @@ export function Sidebar({ isExpanded, onToggleExpand }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 hidden border-r border-white/10 lg:block transition-all duration-300 ease-in-out",
-        "bg-slate-950/70 backdrop-blur-2xl shadow-2xl",
+        "fixed inset-y-0 left-0 z-40 hidden border-r border-slate-200/70 dark:border-white/10 lg:block transition-all duration-300 ease-in-out",
+        "bg-white/80 dark:bg-slate-950/75 backdrop-blur-2xl shadow-xl dark:shadow-2xl",
         isExpanded ? "w-72" : "w-20",
       )}
     >

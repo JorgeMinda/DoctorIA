@@ -30,7 +30,7 @@ export function ClinicalLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="dark relative min-h-screen text-slate-100 selection:bg-cyan-500/20 bg-transparent">
+    <div className="relative min-h-screen text-slate-900 dark:text-slate-100 selection:bg-cyan-500/20 bg-transparent transition-colors duration-300">
       {/* Fondo Global Fijo con soporte Cockpit Holográfico y Glassmorphism */}
       <div className="global-futuristic-bg" aria-hidden="true" />
 
@@ -53,7 +53,7 @@ export function ClinicalLayout({ children }: { children: ReactNode }) {
 
       {/* Cajón móvil */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-72 p-0 border-r border-white/10 bg-slate-950/90 backdrop-blur-2xl text-slate-100">
+        <SheetContent side="left" className="w-72 p-0 border-r border-slate-200/70 dark:border-white/10 bg-white/95 dark:bg-slate-950/90 backdrop-blur-2xl text-slate-900 dark:text-slate-100">
           <SheetHeader className="sr-only">
             <SheetTitle>Navegación DoctorIA</SheetTitle>
           </SheetHeader>
