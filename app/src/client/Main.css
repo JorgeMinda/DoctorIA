@@ -529,7 +529,7 @@
   initial-value: #0ea5a4;
 }
 
-/* ========== FONDO GLOBAL FIJO (LIGHT & DARK MODE) ========== */
+/* ========== FONDO GLOBAL FIJO (DOCTORIA HOLOGRAPHIC COCKPIT) ========== */
 .global-futuristic-bg {
   position: fixed;
   inset: 0;
@@ -539,58 +539,57 @@
   background-position: center center;
   background-attachment: fixed;
   background-repeat: no-repeat;
-  /* Modo Claro: Overlay suave y equilibrado que permite apreciar claramente la imagen */
+  /* Holographic cockpit overlay: preserva el médico y los hologramas neón cian con alto contraste */
   background-image: linear-gradient(
       to bottom,
-      rgba(255, 255, 255, 0.35),
-      rgba(240, 243, 248, 0.50)
+      rgba(8, 14, 28, 0.45),
+      rgba(4, 8, 18, 0.70)
     ),
     url('/doctoria_hud_hologram_doctor.jpg');
   transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
 }
 
-/* Modo Oscuro: Overlay oscuro que destaca los hologramas neón cian */
 :where(.dark, .dark *) .global-futuristic-bg,
 .dark .global-futuristic-bg {
   background-image: linear-gradient(
       to bottom,
-      rgba(10, 15, 30, 0.50),
-      rgba(5, 10, 20, 0.75)
+      rgba(6, 12, 24, 0.55),
+      rgba(2, 6, 14, 0.80)
     ),
     url('/doctoria_hud_hologram_doctor.jpg');
 }
 
-/* ========== GLASSMORPHISM (CRISTAL ESMERILADO) ========== */
+/* ========== GLASSMORPHISM (CRISTAL ESMERILADO COCKPIT) ========== */
 .clinical-glass-card {
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  /* Modo Claro: rgba(255, 255, 255, 0.65) con borde sutil 1px solid rgba(255, 255, 255, 0.4) */
-  background-color: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  background-color: rgba(12, 20, 36, 0.60);
+  border: 1px solid rgba(0, 218, 243, 0.28);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  color: #ffffff;
 }
 
 :where(.dark, .dark *) .clinical-glass-card,
 .dark .clinical-glass-card {
-  /* Modo Oscuro: rgba(18, 28, 45, 0.55) con borde cian brillante 1px solid rgba(0, 210, 255, 0.2) */
-  background-color: rgba(18, 28, 45, 0.55);
-  border: 1px solid rgba(0, 210, 255, 0.2);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+  background-color: rgba(10, 18, 32, 0.65);
+  border: 1px solid rgba(0, 218, 243, 0.35);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 218, 243, 0.1);
+  color: #ffffff;
 }
 
 .clinical-glass-input {
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  background-color: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  color: inherit;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  background-color: rgba(12, 20, 36, 0.60);
+  border: 1px solid rgba(0, 218, 243, 0.28);
+  color: #ffffff;
 }
 
 :where(.dark, .dark *) .clinical-glass-input,
 .dark .clinical-glass-input {
-  background-color: rgba(18, 28, 45, 0.55);
-  border: 1px solid rgba(0, 210, 255, 0.25);
-  color: inherit;
+  background-color: rgba(10, 18, 32, 0.65);
+  border: 1px solid rgba(0, 218, 243, 0.35);
+  color: #ffffff;
 }
 
 /* ========== FONDO AURORA (BLOOM & BLOBS) ========== */
