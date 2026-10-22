@@ -153,30 +153,50 @@ function ClinicalVoicePageContent() {
     [],
   );
 
-  // Al crear una nota por voz, se muestra un aviso y se redirige al editor
+  // Al crear una nota por voz, se muestra un aviso y se espera a que la IA
+  // termine completamente de pronunciar la frase antes de navegar al editor
   // del borrador (DRAFT_MANUAL) para la revisión humana (Constitución P4).
   useEffect(() => {
-    if (!createdNote) return;
-    const t = window.setTimeout(() => {
-      navigate(
-        routes.ClinicalNoteRoute.build({ params: { noteId: createdNote.noteId } }),
-      );
-    }, 1500);
-    return () => window.clearTimeout(t);
-  }, [createdNote, navigate]);
-
-  useEffect(() => {
     if (response?.actionType === "NOTE_CREATED") {
+      const noteData = response;
+      setCreatedNote(noteData);
+
       toast({
         title: "Borrador creado por voz",
-        description: `Se guardó una nota para ${response.patientName} (${response.syntheticId}). Abriendo el editor para revisión…`,
+        description: `Se guardó una nota para ${noteData.patientName} (${noteData.syntheticId}). Abriendo el editor para revisión…`,
       });
+
+      let hasNavigated = false;
+      const navigateToEditor = () => {
+        if (hasNavigated) return;
+        hasNavigated = true;
+        navigate(
+          routes.ClinicalNoteRoute.build({ params: { noteId: noteData.noteId } }),
+        );
+      };
+
       if (isVoiceEnabled) {
-        ttsService.speak(`Borrador de nota creado para ${response.patientName}. Abriendo el editor.`);
+        // La IA termina de decir toda la frase completa antes de pasar a la nota clínica
+        ttsService.speak(
+          `Borrador de nota creado para ${noteData.patientName}. Abriendo el editor.`,
+          {
+            onEnd: () => {
+              // Breve pausa natural tras finalizar la locución completa
+              const t = window.setTimeout(navigateToEditor, 350);
+              timersRef.current.push(t);
+            },
+          },
+        );
+        // Fallback de seguridad en caso de que el navegador no emita el evento onend
+        const fallbackTimer = window.setTimeout(navigateToEditor, 6000);
+        timersRef.current.push(fallbackTimer);
+      } else {
+        // Si la voz está desactivada, transiciona tras 1.2s
+        const t = window.setTimeout(navigateToEditor, 1200);
+        timersRef.current.push(t);
       }
-      setCreatedNote(response);
     }
-  }, [response, toast, isVoiceEnabled]);
+  }, [response, toast, isVoiceEnabled, navigate]);
 
   if (!user?.isMedico || user.isAdmin) {
     return (

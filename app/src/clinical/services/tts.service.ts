@@ -14,6 +14,7 @@ export interface SpeakOptions {
   rate?: number;
   pitch?: number;
   volume?: number;
+  onEnd?: () => void;
 }
 
 export function isTTSSupported(): boolean {
@@ -37,13 +38,17 @@ export function stopSpeaking(): void {
  * Reproduce un texto breve mediante voz nativa del navegador.
  */
 export function speak(text: string, options: SpeakOptions = {}): void {
-  if (!isTTSSupported() || !text?.trim()) return;
+  if (!isTTSSupported() || !text?.trim()) {
+    options.onEnd?.();
+    return;
+  }
 
   const {
     lang = "es-ES",
     rate = 1.05,
     pitch = 1.0,
     volume = 1.0,
+    onEnd,
   } = options;
 
   try {
@@ -54,6 +59,18 @@ export function speak(text: string, options: SpeakOptions = {}): void {
     utterance.rate = rate;
     utterance.pitch = pitch;
     utterance.volume = volume;
+
+    if (onEnd) {
+      let fired = false;
+      const handleEnd = () => {
+        if (!fired) {
+          fired = true;
+          onEnd();
+        }
+      };
+      utterance.onend = handleEnd;
+      utterance.onerror = handleEnd;
+    }
 
     const voices = window.speechSynthesis.getVoices();
     const spanishVoice = voices.find(
@@ -66,6 +83,7 @@ export function speak(text: string, options: SpeakOptions = {}): void {
     window.speechSynthesis.speak(utterance);
   } catch {
     // Falla silenciosa si el navegador bloquea la síntesis
+    options.onEnd?.();
   }
 }
 
