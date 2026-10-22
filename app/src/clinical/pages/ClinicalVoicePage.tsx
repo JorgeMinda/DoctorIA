@@ -102,7 +102,13 @@ function ClinicalVoicePageContent() {
   const [phase, setPhase] = useState<VoiceAssistantState>("IDLE");
   const [queryInput, setQueryInput] = useState("");
   const [demoMode, setDemoMode] = useState(false);
-  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("doctoria_voice_tts_enabled");
+      return saved !== null ? saved === "true" : true;
+    }
+    return true;
+  });
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState<
     VoiceAssistantResponse | VoiceNoteCreatedResponse | null
@@ -479,6 +485,9 @@ function ClinicalVoicePageContent() {
               onClick={() => {
                 const next = !isVoiceEnabled;
                 setIsVoiceEnabled(next);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("doctoria_voice_tts_enabled", String(next));
+                }
                 if (!next) {
                   ttsService.stop();
                 } else {
