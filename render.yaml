@@ -27,6 +27,11 @@ services:
         value: "https://doctoria-server.onrender.com"
       - key: WASP_WEB_CLIENT_URL
         value: "https://doctoria-client.onrender.com"
+      # Configuración de cookies para cross-origin (subdominios diferentes en Render)
+      - key: WASP_SESSION_COOKIE_SAME_SITE
+        value: "none"
+      - key: WASP_SESSION_COOKIE_SECURE
+        value: "true"
       - key: RESEND_API_KEY
         sync: false
       - key: ADMIN_EMAILS
