@@ -5,7 +5,7 @@ import { NotFoundPage } from "./src/client/components/NotFoundPage" with { type:
 import { serverEnvValidationSchema } from "./src/env" with { type: "ref" };
 import { LandingPage } from "./src/landing-page/LandingPage" with { type: "ref" };
 import { seedSyntheticClinicalData } from "./src/server/scripts/dbSeeds" with { type: "ref" };
-import { corsMiddleware } from "./src/server/corsMiddleware.wasp" with { type: "ref" };
+import { corsMiddleware } from "./src/server/corsMiddleware.wasp";
 
 import { authConfig, authSpec } from "./src/auth/auth.wasp";
 import { clinicalSpec } from "./src/clinical/clinical.wasp";
@@ -30,6 +30,7 @@ export default app({
   },
   server: {
     envValidationSchema: serverEnvValidationSchema,
+    middleware: [corsMiddleware],
   },
   emailSender,
   spec: [
@@ -39,6 +40,5 @@ export default app({
     userSpec,
     clinicalSpec,
     patientSpec,
-    corsMiddleware,
   ],
 });
