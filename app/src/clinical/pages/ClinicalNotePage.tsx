@@ -166,16 +166,17 @@ function ClinicalNotePageContent() {
 
   useEffect(() => {
     if (note && !draft.sections.motivoConsulta) {
-      const sections = note.structuredSections || {};
+      // Build sections from individual fields in ClinicalNoteDetail
+      const sections = {
+        motivoConsulta: note.motivoConsulta || "",
+        notaClinica: note.notaClinica || "",
+        examenFisico: note.examenFisico || "",
+        valoracionClinica: note.valoracionClinica || "",
+        planIndicaciones: note.planIndicaciones || "",
+      };
       setDraft({
-        sections: {
-          motivoConsulta: sections.motivoConsulta || "",
-          notaClinica: sections.notaClinica || "",
-          examenFisico: sections.examenFisico || "",
-          valoracionClinica: sections.valoracionClinica || "",
-          planIndicaciones: sections.planIndicaciones || "",
-        },
-        sectionsNotApplicable: note.sectionsNotApplicable || {},
+        sections,
+        sectionsNotApplicable: (note.sectionsNotApplicable as Record<string, string>) || {},
       });
     }
   }, [note]);
