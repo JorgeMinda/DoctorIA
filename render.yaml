@@ -1,5 +1,5 @@
 services:
-   # Node.js server -- Render instala Wasp y compila desde fuente
+  # Node.js server -- Render instala Wasp y compila desde fuente
   - type: web
     name: doctoria-server
     runtime: node
@@ -24,9 +24,9 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: WASP_SERVER_URL
-        sync: false
+        value: "https://doctoria-server.onrender.com"
       - key: WASP_WEB_CLIENT_URL
-        sync: false
+        value: "https://doctoria-client.onrender.com"
       - key: RESEND_API_KEY
         sync: false
       - key: ADMIN_EMAILS
@@ -50,7 +50,7 @@ services:
     staticPublishPath: .wasp/out/web-app/build
     envVars:
       - key: REACT_APP_API_URL
-        sync: false
+        value: "https://doctoria-server.onrender.com"
       - key: NODE_VERSION
         value: "22"
     routes:

@@ -41,6 +41,11 @@ export const authConfig: Auth = {
   },
   onAuthFailedRedirectTo: "/login",
   onAuthSucceededRedirectTo: "/patient/link",
+  // Configuración de cookies para cross-origin (subdominios diferentes en Render)
+  cookieOptions: {
+    sameSite: "none",
+    secure: true,
+  },
 };
 
 export const authSpec: Spec = [
