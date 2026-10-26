@@ -640,7 +640,16 @@ function ClinicalNotePageContent() {
               <Button
                 variant="ghost"
                 className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-destructive/10 text-destructive"
-                onClick={() => confirm("¿Eliminar esta nota clínica? Esta acción no se puede deshacer.").then(handleDelete)}
+                onClick={async () => {
+                  const confirmed = await confirm({
+                    title: "Eliminar nota clínica",
+                    description: "¿Eliminar esta nota clínica? Esta acción no se puede deshacer.",
+                    variant: "destructive",
+                  });
+                  if (confirmed) {
+                    handleDelete();
+                  }
+                }}
               >
                 <Trash2 className="size-4" />
                 Eliminar nota
