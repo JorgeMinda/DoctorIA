@@ -1,18 +1,31 @@
-import { useState, useCallback } from "react";
-import { useQuery, useAction } from "wasp/client/operations";
-import { useAuth, useNavigate } from "wasp/client/auth";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router";
+import { Link as WaspRouterLink, routes } from "wasp/client/router";
+import { useAction, useQuery } from "wasp/client/operations";
+import { getClinicalNote } from "wasp/client/operations";
 import {
-  getClinicalNote,
-  updateClinicalNoteDraft,
   confirmClinicalNote,
   createNoteAddendum,
-  requestAIStructuring,
-  createNoteFromVoice,
   deleteClinicalNote,
+  requestAIStructuring,
+  updateClinicalNoteDraft,
+  createNoteFromVoice,
 } from "wasp/client/operations";
-import { getPatients } from "wasp/client/operations";
-import { AlertCircle, ArrowLeft, Check, FileText, Loader2, MoreHorizontal, Save, Sparkles, Trash2, X } from "lucide-react";
+import { useAuth } from "wasp/client/auth";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CalendarDays,
+  FileText,
+  Loader2,
+  Mic,
+  Save,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "../../client/components/ui/button";
+import { Textarea } from "../../client/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -20,83 +33,81 @@ import {
   CardTitle,
 } from "../../client/components/ui/card";
 import { Badge } from "../../client/components/ui/badge";
-import { Separator } from "../../client/components/ui/separator";
-import { ScrollArea } from "../../client/components/ui/scroll-area";
-import { Textarea } from "../../client/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../client/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../../client/components/ui/dropdown-menu";
-import { Toaster } from "../../client/components/ui/sonner";
-import { statusLabel, statusBadgeVariant } from "../services/statusLabels";
-import { routes } from "wasp/client/router";
-import { WaspRouterLink } from "wasp/client/router";
+import { StatusBadge } from "../components/StatusBadge";
+import { useConfirm } from "../../client/hooks/use-confirm";
+import { RoleGuard } from "../../client/components/RoleGuard";
+import { toast } from "../../client/hooks/use-toast";
 
-export function ClinicalNotePage({ noteId }: { noteId: string }) {
+export function ClinicalNotePage() {
+  return (
+    <RoleGuard allowedRoles={["medico"]} fallbackTo="/clinical/patients">
+      <ClinicalNotePageContent />
+    </RoleGuard>
+  );
+}
+
+function ClinicalNotePageContent() {
+  const { noteId } = useParams();
   const navigate = useNavigate();
   const { data: user } = useAuth();
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedText, setEditedText] = useState("");
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
-
-  const { data: note, isLoading, error: noteError, refetch } = useQuery(
+  const { data: note, isLoading, refetch } = useQuery(
     getClinicalNote,
-    { noteId },
-    { enabled: Boolean(user), staleTime: 10_000, refetchOnWindowFocus: false },
+    {
+      noteId: noteId ?? "",
+    },
+    { enabled: Boolean(user && noteId), staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
   const [updateDraft, updateDraftLoading] = useAction(updateClinicalNoteDraft);
+  const [requestAI, requestAILoading] = useAction(requestAIStructuring);
   const [confirmNote, confirmNoteLoading] = useAction(confirmClinicalNote);
   const [createAddendum, createAddendumLoading] = useAction(createNoteAddendum);
-  const [requestAI, requestAILoading] = useAction(requestAIStructuring);
   const [createFromVoice, createFromVoiceLoading] = useAction(createNoteFromVoice);
   const [deleteNote, deleteNoteLoading] = useAction(deleteClinicalNote);
-
-  const { data: patients } = useQuery(getPatients, {}, { enabled: Boolean(user), staleTime: 60_000 });
 
   const isConfirmed = note?.status === "CONFIRMED";
   const isDraft = note?.status === "DRAFT_MANUAL" || note?.status === "DRAFT_AI_ASSISTED";
   const isReviewed = note?.status === "REVIEWED";
+  const isAIAssisted = note?.status === "DRAFT_AI_ASSISTED";
   const isAnyLoading = updateDraftLoading || confirmNoteLoading || createAddendumLoading || requestAILoading || createFromVoiceLoading || deleteNoteLoading;
 
-  const handleSaveDraft = useCallback(async () => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleSaveDraft = async () => {
     if (!note) return;
     await updateDraft({ noteId: note.id, text: editedText });
     setIsEditing(false);
     await refetch();
-  }, [note, editedText, updateDraft, refetch]);
+  };
 
-  const handleConfirm = useCallback(async () => {
+  const handleConfirm = async () => {
     if (!note) return;
     await confirmNote({ noteId: note.id });
     await refetch();
-  }, [note, confirmNote, refetch]);
+  };
 
-  const handleCreateAddendum = useCallback(async () => {
+  const handleCreateAddendum = async () => {
     if (!note) return;
     const reason = prompt("Motivo de la adenda (requerido):");
     if (!reason?.trim()) return;
     await createAddendum({ parentNoteId: note.id, addendumReason: reason.trim() });
     await refetch();
-  }, [note, createAddendum, refetch]);
+  };
 
-  const handleRequestAI = useCallback(async () => {
+  const handleRequestAI = async () => {
     if (!note) return;
     await requestAI({ noteId: note.id });
     await refetch();
-  }, [note, requestAI, refetch]);
+  };
 
-  const handleDelete = useCallback(async () => {
+  const handleDelete = async () => {
     if (!note) return;
     await deleteNote({ noteId: note.id });
     navigate(routes.ClinicalDashboardRoute.to);
-  }, [note, deleteNote, navigate]);
+  };
 
   if (!user) {
     return (
@@ -122,28 +133,25 @@ export function ClinicalNotePage({ noteId }: { noteId: string }) {
     );
   }
 
-  if (noteError || !note) {
+  if (!note) {
     return (
       <div className="mx-auto max-w-3xl">
         <Card className="border-destructive/50">
           <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
             <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            {noteError?.message ?? "Nota no encontrada."}
+            Nota no encontrada.
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const isAIAssisted = note.status === "DRAFT_AI_ASSISTED";
   const canEdit = isDraft;
   const canConfirm = isDraft || isReviewed;
   const canCreateAddendum = isConfirmed;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Toaster position="top-right" />
-
       <div className="flex items-center justify-between gap-4">
         <WaspRouterLink
           to={routes.ClinicalDashboardRoute.to}
@@ -220,21 +228,12 @@ export function ClinicalNotePage({ noteId }: { noteId: string }) {
                 </Badge>
               )}
               <span className="mono-label inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <FileText className="size-3.5" />
+                <CalendarDays className="size-3.5" />
                 {new Date(note.createdAt).toLocaleString()}
               </span>
             </div>
           </div>
         </CardHeader>
-
-        {error && (
-          <Card className="border-destructive/50">
-            <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              {error}
-            </CardContent>
-          </Card>
-        )}
 
         <Card className="overflow-hidden border-outline-variant">
           <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
@@ -249,61 +248,6 @@ export function ClinicalNotePage({ noteId }: { noteId: string }) {
             </p>
           </CardContent>
         </Card>
-
-        {/* Panel de Dictado Asistido por Voz con IA */}
-        {!isConfirmed && (
-          <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-surface to-primary/5 shadow-sm">
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
-                      <Sparkles className="size-3" />
-                      Dictado por Voz con IA
-                    </Badge>
-                    {isDictating && (
-                      <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 animate-pulse">
-                        <span className="size-2 rounded-full bg-emerald-500" />
-                        Escuchando dictado…
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Dicte su nota clínica y la IA la estructurará automáticamente según el modelo SOAP.
-                  </p>
-                </div>
-                <Button
-                  size="lg"
-                  onClick={handleVoiceDictation}
-                  disabled={isDictating || isTranscribing || isStructuring}
-                  className="gap-2"
-                >
-                  {isDictating ? (
-                    <>
-                      <X className="size-4" />
-                      Detener
-                    </>
-                  ) : isTranscribing ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Transcribiendo…
-                    </>
-                  ) : isStructuring ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Estructurando…
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="size-4" />
-                      Iniciar Dictado
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {isEditing ? (
           <Card className="border-primary/30">
@@ -342,25 +286,22 @@ export function ClinicalNotePage({ noteId }: { noteId: string }) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ScrollArea className="max-h-96">
-                <div className="space-y-4 text-sm text-foreground">
-                  {Object.entries(note.structuredSections || {}).map(([key, value]) => (
-                    <div key={key} className="space-y-1">
-                      <p className="mono-label text-[10px] uppercase tracking-wider text-primary">
-                        {key}
-                      </p>
-                      <p className="whitespace-pre-wrap">{value}</p>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+              <div className="space-y-4 text-sm text-foreground">
+                {Object.entries(note.structuredSections || {}).map(([key, value]) => (
+                  <div key={key} className="space-y-1">
+                    <p className="mono-label text-[10px] uppercase tracking-wider text-primary">
+                      {key}
+                    </p>
+                    <p className="whitespace-pre-wrap">{value}</p>
+                  </div>
+                ))}
+              </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => { setEditedText(note.originalText); setIsEditing(true); }}>
-                  <Edit className="size-4 mr-2" />
                   Editar
                 </Button>
                 <Button onClick={handleConfirm} disabled={isAnyLoading}>
-                  <Check className="size-4 mr-2" />
+                  <Save className="size-4 mr-2" />
                   Confirmar nota
                 </Button>
               </div>
@@ -381,7 +322,7 @@ export function ClinicalNotePage({ noteId }: { noteId: string }) {
                 Esta nota ha sido revisada y está pendiente de confirmación final.
               </p>
               <Button onClick={handleConfirm} disabled={isAnyLoading}>
-                <Check className="size-4 mr-2" />
+                <Save className="size-4 mr-2" />
                 Confirmar definitivamente
               </Button>
             </CardContent>
@@ -392,8 +333,8 @@ export function ClinicalNotePage({ noteId }: { noteId: string }) {
           <Card className="border-success/30">
             <CardHeader className="border-b border-outline-variant/50 bg-success/5">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Check className="size-4 text-success" />
-                Nota confirmada (inmutable)
+                <Save className="size-4 text-success" />
+                Nota confirmada
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
@@ -412,105 +353,78 @@ export function ClinicalNotePage({ noteId }: { noteId: string }) {
           <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
             <CardTitle className="flex items-center justify-between text-base font-semibold">
               <span className="flex items-center gap-2">
-                <MoreHorizontal className="size-4 text-muted-foreground" />
                 Acciones
               </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  {canEdit && (
-                    <>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setEditedText(note.originalText);
-                          setIsEditing(true);
-                          setActiveDropdownId(null);
-                        }}
-                        className="flex items-center gap-2"
-                      >
-                        <Edit className="size-4" />
-                        Editar borrador
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={handleRequestAI}
-                        disabled={isAnyLoading}
-                        className="flex items-center gap-2"
-                      >
-                        <Sparkles className="size-4" />
-                        Estructurar con IA
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  {canConfirm && (
-                    <DropdownMenuItem
-                      onClick={handleConfirm}
-                      disabled={isAnyLoading}
-                      className="flex items-center gap-2"
-                    >
-                      <Check className="size-4" />
-                      Confirmar
-                    </DropdownMenuItem>
-                  )}
-                  {canCreateAddendum && (
-                    <DropdownMenuItem
-                      onClick={handleCreateAddendum}
-                      disabled={isAnyLoading}
-                      className="flex items-center gap-2"
-                    >
-                      <FileText className="size-4" />
-                      Crear adenda
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="flex items-center gap-2 text-destructive focus:text-destructive"
+              <div className="flex items-center gap-1">
+                {canEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setEditedText(note.originalText); setIsEditing(true); }}
+                    disabled={isAnyLoading}
                   >
-                    <Trash2 className="size-4" />
-                    Eliminar
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    Editar
+                  </Button>
+                )}
+                {canConfirm && (
+                  <Button
+                    size="sm"
+                    onClick={handleConfirm}
+                    disabled={isAnyLoading}
+                  >
+                    Confirmar
+                  </Button>
+                )}
+                {canCreateAddendum && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCreateAddendum}
+                    disabled={isAnyLoading}
+                  >
+                    Adenda
+                  </Button>
+                )}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isAnyLoading}
+                >
+                  <Trash2 className="size-3.5 mr-1.5" />
+                  Eliminar
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent />
         </Card>
 
         {showDeleteConfirm && (
-          <Card className="border-destructive/50 fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <CardContent className="w-full max-w-md mx-4 p-6 space-y-4">
-              <div className="text-center space-y-2">
-                <AlertCircle className="mx-auto size-10 text-destructive" />
-                <h3 className="text-lg font-semibold">Eliminar nota clínica</h3>
-                <p className="text-sm text-muted-foreground">
-                  ¿Está seguro? Esta acción no se puede deshacer.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>
-                  Cancelar
-                </Button>
-                <Button variant="destructive" className="flex-1" onClick={handleDelete} disabled={isAnyLoading}>
-                  <Trash2 className="size-4 mr-2" />
-                  Eliminar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <Card className="border-destructive/50 w-full max-w-md mx-4">
+              <CardContent className="p-6 space-y-4">
+                <div className="text-center space-y-2">
+                  <AlertCircle className="mx-auto size-10 text-destructive" />
+                  <h3 className="text-lg font-semibold">Eliminar nota clínica</h3>
+                  <p className="text-sm text-muted-foreground">
+                    ¿Está seguro? Esta acción no se puede deshacer.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>
+                    Cancelar
+                  </Button>
+                  <Button variant="destructive" className="flex-1" onClick={handleDelete} disabled={isAnyLoading}>
+                    <Trash2 className="size-4 mr-2" />
+                    Eliminar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </Card>
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <Badge variant={statusBadgeVariant(status)} className="mono-label">
-      {statusLabel(status)}
-    </Badge>
   );
 }
