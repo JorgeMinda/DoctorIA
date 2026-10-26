@@ -13,6 +13,15 @@ import {
 import { Badge } from "../../client/components/ui/badge";
 import { auditActionLabel } from "../services/statusLabels";
 
+// Traducir tipos de recurso de auditoría al español
+const resourceTypeLabel: Record<string, string> = {
+  NOTE: "Nota clínica",
+  PATIENT: "Paciente",
+  USER: "Usuario",
+  EPICRISIS: "Epicrisis",
+  CITA: "Cita",
+};
+
 export function ClinicalAuditPage() {
   const { data: user } = useAuth();
   const [page, setPage] = useState(1);
@@ -128,7 +137,7 @@ export function ClinicalAuditPage() {
                           </span>
                           <span>·</span>
                           <Badge variant="outline" className="mono-label">
-                            {entry.resourceType}
+                            {resourceTypeLabel[entry.resourceType] ?? entry.resourceType}
                           </Badge>
                           {entry.patient && (
                             <span className="font-medium text-foreground">
