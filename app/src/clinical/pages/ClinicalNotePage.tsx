@@ -71,12 +71,13 @@ function ClinicalNotePageContent() {
     { enabled: Boolean(user && noteId), staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
-  const updateDraftFn = useAction(updateClinicalNoteDraft);
-  const requestAIFn = useAction(requestAIStructuring);
-  const confirmFn = useAction(confirmClinicalNote);
-  const addendumFn = useAction(createNoteAddendum);
-  const deleteNoteFn = useAction(deleteClinicalNote);
-  const aiAddendumFn = useAction(generateAddendumDraftAction);
+  const [updateDraft, updateDraftLoading] = useAction(updateClinicalNoteDraft);
+  const [requestAI, requestAILoading] = useAction(requestAIStructuring);
+  const [confirmNote, confirmNoteLoading] = useAction(confirmClinicalNote);
+  const [createAddendum, createAddendumLoading] = useAction(createNoteAddendum);
+  const [createFromVoice, createFromVoiceLoading] = useAction(createNoteFromVoice);
+  const [deleteNote, deleteNoteLoading] = useAction(deleteClinicalNote);
+  const [aiAddendum, aiAddendumLoading] = useAction(generateAddendumDraftAction);
 
   const [draft, setDraft] = useState<SectionDraft>({
     sections: {
@@ -190,11 +191,14 @@ function ClinicalNotePageContent() {
     setSaving(true);
     setError(null);
     try {
-      await updateDraftFn({
+      await updateDraft({
         noteId: note.id,
-        text: JSON.stringify(draft.sections),
+        motivoConsulta: draft.sections.motivoConsulta,
+        notaClinica: draft.sections.notaClinica,
+        examenFisico: draft.sections.examenFisico,
+        valoracionClinica: draft.sections.valoracionClinica,
+        planIndicaciones: draft.sections.planIndicaciones,
         sectionsNotApplicable: draft.sectionsNotApplicable,
-        expectedUpdatedAt: note.updatedAt.toISOString(),
       });
       await refetch();
     } catch (e: any) {
@@ -208,7 +212,7 @@ function ClinicalNotePageContent() {
     if (!note) return;
     setAiBusy(true);
     try {
-      await requestAIFn({ noteId: note.id });
+      await requestAI({ noteId: note.id });
       await refetch();
     } catch (e: any) {
       setError(e?.message ?? "Error al solicitar estructuración IA");
@@ -220,7 +224,7 @@ function ClinicalNotePageContent() {
   const handleConfirm = async () => {
     if (!note) return;
     try {
-      await confirmFn({ noteId: note.id });
+      await confirmNote({ noteId: note.id, expectedUpdatedAt: note.updatedAt.toISOString() });
       await refetch();
     } catch (e: any) {
       setError(e?.message ?? "Error al confirmar la nota");
@@ -230,7 +234,7 @@ function ClinicalNotePageContent() {
   const handleAddendum = async () => {
     if (!note) return;
     try {
-      await addendumFn({
+      await createAddendum({
         parentNoteId: note.id,
         originalText: addendumText,
         addendumReason,
@@ -248,7 +252,11 @@ function ClinicalNotePageContent() {
     if (!note) return;
     setAiBusy(true);
     try {
-      await aiAddendumFn({ parentNoteId: note.id, instruction: aiInstruction });
+      await aiAddendum({
+        parentNoteId: note.id,
+        instruction: aiInstruction,
+        expectedUpdatedAt: note.updatedAt.toISOString(),
+      });
       setAiAddendumOpen(false);
       setAiInstruction("");
       await refetch();
@@ -262,8 +270,8 @@ function ClinicalNotePageContent() {
   const handleDelete = async () => {
     if (!note) return;
     try {
-      await deleteNoteFn({ noteId: note.id });
-      navigate(routes.ClinicalDashboardRoute.to);
+      await deleteNote({ noteId: note.id });
+      navigate(routes.ClinicalPatientsRoute.to);
     } catch (e: any) {
       setError(e?.message ?? "Error al eliminar la nota");
     }
@@ -328,7 +336,7 @@ function ClinicalNotePageContent() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between gap-4">
         <WaspRouterLink
-          to={routes.ClinicalDashboardRoute.to}
+          to={routes.ClinicalPatientsRoute.to}
           className="text-sm text-muted-foreground transition-colors hover:text-primary"
         >
           <ArrowLeft className="size-4 shrink-0" />
@@ -489,9 +497,7 @@ function ClinicalNotePageContent() {
               <SectionEditor
                 draft={draft}
                 onChange={setDraft}
-                isSaving={saving || aiBusy}
-                onSave={handleUpdateDraft}
-                onRequestAI={handleRequestAI}
+                disabled={saving || aiBusy}
               />
               <div className="flex gap-2 pt-2">
                 <Button onClick={handleConfirm} disabled={saving || aiBusy}>
@@ -570,7 +576,7 @@ function ClinicalNotePageContent() {
                   <Button
                     variant="ghost"
                     className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-accent/40"
-                    onClick={() => setDraft(draft)}
+                    onClick={handleUpdateDraft}
                     disabled={saving || aiBusy}
                   >
                     <Save className="size-4" />
@@ -634,7 +640,7 @@ function ClinicalNotePageContent() {
               <Button
                 variant="ghost"
                 className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-destructive/10 text-destructive"
-                onClick={() => confirm("¿Eliminar esta nota clínica? Esta acción no se puede deshacer.", handleDelete)}
+                onClick={() => confirm("¿Eliminar esta nota clínica? Esta acción no se puede deshacer.").then(handleDelete)}
               >
                 <Trash2 className="size-4" />
                 Eliminar nota
