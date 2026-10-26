@@ -30,7 +30,6 @@ export default app({
   },
   server: {
     envValidationSchema: serverEnvValidationSchema,
-    middlewares: [corsMiddleware],
   },
   emailSender,
   spec: [
@@ -40,5 +39,6 @@ export default app({
     userSpec,
     clinicalSpec,
     patientSpec,
+    corsMiddleware,
   ],
 });
