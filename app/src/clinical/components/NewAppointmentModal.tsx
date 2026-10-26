@@ -58,6 +58,14 @@ export function NewAppointmentModal({
   // Duración estándar fijada a 30 minutos
   const DURATION_MINUTES = 30;
 
+  // Fecha mínima seleccionable en hora local (evita UTC y bloquea días pasados).
+  const todayInput = (() => {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${now.getFullYear()}-${month}-${day}`;
+  })();
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedDate(date);
@@ -146,6 +154,9 @@ export function NewAppointmentModal({
   };
 
   const handleDateChange = (newDate: string) => {
+    if (newDate && newDate < todayInput) {
+      return;
+    }
     setDate(newDate);
     setTime("");
   };
@@ -403,6 +414,7 @@ export function NewAppointmentModal({
               <Input
                 id="na-date"
                 type="date"
+                min={todayInput}
                 value={date}
                 onChange={(e) => handleDateChange(e.target.value)}
                 className="border-outline-variant bg-surface/70 font-mono backdrop-blur-sm"
