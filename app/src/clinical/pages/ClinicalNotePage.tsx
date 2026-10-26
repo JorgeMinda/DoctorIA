@@ -71,13 +71,12 @@ function ClinicalNotePageContent() {
     { enabled: Boolean(user && noteId), staleTime: 30_000, refetchOnWindowFocus: false },
   );
 
-  const [updateDraft, updateDraftLoading] = useAction(updateClinicalNoteDraft);
-  const [requestAI, requestAILoading] = useAction(requestAIStructuring);
-  const [confirmNote, confirmNoteLoading] = useAction(confirmClinicalNote);
-  const [createAddendum, createAddendumLoading] = useAction(createNoteAddendum);
-  const [createFromVoice, createFromVoiceLoading] = useAction(createNoteFromVoice);
-  const [deleteNote, deleteNoteLoading] = useAction(deleteClinicalNote);
-  const [aiAddendum, aiAddendumLoading] = useAction(generateAddendumDraftAction);
+  const updateDraftFn = useAction(updateClinicalNoteDraft);
+  const requestAIFn = useAction(requestAIStructuring);
+  const confirmFn = useAction(confirmClinicalNote);
+  const addendumFn = useAction(createNoteAddendum);
+  const deleteNoteFn = useAction(deleteClinicalNote);
+  const aiAddendumFn = useAction(generateAddendumDraftAction);
 
   const [draft, setDraft] = useState<SectionDraft>({
     sections: {
@@ -152,8 +151,8 @@ function ClinicalNotePageContent() {
       setDictationTranscript((final + interim).trim());
     };
 
-    rec.onerror = (err: any) => {
-      console.warn("SpeechRecognition error:", err);
+    rec.onerror = () => {
+      setIsDictating(false);
     };
 
     rec.onend = () => {
@@ -165,184 +164,321 @@ function ClinicalNotePageContent() {
     setIsDictating(true);
   };
 
-  useEffect(() => {
-    if (note && !draft.sections.motivoConsulta) {
-      // Build sections from individual fields in ClinicalNoteDetail
-      const sections = {
-        motivoConsulta: note.motivoConsulta || "",
-        notaClinica: note.notaClinica || "",
-        examenFisico: note.examenFisico || "",
-        valoracionClinica: note.valoracionClinica || "",
-        planIndicaciones: note.planIndicaciones || "",
-      };
-      setDraft({
-        sections,
-        sectionsNotApplicable: (note.sectionsNotApplicable as Record<string, string>) || {},
-      });
-    }
-  }, [note]);
+  const updateNoteCIE11Fn = useAction(updateNoteCIE11);
 
-  const isConfirmed = note?.status === "CONFIRMED";
-  const isDraftState = note?.status === "DRAFT_MANUAL" || note?.status === "DRAFT_AI_ASSISTED";
-  const isReviewed = note?.status === "REVIEWED";
-
-  const handleUpdateDraft = async () => {
-    if (!note) return;
-    setSaving(true);
-    setError(null);
+  const handleSelectCIE11 = async (result: CIE11Result) => {
+    if (!noteId) return;
     try {
-      await updateDraft({
-        noteId: note.id,
-        motivoConsulta: draft.sections.motivoConsulta,
-        notaClinica: draft.sections.notaClinica,
-        examenFisico: draft.sections.examenFisico,
-        valoracionClinica: draft.sections.valoracionClinica,
-        planIndicaciones: draft.sections.planIndicaciones,
-        sectionsNotApplicable: draft.sectionsNotApplicable,
+      setSaving(true);
+      await updateNoteCIE11Fn({
+        noteId,
+        cie11Code: result.code,
+        cie11Description: result.title,
+        cie11Uri: result.uri,
       });
-      await refetch();
-    } catch (e: any) {
-      setError(e?.message ?? "Error al guardar el borrador");
+      toast({
+        title: "Código CIE-11 asignado",
+        description: `${result.code} - ${result.title}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error al asignar CIE-11",
+        description: err.message || "Intente nuevamente",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleRequestAI = async () => {
-    if (!note) return;
-    setAiBusy(true);
+  useEffect(() => {
+    if (note) {
+      setDraft({
+        sections: {
+          motivoConsulta: note.motivoConsulta ?? "",
+          notaClinica: note.notaClinica ?? "",
+          examenFisico: note.examenFisico ?? "",
+          valoracionClinica: note.valoracionClinica ?? "",
+          planIndicaciones: note.planIndicaciones ?? "",
+        },
+        sectionsNotApplicable: note.sectionsNotApplicable ?? {},
+      });
+    }
+  }, [note?.id]);
+
+  useEffect(() => {
+    return () => {
+      stopPageDictation();
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current);
+      }
+    };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="size-2 animate-pulse rounded-full bg-primary" />
+          Cargando nota clínica…
+        </div>
+      </div>
+    );
+  }
+
+  if (!note || !user?.isMedico || user.isAdmin) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Card className="border-destructive/50">
+          <CardContent className="flex items-start gap-3 p-6 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            No autorizado.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const isConfirmed = note.status === "CONFIRMED";
+
+  const suggestedCieTerms = extractSuggestedDiagnoses(
+    draft.sections.valoracionClinica,
+    note.valoracionClinica,
+    draft.sections.motivoConsulta,
+    note.motivoConsulta,
+  );
+
+  const persistDraft = (next: SectionDraft) => {
+    setDraft(next);
+    if (note.status === "CONFIRMED") {
+      return;
+    }
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+    }
+    autosaveTimer.current = setTimeout(() => {
+      void updateDraftFn({
+        noteId: note.id,
+        motivoConsulta: next.sections.motivoConsulta || undefined,
+        notaClinica: next.sections.notaClinica || undefined,
+        examenFisico: next.sections.examenFisico || undefined,
+        valoracionClinica: next.sections.valoracionClinica || undefined,
+        planIndicaciones: next.sections.planIndicaciones || undefined,
+        sectionsNotApplicable: next.sectionsNotApplicable,
+      }).catch((err: any) => {
+        setError(err?.message ?? "No se pudo guardar automáticamente");
+      });
+    }, 400);
+  };
+
+  const persistNow = async (next: SectionDraft = draft) => {
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    await updateDraftFn({
+      noteId: note.id,
+      motivoConsulta: next.sections.motivoConsulta || undefined,
+      notaClinica: next.sections.notaClinica || undefined,
+      examenFisico: next.sections.examenFisico || undefined,
+      valoracionClinica: next.sections.valoracionClinica || undefined,
+      planIndicaciones: next.sections.planIndicaciones || undefined,
+      sectionsNotApplicable: next.sectionsNotApplicable,
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
     try {
-      await requestAI({ noteId: note.id });
+      await persistNow();
       await refetch();
-    } catch (e: any) {
-      setError(e?.message ?? "Error al solicitar estructuración IA");
+      toast({ title: "Nota clínica guardada correctamente" });
+    } catch (err: any) {
+      setError(err?.message ?? "No se pudo guardar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Mensaje unificado (kickoff Fase 6) para 409 (CAS) y 502 (respuesta IA
+  // inválida); otros errores muestran el mensaje del servidor.
+  const AI_CONFLICT_TOAST = {
+    title: "No se pudo aplicar la asistencia de IA",
+    description:
+      "El documento cambió o la respuesta fue inválida. Recarga para ver los cambios e inténtalo de nuevo.",
+  } as const;
+
+  const handleRequestAI = async () => {
+    setAiBusy(true);
+    setError(null);
+    try {
+      // Token CAS: versión de la nota vista por el cliente (Fase 7).
+      await requestAIFn({
+        noteId: note.id,
+        expectedUpdatedAt: new Date(note.updatedAt).toISOString(),
+      });
+      await refetch();
+      toast({ title: "Nota estructurada con IA" });
+    } catch (err: any) {
+      if (err?.statusCode === 409 || err?.statusCode === 502) {
+        toast({ ...AI_CONFLICT_TOAST, variant: "destructive" });
+        setError(err?.message ?? AI_CONFLICT_TOAST.description);
+      } else {
+        const msg =
+          err?.message ?? "No se pudo estructurar con el asistente de IA";
+        setError(msg);
+        toast({ title: msg, variant: "destructive" });
+      }
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const handleAIAddendum = async () => {
+    setAiBusy(true);
+    setError(null);
+    try {
+      const addendum = await aiAddendumFn({
+        parentNoteId: note.id,
+        instruction: aiInstruction,
+        expectedUpdatedAt: new Date(note.updatedAt).toISOString(),
+      });
+      toast({ title: "Borrador de adenda generado con IA" });
+      navigate(
+        routes.ClinicalNoteRoute.build({
+          params: { noteId: (addendum as { id: string }).id },
+        }),
+      );
+    } catch (err: any) {
+      if (err?.statusCode === 409 || err?.statusCode === 502) {
+        toast({ ...AI_CONFLICT_TOAST, variant: "destructive" });
+        setError(err?.message ?? AI_CONFLICT_TOAST.description);
+      } else {
+        const msg =
+          err?.message ?? "No se pudo generar el borrador de la adenda";
+        setError(msg);
+        toast({ title: msg, variant: "destructive" });
+      }
     } finally {
       setAiBusy(false);
     }
   };
 
   const handleConfirm = async () => {
-    if (!note) return;
+    const ok = await confirm({
+      title: "¿Confirmar y sellar nota clínica?",
+      description:
+        "Una vez confirmada, la nota clínica quedará sellada legalmente e inmutable. No podrá editarse directamente y cualquier corrección futura requerirá una adenda formal vinculada.",
+      confirmText: "Sí, confirmar y sellar",
+      cancelText: "Seguir revisando",
+      variant: "default",
+    });
+    if (!ok) return;
+
+    setSaving(true);
+    setError(null);
     try {
-      await confirmNote({ noteId: note.id, expectedUpdatedAt: note.updatedAt.toISOString() });
+      await persistNow();
+      await confirmFn({ noteId: note.id });
       await refetch();
-    } catch (e: any) {
-      setError(e?.message ?? "Error al confirmar la nota");
+      toast({ title: "Nota clínica confirmada correctamente" });
+    } catch (err: any) {
+      setError(err?.message ?? "No se pudo confirmar");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleAddendum = async () => {
-    if (!note) return;
+    setSaving(true);
+    setError(null);
     try {
-      await createAddendum({
+      const addendum = await addendumFn({
         parentNoteId: note.id,
         originalText: addendumText,
         addendumReason,
       });
-      setAddendumOpen(false);
-      setAddendumText("");
-      setAddendumReason("");
-      await refetch();
-    } catch (e: any) {
-      setError(e?.message ?? "Error al crear la adenda");
-    }
-  };
-
-  const handleAIAddendum = async () => {
-    if (!note) return;
-    setAiBusy(true);
-    try {
-      await aiAddendum({
-        parentNoteId: note.id,
-        instruction: aiInstruction,
-        expectedUpdatedAt: note.updatedAt.toISOString(),
-      });
-      setAiAddendumOpen(false);
-      setAiInstruction("");
-      await refetch();
-    } catch (e: any) {
-      setError(e?.message ?? "Error al generar adenda con IA");
+      toast({ title: "Adenda creada correctamente" });
+      navigate(
+        routes.ClinicalNoteRoute.build({ params: { noteId: addendum.id } }),
+      );
+    } catch (err: any) {
+      setError(err?.message ?? "No se pudo crear la adenda");
     } finally {
-      setAiBusy(false);
+      setSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!note) return;
+  const handleDeleteNote = async () => {
+    const ok = await confirm({
+      title: "¿Eliminar este borrador de nota clínica?",
+      description:
+        "Esta acción descartará el borrador permanentemente. Solo los borradores no confirmados pueden eliminarse.",
+      confirmText: "Sí, eliminar borrador",
+      cancelText: "Cancelar",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
+    setSaving(true);
+    setError(null);
     try {
-      await deleteNote({ noteId: note.id });
-      navigate(routes.ClinicalPatientsRoute.to);
-    } catch (e: any) {
-      setError(e?.message ?? "Error al eliminar la nota");
+      await deleteNoteFn({ noteId: note.id });
+      toast({ title: "Nota eliminada correctamente" });
+      navigate(
+        routes.ClinicalPatientDetailRoute.build({
+          params: { patientId: note.patientId },
+        }),
+      );
+    } catch (err: any) {
+      setError(err?.message ?? "No se pudo eliminar la nota");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleVoiceDictation = async () => {
-    if (isDictating) {
-      stopPageDictation();
-    } else {
-      startPageDictation();
-    }
+  const handleCancel = () => {
+    navigate(
+      routes.ClinicalPatientDetailRoute.build({
+        params: { patientId: note.patientId },
+      }),
+    );
   };
-
-  const handleSelectCIE11 = (result: CIE11Result) => {
-    if (!note) return;
-    updateNoteCIE11({ noteId: note.id, cie11Code: result.code, cie11Description: result.title })
-      .then(() => refetch())
-      .catch((e: any) => setError(e?.message ?? "Error al asignar CIE-11"));
-    setCie11Open(false);
-  };
-
-  const suggestedCieTerms = extractSuggestedDiagnoses(note?.originalText ?? "");
-
-  if (!user) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Card className="border-outline-variant">
-          <CardContent className="flex items-start gap-3 p-6 text-sm">
-            <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" />
-            Debe iniciar sesión para acceder a esta nota.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <div className="flex items-center justify-center gap-3 py-10">
-          <Loader2 className="size-6 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">Cargando nota clínica…</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!note) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Card className="border-destructive/50">
-          <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            Nota no encontrada.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <WaspRouterLink
-          to={routes.ClinicalPatientsRoute.to}
-          className="text-sm text-muted-foreground transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="size-4 shrink-0" />
-          Volver
-        </WaspRouterLink>
-        <div className="flex items-center gap-2">
+    <div className="mx-auto max-w-4xl space-y-6">
+      <WaspRouterLink
+        to={routes.ClinicalPatientDetailRoute.to}
+        params={{ patientId: note.patient.id }}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+      >
+        <ArrowLeft className="size-3.5" />
+        Volver a la historia de {note.patient.firstName} {note.patient.lastName}
+      </WaspRouterLink>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-primary">
+            Nota clínica
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {note.noteType === "ADDENDUM" ? "Adenda" : "Nota clínica"}
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <WaspRouterLink
+              to={routes.ClinicalPatientDetailRoute.to}
+              params={{ patientId: note.patient.id }}
+              className="text-sm text-muted-foreground transition-colors hover:text-primary"
+            >
+              {note.patient.firstName} {note.patient.lastName}
+            </WaspRouterLink>
+            <Badge variant="outline" className="mono-label">
+              {note.patient.syntheticId}
+            </Badge>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={note.status} />
           {note.status === "DRAFT_AI_ASSISTED" && (
             <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
@@ -361,338 +497,398 @@ function ClinicalNotePageContent() {
               CIE-11: {note.cie11Code}
             </Badge>
           )}
+          <span className="mono-label inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <CalendarDays className="size-3.5" />
+            {new Date(note.createdAt).toLocaleString()}
+          </span>
         </div>
       </div>
 
-      <Card className="border-outline-variant">
+      {error && (
+        <Card className="border-destructive/50">
+          <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            {error}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="overflow-hidden border-outline-variant">
         <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
-                <FileText className="size-4 text-primary" />
-              </div>
-              <div>
-                <p className="mono-label mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Nota clínica
-                </p>
-                <h1 className="text-xl font-bold tracking-tight text-foreground">
-                  {note.patient.firstName} {note.patient.lastName}
-                  <WaspRouterLink
-                    to={routes.ClinicalPatientDetailRoute.to}
-                    params={{ patientId: note.patient.id }}
-                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    {note.patient.syntheticId}
-                  </WaspRouterLink>
-                  <Badge variant="outline" className="mono-label">
-                    {note.patient.syntheticId}
-                  </Badge>
-                </h1>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={note.status} />
-              {note.status === "DRAFT_AI_ASSISTED" && (
-                <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
-                  <Sparkles className="size-3" />
-                  Borrador asistido por IA
-                </Badge>
-              )}
-              {note.aiAssisted && (
-                <Badge variant="secondary">
-                  <Sparkles className="size-3" />
-                  Asistido por IA
-                </Badge>
-              )}
-              {note.cie11Code && (
-                <Badge variant="outline" className="gap-1 border-primary text-primary" title={note.cie11Description ?? undefined}>
-                  CIE-11: {note.cie11Code}
-                </Badge>
-              )}
-              <span className="mono-label inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <CalendarDays className="size-3.5" />
-                {new Date(note.createdAt).toLocaleString()}
-              </span>
-            </div>
-          </div>
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <FileText className="size-4 text-primary" />
+            Texto original
+          </CardTitle>
         </CardHeader>
+        <CardContent>
+          <p className="text-sm whitespace-pre-wrap text-foreground">
+            {note.originalText}
+          </p>
+        </CardContent>
+      </Card>
 
-        {error && (
-          <Card className="border-destructive/50">
-            <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              {error}
-            </CardContent>
-          </Card>
-        )}
+      {/* Panel de Dictado Asistido por Voz con IA */}
+      {!isConfirmed && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-surface to-primary/5 shadow-sm">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
+                    <Sparkles className="size-3" />
+                    Dictado por Voz con IA
+                  </Badge>
+                  {isDictating && (
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 animate-pulse">
+                      <span className="size-2 rounded-full bg-emerald-500" />
+                      Escuchando dictado…
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Dicta la consulta médica libremente. También puedes dictar en cada sección individual o pulsar <strong>Estructurar con IA</strong> para organizar automáticamente las secciones SOAP.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {isDictating ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={stopPageDictation}
+                    className="gap-1.5 animate-pulse"
+                  >
+                    <MicOff className="size-4" />
+                    Detener dictado
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={startPageDictation}
+                    disabled={aiBusy || saving}
+                    className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    <Mic className="size-4" />
+                    {dictationTranscript ? "Continuar dictando" : "Dictar consulta por voz"}
+                  </Button>
+                )}
+                {note.status === "DRAFT_MANUAL" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleRequestAI}
+                    disabled={saving || aiBusy}
+                    className="gap-1.5 shadow-[0_0_15px_rgba(0,218,243,0.25)]"
+                  >
+                    {aiBusy ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-3.5" />
+                    )}
+                    Estructurar con IA
+                  </Button>
+                )}
+              </div>
+            </div>
 
+            {/* Transcripción en vivo si hay dictado */}
+            {(isDictating || dictationTranscript) && (
+              <div className="mt-3 rounded-lg border border-primary/20 bg-surface/80 p-3 text-sm">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Transcripción del dictado médico:
+                </p>
+                <p className="italic text-foreground">
+                  {dictationTranscript || "Comienza a hablar para dictar la nota clínica…"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {!isConfirmed && (
+        <Card className="overflow-hidden border-outline-variant">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="text-base font-semibold">
+              Secciones clínicas estructuradas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {aiBusy && (
+              <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin text-primary" />
+                DoctorIA está generando un borrador…
+              </div>
+            )}
+            <SectionEditor draft={draft} onChange={persistDraft} disabled={aiBusy} />
+            {note.status === "DRAFT_AI_ASSISTED" && (
+              <p className="text-xs italic text-muted-foreground">
+                La información generada debe ser revisada y validada por el profesional.
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {note.status === "DRAFT_MANUAL" && (
+                <Button
+                  onClick={handleRequestAI}
+                  disabled={saving || aiBusy}
+                  className="shadow-[0_0_20px_rgba(0,218,243,0.25)]"
+                >
+                  {aiBusy ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
+                  Estructurar con IA
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                onClick={handleSave}
+                disabled={saving || aiBusy}
+              >
+                <Save className="size-4" />
+                Actualizar nota
+              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCie11Open(true)}
+                  disabled={saving || aiBusy}
+                >
+                  Asignar CIE-11
+                </Button>
+                {suggestedCieTerms.length > 0 && !note.cie11Code && (
+                  <button
+                    type="button"
+                    onClick={() => setCie11Open(true)}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer"
+                    title="Buscar código sugerido en catálogo CIE-11"
+                  >
+                    <Sparkles className="size-3" />
+                    Sugerencia: {suggestedCieTerms[0]}
+                  </button>
+                )}
+              </div>
+              <Button onClick={handleConfirm} disabled={saving || aiBusy}>
+                <ShieldCheck className="size-4" />
+                Confirmar nota
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-outline-variant/60 pt-4">
+              <Button
+                variant="ghost"
+                onClick={handleCancel}
+                disabled={saving}
+                className="text-muted-foreground"
+              >
+                <ArrowLeft className="size-4" />
+                Cancelar
+              </Button>
+              {!isConfirmed && (
+                <Button
+                  variant={
+                    confirmingDelete
+                      ? "destructive"
+                      : "outline"
+                  }
+                  onClick={handleDeleteNote}
+                  disabled={saving}
+                >
+                  <Trash2 className="size-4" />
+                  {confirmingDelete
+                    ? "Pulsa de nuevo para confirmar"
+                    : "Eliminar nota"}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isConfirmed && (
+        <Card className="overflow-hidden border-outline-variant">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="text-base font-semibold">
+              Secciones clínicas
+              <Badge variant="success" className="ml-2">
+                Solo lectura
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y divide-outline-variant/40">
+            {(
+              [
+                ["motivoConsulta", "Motivo de consulta"],
+                ["notaClinica", "Nota clínica / evolución"],
+                ["examenFisico", "Examen físico"],
+                ["valoracionClinica", "Valoración clínica"],
+                ["planIndicaciones", "Plan / indicaciones"],
+              ] as [SectionKey, string][]
+            ).map(([key, label]) => (
+              <div key={key} className="py-4">
+                <p className="mono-label mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                  {label}
+                </p>
+                <p className="text-sm whitespace-pre-wrap text-foreground">
+                  {note[key] ??
+                    (note.sectionsNotApplicable?.[key]
+                      ? `No aplica: ${note.sectionsNotApplicable[key]}`
+                      : "—")}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {isConfirmed && (
         <Card className="overflow-hidden border-outline-variant">
           <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <FileText className="size-4 text-primary" />
-              Texto original
+              <FilePlus2 className="size-4 text-primary" />
+              Corrección por adenda
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap text-foreground">
-              {note.originalText}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Panel de Dictado Asistido por Voz con IA */}
-        {!isConfirmed && (
-          <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-surface to-primary/5 shadow-sm">
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
-                      <Sparkles className="size-3" />
-                      Dictado por Voz con IA
-                    </Badge>
-                    {isDictating && (
-                      <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 animate-pulse">
-                        <span className="size-2 rounded-full bg-emerald-500" />
-                        Escuchando dictado…
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Dicte su nota clínica y la IA la estructurará automáticamente según el modelo SOAP.
-                  </p>
-                </div>
-                <Button
-                  size="lg"
-                  onClick={handleVoiceDictation}
-                  disabled={aiBusy}
-                  className="gap-2"
-                >
-                  {isDictating ? (
-                    <>
-                      <MicOff className="size-4" />
-                      Detener
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="size-4" />
-                      Iniciar Dictado
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {isDraftState && (
-          <Card className="border-primary/30">
-            <CardHeader className="border-b border-outline-variant/50 bg-primary/5">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Save className="size-4 text-primary" />
-                Borrador estructurado (editable)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SectionEditor
-                draft={draft}
-                onChange={setDraft}
-                disabled={saving || aiBusy}
-              />
-              <div className="flex gap-2 pt-2">
-                <Button onClick={handleConfirm} disabled={saving || aiBusy}>
-                  <ShieldCheck className="size-4 mr-2" />
-                  Confirmar nota
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {isReviewed && (
-          <Card className="border-warning/30">
-            <CardHeader className="border-b border-outline-variant/50 bg-warning/5">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <AlertCircle className="size-4 text-warning" />
-                En revisión
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <p className="text-muted-foreground">
-                Esta nota ha sido revisada y está pendiente de confirmación final.
-              </p>
-              <Button onClick={handleConfirm} disabled={saving}>
-                <ShieldCheck className="size-4 mr-2" />
-                Confirmar definitivamente
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {isConfirmed && (
-          <Card className="border-success/30">
-            <CardHeader className="border-b border-outline-variant/50 bg-success/5">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <ShieldCheck className="size-4 text-success" />
-                Nota confirmada
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <p className="text-muted-foreground">
-                Esta nota está confirmada y es inmutable. Solo se puede modificar mediante una adenda.
-              </p>
-              <div className="flex gap-2">
+          <CardContent className="space-y-3">
+            {!addendumOpen && !aiAddendumOpen && (
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setAddendumOpen(true)}
-                  disabled={saving}
                 >
-                  <FilePlus2 className="size-4 mr-2" />
                   Crear adenda
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => setAiAddendumOpen(true)}
-                  disabled={saving}
+                  disabled={aiBusy}
+                  className="gap-1.5"
                 >
-                  <Sparkles className="size-4 mr-2" />
+                  <Sparkles className="size-4 text-primary" />
                   Asistir redacción con IA
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="overflow-hidden border-outline-variant">
-          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
-            <CardTitle className="text-base font-semibold">
-              Acciones
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-outline-variant/40">
-              {!isConfirmed && (
-                <>
+            )}
+            {aiAddendumOpen && (
+              <>
+                {aiBusy && (
+                  <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                    DoctorIA está generando un borrador…
+                  </div>
+                )}
+                <Textarea
+                  className="border-outline-variant bg-surface"
+                  placeholder="Instrucción para el asistente (p. ej.: «Aclarar el plan de analgesia indicado el día 2»)"
+                  rows={3}
+                  value={aiInstruction}
+                  disabled={aiBusy}
+                  onChange={(e) => setAiInstruction(e.target.value)}
+                />
+                <p className="text-xs italic text-muted-foreground">
+                  La información generada debe ser revisada y validada por el profesional.
+                </p>
+                <div className="flex gap-2">
                   <Button
-                    variant="ghost"
-                    className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-accent/40"
-                    onClick={handleUpdateDraft}
-                    disabled={saving || aiBusy}
+                    onClick={handleAIAddendum}
+                    disabled={aiBusy || !aiInstruction.trim()}
                   >
-                    <Save className="size-4" />
-                    Guardar borrador
+                    {aiBusy ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-4" />
+                    )}
+                    Generar borrador con IA
                   </Button>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-accent/40"
-                    onClick={handleRequestAI}
-                    disabled={saving || aiBusy}
+                    onClick={() => {
+                      setAiAddendumOpen(false);
+                      setAiInstruction("");
+                    }}
+                    disabled={aiBusy}
                   >
-                    <Sparkles className="size-4" />
-                    Estructurar con IA
+                    <X className="size-4" />
+                    Cancelar
                   </Button>
-                  {isDraftState && (
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-accent/40"
-                      onClick={handleConfirm}
-                      disabled={saving}
-                    >
-                      <ShieldCheck className="size-4" />
-                      Confirmar nota
-                    </Button>
-                  )}
-                  {isReviewed && (
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-accent/40"
-                      onClick={handleConfirm}
-                      disabled={saving}
-                    >
-                      <ShieldCheck className="size-4" />
-                      Confirmar definitivamente
-                    </Button>
-                  )}
-                </>
-              )}
-              {isConfirmed && (
-                <>
+                </div>
+              </>
+            )}
+            {addendumOpen && (
+              <>
+                <Textarea
+                  className="border-outline-variant bg-surface"
+                  placeholder="Texto de la adenda (campo unificado)"
+                  rows={4}
+                  value={addendumText}
+                  onChange={(e) => setAddendumText(e.target.value)}
+                />
+                <Textarea
+                  className="border-outline-variant bg-surface"
+                  placeholder="Motivo de la adenda"
+                  rows={2}
+                  value={addendumReason}
+                  onChange={(e) => setAddendumReason(e.target.value)}
+                />
+                <div className="flex gap-2">
                   <Button
-                    variant="ghost"
-                    className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-accent/40"
-                    onClick={() => setAddendumOpen(true)}
-                    disabled={saving}
+                    onClick={handleAddendum}
+                    disabled={
+                      saving || !addendumText || !addendumReason
+                    }
                   >
-                    <FilePlus2 className="size-4" />
                     Crear adenda
                   </Button>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-accent/40"
-                    onClick={() => setAiAddendumOpen(true)}
-                    disabled={saving}
+                    onClick={() => setAddendumOpen(false)}
                   >
-                    <Sparkles className="size-4" />
-                    Asistir redacción con IA
+                    <X className="size-4" />
+                    Cancelar
                   </Button>
-                </>
-              )}
-              <Button
-                variant="ghost"
-                className="w-full justify-start px-6 py-3 text-left gap-3 hover:bg-destructive/10 text-destructive"
-                onClick={async () => {
-                  const confirmed = await confirm({
-                    title: "Eliminar nota clínica",
-                    description: "¿Eliminar esta nota clínica? Esta acción no se puede deshacer.",
-                    variant: "destructive",
-                  });
-                  if (confirmed) {
-                    handleDelete();
-                  }
-                }}
-              >
-                <Trash2 className="size-4" />
-                Eliminar nota
-              </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {note.childNotes && note.childNotes.length > 0 && (
+        <Card className="overflow-hidden border-outline-variant">
+          <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
+            <CardTitle className="text-base font-semibold">
+              Adendas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-outline-variant/40">
+              {note.childNotes.map((child: any) => (
+                <div key={child.id} className="px-6 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">
+                      Adenda
+                    </span>
+                    <StatusBadge status={child.status} />
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {child.originalText}
+                  </p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
-
-        {note.childNotes && note.childNotes.length > 0 && (
-          <Card className="overflow-hidden border-outline-variant">
-            <CardHeader className="border-b border-outline-variant/50 bg-surface-container/60">
-              <CardTitle className="text-base font-semibold">
-                Adendas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-outline-variant/40">
-                {note.childNotes.map((child: any) => (
-                  <div key={child.id} className="px-6 py-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-foreground">
-                        Adenda
-                      </span>
-                      <StatusBadge status={child.status} />
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {child.originalText}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        <CIE11SearchDialog
-          open={cie11Open}
-          onOpenChange={setCie11Open}
-          onSelect={handleSelectCIE11}
-          initialQuery={suggestedCieTerms[0] ?? ""}
-          suggestedTerms={suggestedCieTerms}
-        />
-        {ConfirmDialog}
-      </Card>
+      )}
+      <CIE11SearchDialog
+        open={cie11Open}
+        onOpenChange={setCie11Open}
+        onSelect={handleSelectCIE11}
+        initialQuery={suggestedCieTerms[0] ?? ""}
+        suggestedTerms={suggestedCieTerms}
+      />
+      {ConfirmDialog}
     </div>
   );
 }
