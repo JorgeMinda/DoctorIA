@@ -702,6 +702,7 @@ export function ClinicalAgendaPage() {
           <NewAppointmentModal
             open={Boolean(showNewCita)}
             onOpenChange={setShowNewCita}
+            defaultDate={selectedNewCitaDate}
             onDone={() => refetch()}
           />
         )}

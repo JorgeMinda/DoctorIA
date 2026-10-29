@@ -32,16 +32,29 @@ export function NewAppointmentModal({
   open,
   onOpenChange,
   defaultPatientId,
+  defaultDate,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultPatientId?: string;
+  defaultDate?: Date;
   onDone?: () => void;
 }) {
   const [medicoId, setMedicoId] = useState("");
   const [patientId, setPatientId] = useState(defaultPatientId ?? "");
-  const [date, setDate] = useState("");
+  const todayInput = (() => {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${now.getFullYear()}-${month}-${day}`;
+  })();
+  const [date, setDate] = useState(() => {
+    if (!defaultDate) return "";
+    const m = String(defaultDate.getMonth() + 1).padStart(2, "0");
+    const d = String(defaultDate.getDate()).padStart(2, "0");
+    return `${defaultDate.getFullYear()}-${m}-${d}`;
+  });
   const [debouncedDate, setDebouncedDate] = useState("");
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
@@ -57,14 +70,6 @@ export function NewAppointmentModal({
 
   // Duración estándar fijada a 30 minutos
   const DURATION_MINUTES = 30;
-
-  // Fecha mínima seleccionable en hora local (evita UTC y bloquea días pasados).
-  const todayInput = (() => {
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${now.getFullYear()}-${month}-${day}`;
-  })();
 
   useEffect(() => {
     const timer = setTimeout(() => {
