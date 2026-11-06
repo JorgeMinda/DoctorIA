@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useAction, useQuery } from "wasp/client/operations";
 import {
@@ -100,14 +101,31 @@ function MetricTile({
 
 export function ClinicalAgendaPage() {
   const { data: user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [showNewCita, setShowNewCita] = useState(false);
+  const [showNewCita, setShowNewCita] = useState(
+    () => searchParams.get("new") === "1",
+  );
   const [editingCita, setEditingCita] = useState<any | null>(null);
   const [displayMode, setDisplayMode] = useState<"calendar" | "list">("calendar");
   const [selectedNewCitaDate, setSelectedNewCitaDate] = useState<Date | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<
     "ALL" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED"
-  >("ALL");
+  >(() => {
+    const s = searchParams.get("status");
+    return s === "SCHEDULED" || s === "IN_PROGRESS" || s === "COMPLETED"
+      ? s
+      : "ALL";
+  });
+
+  // Parámetros de URL del asistente de voz flotante (?new=1, ?status=...).
+  useEffect(() => {
+    if (searchParams.get("new") === "1") setShowNewCita(true);
+    const s = searchParams.get("status");
+    if (s === "SCHEDULED" || s === "IN_PROGRESS" || s === "COMPLETED") {
+      setStatusFilter(s);
+    }
+  }, [searchParams]);
 
   const { confirm, ConfirmDialog } = useConfirm();
 

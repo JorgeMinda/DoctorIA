@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import { useQuery, useAction } from "wasp/client/operations";
 import { getPatients, manageSyntheticPatients } from "wasp/client/operations";
@@ -27,11 +28,18 @@ import { EmergencyAppointmentModal } from "../components/EmergencyAppointmentMod
 
 export function ClinicalPatientsPage() {
   const { data: user } = useAuth();
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
+
+  // Filtro inicial desde la URL (?q=) — lo usa el asistente de voz flotante.
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    setSearch((prev) => (prev === q ? prev : q));
+  }, [searchParams]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

@@ -12,6 +12,7 @@ import {
 type PanelState = { status: string; transcript: string } | null;
 
 const HIDE_AFTER_MS = 6000;
+const TTS_OPTIONS = { lang: "es-ES", rate: 1.05 } as const;
 
 export function FloatingVoiceAssistant() {
   const location = useLocation();
@@ -56,15 +57,30 @@ export function FloatingVoiceAssistant() {
     };
   }, [stopListening]);
 
-  const handleFinal = useCallback(
+  // Router del asistente de referencia: intención → dictado en input enfocado
+  // → fallback que repite lo escuchado por TTS.
+  const handleVoiceIntent = useCallback(
     (text: string) => {
+      if (!text) {
+        setPanel(null);
+        return;
+      }
+
+      const intent = parseFloatingVoiceCommand(text);
+      if (intent.type === "NAVIGATE") {
+        setPanel({ status: "Listo", transcript: intent.message });
+        speak(intent.message, TTS_OPTIONS);
+        navigate(intent.path);
+        scheduleHide();
+        return;
+      }
+
       const active = document.activeElement as HTMLElement | null;
       const typing =
         active &&
         (active.tagName === "TEXTAREA" ||
           (active.tagName === "INPUT" &&
             (active as HTMLInputElement).type === "text"));
-
       if (typing) {
         const formatted = formatDictation(text);
         if (appendToFocusedElement(formatted)) {
@@ -74,16 +90,9 @@ export function FloatingVoiceAssistant() {
         }
       }
 
-      const intent = parseFloatingVoiceCommand(text);
-      if (intent.type === "NAVIGATE") {
-        setPanel({ status: "Listo", transcript: intent.message });
-        speak(intent.message, { lang: "es-ES", rate: 1.05 });
-        navigate(intent.path);
-        scheduleHide();
-        return;
-      }
-
+      // Fallback: repite lo escuchado (sin interpretar clínicamente — P4).
       setPanel({ status: "Escuchado", transcript: text });
+      speak(text, TTS_OPTIONS);
       scheduleHide();
     },
     [navigate, scheduleHide],
@@ -112,23 +121,17 @@ export function FloatingVoiceAssistant() {
     recRef.current = rec;
     rec.lang = "es-ES";
     rec.continuous = false;
-    rec.interimResults = true;
+    rec.interimResults = false;
     rec.maxAlternatives = 1;
 
     rec.onresult = (e: any) => {
-      let interim = "";
-      let final = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const result = e.results[i];
-        if (result.isFinal) {
-          final += result[0].transcript;
-        } else {
-          interim += result[0].transcript;
-        }
+      const transcript = (e.results[0][0]?.transcript ?? "").trim();
+      if (transcript) {
+        handleVoiceIntent(transcript);
+      } else {
+        setPanel({ status: "Escuchado", transcript: "" });
+        scheduleHide();
       }
-      const shown = (final + interim).trim();
-      setPanel({ status: "Escuchando...", transcript: shown });
-      if (final.trim()) handleFinal(final.trim());
     };
 
     rec.onerror = (e: any) => {
@@ -159,7 +162,7 @@ export function FloatingVoiceAssistant() {
       setPanel({ status: "Error", transcript: "No se pudo iniciar el micrófono." });
       scheduleHide();
     }
-  }, [listening, stopListening, handleFinal, scheduleHide]);
+  }, [listening, stopListening, handleVoiceIntent, scheduleHide]);
 
   if (!visible || !supported) return null;
 
@@ -172,7 +175,13 @@ export function FloatingVoiceAssistant() {
           className="w-64 rounded-xl border border-outline-variant bg-background/95 p-3 shadow-lg backdrop-blur"
         >
           <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="mono-label text-[11px] uppercase tracking-widest text-primary">
+            <span className="mono-label flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-primary">
+              {listening && (
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-1.5 animate-pulse rounded-full bg-destructive"
+                />
+              )}
               {panel.status}
             </span>
             <button

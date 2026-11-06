@@ -45,50 +45,89 @@ describe("formatDictation", () => {
 });
 
 describe("parseFloatingVoiceCommand", () => {
-  it("detecta intención de pacientes", () => {
-    const r = parseFloatingVoiceCommand("buscar paciente Ana Paredes");
-    expect(r).toEqual({
+  it("agendar cita → agenda con modal nueva cita (?new=1)", () => {
+    expect(parseFloatingVoiceCommand("agendar cita")).toEqual({
       type: "NAVIGATE",
-      path: "/clinical/patients",
-      message: "Abriendo pacientes",
+      path: "/clinical/agenda?new=1",
+      message: "Abriendo nueva cita",
+    });
+    expect(parseFloatingVoiceCommand("nuevo turno")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/agenda?new=1",
+      message: "Abriendo nueva cita",
     });
   });
 
-  it("detecta intención de agenda por 'cita', 'agenda' o 'turno'", () => {
-    expect(parseFloatingVoiceCommand("abrir mis citas").type).toBe("NAVIGATE");
-    expect(parseFloatingVoiceCommand("ver la agenda").type).toBe("NAVIGATE");
+  it("buscar citas/turnos → agenda", () => {
+    expect(parseFloatingVoiceCommand("buscar mis citas")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/agenda",
+      message: "Abriendo agenda",
+    });
     expect(parseFloatingVoiceCommand("siguiente turno").type).toBe("NAVIGATE");
-    const r = parseFloatingVoiceCommand("agendar cita");
-    expect(r.type === "NAVIGATE" && r.path).toBe("/clinical/agenda");
+    expect(parseFloatingVoiceCommand("abrir la agenda").type).toBe("NAVIGATE");
   });
 
-  it("detecta intención del asistente de voz", () => {
-    const r = parseFloatingVoiceCommand("abrir asistente de voz");
-    expect(r.type === "NAVIGATE" && r.path).toBe("/clinical/voice");
+  it("citas pendientes/completadas → agenda con filtro de estado", () => {
+    expect(parseFloatingVoiceCommand("citas pendientes")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/agenda?status=SCHEDULED",
+      message: "Abriendo citas pendientes",
+    });
+    expect(parseFloatingVoiceCommand("citas completadas")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/agenda?status=COMPLETED",
+      message: "Abriendo historial de citas",
+    });
   });
 
-  it("detecta auditoría y administración", () => {
+  it("buscar paciente con nombre → padrón filtrado por ?q=", () => {
+    expect(parseFloatingVoiceCommand("buscar paciente Ana Paredes")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/patients?q=Ana%20Paredes",
+      message: "Buscando Ana Paredes",
+    });
+    expect(parseFloatingVoiceCommand("abrir ficha de Juan Pérez")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/patients?q=Juan%20P%C3%A9rez",
+      message: "Buscando Juan Pérez",
+    });
     expect(
-      parseFloatingVoiceCommand("ver auditoría").type === "NAVIGATE" &&
-        (parseFloatingVoiceCommand("ver auditoría") as any).path,
+      parseFloatingVoiceCommand("ver la historia del paciente María López").path,
+    ).toBe("/clinical/patients?q=Mar%C3%ADa%20L%C3%B3pez");
+  });
+
+  it("navegación general: auditoría, administración, asistente, portal, pacientes", () => {
+    expect(parseFloatingVoiceCommand("ver auditoría").type === "NAVIGATE" &&
+      (parseFloatingVoiceCommand("ver auditoría") as any).path,
     ).toBe("/clinical/audit");
     expect(
       parseFloatingVoiceCommand("ir a administración").type === "NAVIGATE" &&
         (parseFloatingVoiceCommand("ir a administración") as any).path,
     ).toBe("/clinical/admin");
-  });
-
-  it("detecta el portal del paciente", () => {
-    const r = parseFloatingVoiceCommand("abrir mi portal");
-    expect(r.type === "NAVIGATE" && r.path).toBe("/patient/dashboard");
+    expect(
+      parseFloatingVoiceCommand("abrir asistente de voz").type === "NAVIGATE" &&
+        (parseFloatingVoiceCommand("abrir asistente de voz") as any).path,
+    ).toBe("/clinical/voice");
+    expect(
+      parseFloatingVoiceCommand("abrir mi portal").type === "NAVIGATE" &&
+        (parseFloatingVoiceCommand("abrir mi portal") as any).path,
+    ).toBe("/patient/dashboard");
+    expect(
+      parseFloatingVoiceCommand("abrir pacientes").type === "NAVIGATE" &&
+        (parseFloatingVoiceCommand("abrir pacientes") as any).path,
+    ).toBe("/clinical/patients");
   });
 
   it("ignora acentos al detectar intención", () => {
-    const r = parseFloatingVoiceCommand("abrir auditoria");
+    const r = parseFloatingVoiceCommand("ver auditoria");
     expect(r.type === "NAVIGATE" && r.path).toBe("/clinical/audit");
   });
 
-  it("devuelve NONE para texto sin intención reconocida", () => {
+  it("devuelve NONE para texto clínico dictado o saludos (sin intención)", () => {
+    expect(parseFloatingVoiceCommand("paciente refiere cefalea")).toEqual({
+      type: "NONE",
+    });
     expect(parseFloatingVoiceCommand("hola qué tal")).toEqual({ type: "NONE" });
     expect(parseFloatingVoiceCommand("")).toEqual({ type: "NONE" });
     expect(parseFloatingVoiceCommand("   ")).toEqual({ type: "NONE" });
@@ -97,5 +136,10 @@ describe("parseFloatingVoiceCommand", () => {
   it("prefiere agenda sobre pacientes cuando ambos aparecen", () => {
     const r = parseFloatingVoiceCommand("citas de pacientes de mañana");
     expect(r.type === "NAVIGATE" && r.path).toBe("/clinical/agenda");
+  });
+
+  it("'agendar' tiene prioridad sobre 'citas'", () => {
+    const r = parseFloatingVoiceCommand("agendar cita pendiente");
+    expect(r.type === "NAVIGATE" && r.path).toBe("/clinical/agenda?new=1");
   });
 });
