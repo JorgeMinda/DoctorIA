@@ -7,6 +7,7 @@ import { NavBar } from "./components/NavBar/NavBar";
 import { marketingNavigationItems } from "./components/NavBar/constants";
 import { ClinicalLayout } from "./components/clinical-layout/ClinicalLayout";
 import { CookieConsentBanner } from "./components/cookie-consent/Banner";
+import { FloatingVoiceAssistant } from "./components/FloatingVoiceAssistant";
 import { cn } from "./utils";
 
 /**
@@ -72,6 +73,7 @@ export function App() {
         )}
       </div>
       <Toaster position="top-center" />
+      <FloatingVoiceAssistant />
       <CookieConsentBanner />
     </>
   );
