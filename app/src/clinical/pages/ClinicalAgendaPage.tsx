@@ -1021,6 +1021,15 @@ export function ClinicalAgendaPage() {
         />
       )}
 
+      {showNewCita && (
+        <NewAppointmentModal
+          open={Boolean(showNewCita)}
+          onOpenChange={setShowNewCita}
+          defaultDate={selectedNewCitaDate}
+          onDone={() => refetch()}
+        />
+      )}
+
       {ConfirmDialog}
     </div>
   );
