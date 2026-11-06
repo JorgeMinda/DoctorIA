@@ -546,7 +546,7 @@ function ClinicalNotePageContent() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Dicta la consulta médica libremente. También puedes dictar en cada sección individual o pulsar <strong>Estructurar con IA</strong> para organizar automáticamente las secciones SOAP.
+                  Dicta la consulta médica libremente o pulsa <strong>Estructurar con IA</strong> para organizar automáticamente las secciones SOAP.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
