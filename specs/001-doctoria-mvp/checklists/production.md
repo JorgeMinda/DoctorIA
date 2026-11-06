@@ -25,7 +25,7 @@
   - `medico2@doctoria.com` (Médico)
 - [x] Seed idempotente (`upsert`) ejecutado en el arranque del server vía `WASP_DB_SEED_NAME=seedSyntheticClinicalData` + `bundle/dbSeed.js`
 - [x] 6 pacientes sintéticos (PAC-001 .. PAC-006) con historia clínica, alergias y 12 accesos médico↔paciente
-- [x] Cero PII real en datos (Constitución P5)
+- [x] Datos de producción protegidos: cifrado, sin PII en logs ni repo (Constitución P5)
 
 ## 3. Autenticación y Sesión
 

@@ -43,7 +43,7 @@ export const features: GridFeature[] = [
   },
   {
     name: "Pacientes sintéticos",
-    description: "Datos de demostración ficticios (PAC-NNN) que garantizan cero PII real.",
+    description: "Datos de demostración ficticios (PAC-NNN); producción con datos reales protegidos.",
     icon: <UserRound className="size-5" />,
     href: "#features",
     size: "large",
@@ -116,7 +116,7 @@ export const faqs = [
     id: 2,
     question: "¿DoctorIA maneja datos reales de pacientes?",
     answer:
-      "No en el entorno de demostración. El MVP opera exclusivamente con pacientes sintéticos (PAC-NNN) para garantizar cero PII real.",
+      "Los entornos de demostración usan pacientes sintéticos (PAC-NNN); en producción se operan datos reales con protección de datos (Constitución P5).",
   },
   {
     id: 3,

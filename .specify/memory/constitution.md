@@ -1,7 +1,8 @@
 <!--
 CONSTITUTION SYNC IMPACT REPORT
-Version: 1.0.0 (Audit Corrections)
+Version: 2.0.0 (Data Protection Amendment)
 Modified Principles:
+- Principio 5: redefinido de "datos sintéticos exclusivos" a "Protección de Datos Clínicos" — producción opera con datos de pacientes reales protegidos (cifrado en tránsito y reposo, RBAC, auditoría, retención, derechos del titular según Ley Orgánica de Protección de Datos Personales del Ecuador Ley 001-2021); entornos de desarrollo, pruebas y demostraciones siguen siendo exclusivamente sintéticos.
 - Principio 9: Especificado tratamiento seguro de archivos .env (prohibición de archivos reales con secretos; obligación de versionar plantillas .env.example / .env.*.example sin credenciales).
 - Principio 10: Ajustado el estado real de la excepción del equipo de 7 Doers como excepción operativa documentada pendiente de aprobación formal por parte del mentor.
 Added Sections:
@@ -76,9 +77,9 @@ DoctorIA es una aplicación asistencial orientada a personal médico que actúa 
   - Registrar en el registro de auditoría quién realizó la revisión y en qué fecha/hora fue confirmada.
 - Las alertas automáticas de dosis, interacciones medicamentosas o motores de decisión clínica de alto riesgo quedan **completamente fuera del MVP funcional** hasta contar con fuentes médicas validadas, reglas homologadas y supervisión profesional experta.
 
-### 5. Protección de Datos y Privacidad Clínica
+### 5. Protección de Datos Clínicos
 
-- Durante las fases de desarrollo, pruebas automatizadas y demostraciones SE UTILIZARÁN ÚNICAMENTE datos sintéticos y anónimos.
+- El sistema opera en producción con **datos de pacientes reales**; los entornos de desarrollo, pruebas automatizadas y demostraciones usarán únicamente datos sintéticos y anónimos.
 - Queda ESTRICTAMENTE PROHIBIDO almacenar o guardar en el repositorio de código:
   - Historias clínicas o registros de pacientes reales.
   - Información de Identificación Personal (PII) de pacientes o personal.
@@ -86,8 +87,11 @@ DoctorIA es una aplicación asistencial orientada a personal médico que actúa 
   - Secretos de servicios externos o de infraestructura.
 - Todos los secretos y configuraciones sensibles DEBEN administrarse exclusivamente mediante variables de entorno local y de despliegue (`.env` no versionados).
 - Los registros de sistema (logs) NO DEBEN registrar datos clínicos ni información identificable en ningún nivel.
-- La aplicación DEBE aplicar los principios de mínimo privilegio, control de acceso basado en roles, trazabilidad de operaciones y separación estricta entre cuentas de usuario.
-- El despliegue a ambientes de producción DEBE exigir el uso de cifrado HTTPS en todas las comunicaciones.
+- **Cifrado**: HTTPS obligatorio en todas las comunicaciones (tránsito) y cifrado en reposo de la base de datos y respaldos.
+- **Acceso**: mínimo privilegio, control de acceso basado en roles (RBAC), verificación de acceso por paciente en el servidor, trazabilidad de operaciones y separación estricta entre cuentas de usuario.
+- **Auditoría**: toda operación clínica queda registrada en `AuditLog` (acción/estado/metadata, jamás contenido clínico — RNF-002).
+- **Retención**: definir y respetar una política de retención y supresión de datos clínicos.
+- **Derechos del titular**: soportar acceso, rectificación y supresión de datos del paciente conforme a la Ley Orgánica de Protección de Datos Personales del Ecuador (Ley 001-2021).
 
 ### 6. Alcance Controlado del MVP (Minimum Viable Product)
 
@@ -171,4 +175,4 @@ El versionamiento de esta Constitución se rige por reglas semánticas de gobier
 
 ---
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-02 | **Last Amended**: 2026-08-02
+**Version**: 2.0.0 | **Ratified**: 2026-08-02 | **Last Amended**: 2026-11-05

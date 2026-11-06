@@ -11,7 +11,7 @@ Este documento resume el estado completo del proyecto para que una IA colaborado
 
 ## 1. Qué es DoctorIA
 
-MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El médico dicta/escribe texto libre y DoctorIA lo estructura en secciones predefinidas de la nota clínica (y epicrisis). La IA es **exclusivamente asistiva**: nunca confirma, diagnostica ni prescribe (Constitución P4). Los datos son **100% sintéticos** (Constitución P5).
+MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El médico dicta/escribe texto libre y DoctorIA lo estructura en secciones predefinidas de la nota clínica (y epicrisis). La IA es **exclusivamente asistiva**: nunca confirma, diagnostica ni prescribe (Constitución P4). En producción opera con datos de pacientes reales protegidos; dev/demo usan datos sintéticos (Constitución P5).
 
 ### Estructura de 8 semanas (curso de emprendimiento, 7 Doers)
 
@@ -199,7 +199,7 @@ specs/001-doctoria-mvp/
 
 - **P1 Spec-Driven**: código siempre trazable a `spec.md` (RF/RNF).
 - **P4 Seguridad clínica**: IA asistiva, nunca confirmatoria; registro CONFIRMED inmutable (adendas).
-- **P5 Privacidad**: SOLO datos sintéticos; sin PII en logs; secrets fuera de git.
+- **P5 Protección de datos**: datos reales en producción con cifrado; sintéticos en dev/demo; sin PII en logs; secrets fuera de git.
 - **P3 Reutilización**: sin frameworks nuevos; usar Wasp/Prisma/Radix existentes.
 - **P7 Calidad**: toda tarea con tests verdes (Vitest 43, Playwright 10) y QA documentado.
 - **P10 Gobierno**: decisiones documentadas en `plan.md`/`research.md` (PD-01..03); tareas en `tasks.md` por Doer.

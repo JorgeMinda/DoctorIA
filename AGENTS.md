@@ -30,7 +30,7 @@ Proyecto construido sobre Wasp 0.25 (template Open SaaS). Verifica contra la doc
 2. **Original intacto (RNF-004)** — `ClinicalNote.originalText` NUNCA se modifica. Las secciones estructuradas son derivadas.
 3. **Estados inmutables** — `DRAFT_MANUAL → DRAFT_AI_ASSISTED → REVIEWED → CONFIRMED`. Confirmada = inmutable; corrección SOLO por adenda (`parentNoteId` + `addendumReason`).
 4. **Roles excluyentes** — `isAdmin=true` + `isMedico=true` es INVÁLIDO (bloqueado por guards en `app/src/clinical/services/guards.ts`).
-5. **Datos sintéticos (P5)** — CERO PII real. Solo pacientes ficticios `PAC-NNN`.
+5. **Protección de datos clínicos (P5)** — Producción con datos reales cifrados; dev/demo solo sintéticos (`PAC-NNN`). Sin PII en logs ni en el repo.
 6. **Auditoría sin contenido clínico (RNF-002)** — `AuditLog` guarda acciones/estados/metadata, jamás texto clínico.
 7. **Autorización por paciente (R-10)** — toda operación patient-scoped verifica `MedicoPatientAccess` en servidor (`assertMedicoPatientAccess`).
 8. **Sin pagos ni integraciones externas** — fuera de alcance del MVP (Ingequimed/DataWallet/CheckUp+/facturación).

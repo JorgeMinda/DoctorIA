@@ -199,7 +199,7 @@ Todos los requisitos funcionales son trazables a las historias de usuario y resp
 ## 7. Requisitos No Funcionales (RNF)
 
 - **RNF-001 (Seguridad - Autenticación y Autorización)**: El sistema DEBE autenticar a todo usuario antes de dar acceso a datos clínicos, garantizando aislamiento total entre sesiones no autorizadas.
-- **RNF-002 (Privacidad - Cero PII Real y Cero PII en Logs)**: El sistema NO DEBE registrar información clínica sensible, datos personales de pacientes ni credenciales en las trazas de registro (logs) de la aplicación. Se utilizarán únicamente datos sintéticos.
+- **RNF-002 (Privacidad - Sin PII en Logs)**: El sistema NO DEBE registrar información clínica sensible, datos personales de pacientes ni credenciales en las trazas de registro (logs) de la aplicación. Los datos reales de producción se manejan con cifrado, mínimo privilegio y trazabilidad (Constitución P5).
 - **RNF-003 (Usabilidad - Reducción de Carga cognitiva)**: La interfaz DEBE estar diseñada para minimizar clics y evitar el llenado de campos repetitivos, centralizando la entrada en el campo de texto unificado.
 - **RNF-004 (Usabilidad - Conservación del Texto Original)**: El sistema DEBE garantizar la preservación del 100% del texto original introducido por el profesional médico ante cualquier falla o procesamiento por IA.
 - **RNF-005 (Accesibilidad - WCAG AA)**: La interfaz de usuario DEBE cumplir con las pautas de accesibilidad **WCAG nivel AA**, asegurando ratios de contraste adecuados y legibilidad tipográfica.
@@ -251,8 +251,7 @@ Quedan **estrictamente excluidos** del alcance del presente MVP funcional:
 8. **Funcionamiento 100% offline** de la aplicación.
 9. **Analítica clínica avanzada**, tableros epidemiológicos o reportes gerenciales.
 10. **Módulos de cobro, pagos o facturación médica** (las funciones de pagos de Open SaaS se desactivan/excluyen del flujo clínico).
-11. **Utilización de datos de pacientes reales o historias clínicas verdaderas** (uso exclusivo de datos sintéticos).
-12. **Acceso directo de pacientes** al sistema.
+11. **Acceso directo de pacientes** al sistema.
 
 ---
 
@@ -291,7 +290,7 @@ Las siguientes aseveraciones se registran formalmente como **Hipótesis a valida
 | **P2: AI Director Mindset** | ✅ Cumple | No hay código generado; definición clara de alcance atómico para desarrollo posterior. |
 | **P3: Reutilización de Stack** | ✅ Cumple | Respeta el alcance funcional basándose en capacidades estándar sin sobreingeniería. |
 | **P4: Seguridad Clínica y Supervisión** | ✅ Cumple | La IA nunca diagnostica ni prescribe; contenido siempre inicia en Borrador y exige confirmación humana explícita. |
-| **P5: Protección de Datos y Privacidad** | ✅ Cumple | Exclusivamente datos sintéticos; prohibición de PII en logs y en repositorio. |
+| **P5: Protección de Datos Clínicos** | ✅ Cumple | Datos reales en producción con cifrado; dev/demo sintéticos; sin PII en logs ni repo; AuditLog sin contenido clínico. |
 | **P6: Alcance Controlado del MVP** | ✅ Cumple | Cubre exactamente los 12 flujos permitidos y documenta todas las exclusiones explícitas. |
 | **P7: Calidad y Pruebas Rigurosas** | ✅ Cumple | Historias con Given-When-Then, criterios de aceptación verificables y pruebas independientes. |
 | **P8: Usabilidad y Accesibilidad** | ✅ Cumple | Texto unificado, cumplimiento WCAG AA, indicación de campos faltantes con texto e iconografía. |

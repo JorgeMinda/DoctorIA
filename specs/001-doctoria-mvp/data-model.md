@@ -77,7 +77,7 @@ Represents a fictitious patient record used exclusively for development, testing
 
 **Validation rules**:
 - `syntheticId` must be unique and follow format `PAC-NNN`
-- All demographic data must be clearly synthetic per Constitution P5
+- Dev/demo demographic data must be clearly synthetic; production data follows Constitution P5 protection controls
 
 ---
 

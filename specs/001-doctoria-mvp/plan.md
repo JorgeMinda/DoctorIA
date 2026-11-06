@@ -44,7 +44,7 @@ Transformar la especificación funcional del MVP DoctorIA en una solución técn
 | P2 | AI Director Mindset | ✅ Cumple | Artefactos atómicos y revisables; decisiones documentadas con alternativas |
 | P3 | Reutilización de Stack | ✅ Cumple | Se reutiliza Wasp/Prisma/React/Radix; no se introduce framework nuevo |
 | P4 | Seguridad Clínica y Supervisión | ✅ Cumple | IA nunca confirma; flujo exige confirmación humana explícita |
-| P5 | Protección de Datos y Privacidad | ✅ Cumple | Exclusivamente datos sintéticos; sin PII en logs; secrets fuera de Git |
+| P5 | Protección de Datos Clínicos | ✅ Cumple | Datos reales en producción cifrados; dev/demo sintéticos; sin PII en logs; secrets fuera de Git |
 | P6 | Alcance Controlado del MVP | ✅ Cumple | Módulo clínico único; sin microservicios, K8s ni buses de eventos |
 | P7 | Calidad y Pruebas Rigurosas | ✅ Cumple | Estrategia de pruebas definida con 12 niveles |
 | P8 | Usabilidad y Accesibilidad | ✅ Cumple | Google Stitch gate mantenido; WCAG AA vía Radix UI |
@@ -346,8 +346,8 @@ Una función helper (`createAuditEntry`) se invoca al final de cada operación d
 
 | Control | Implementación |
 |:---|:---|
-| Solo datos sintéticos | `SyntheticPatient` con datos claramente ficticios; seed verificable |
-| Ningún dato clínico real | Constitución P5; validación en reviews |
+| Datos sintéticos en dev/demo | `SyntheticPatient` con datos claramente ficticios; seed verificable; producción con datos reales cifrados |
+| Datos reales protegidos | Cifrado en tránsito/repo; AuditLog sin contenido clínico; validación en reviews |
 | Secrets fuera de Git | `.gitignore` ya incluye `.env`; `.env.*.example` con placeholders |
 | Sin PII en logs | Console logs sin texto clínico; AuditLog sin contenido médico |
 | Mínimo privilegio | Médico no accede a admin; Admin no accede a clínica |
@@ -481,7 +481,7 @@ Estas 3 pantallas están planteadas para representar los flujos clínicos princi
 | P2 | AI Director Mindset | ✅ Cumple | Artefactos atómicos: research.md, data-model.md, contracts/, quickstart.md |
 | P3 | Reutilización de Stack | ✅ Cumple | 11 capacidades reutilizadas; un solo módulo nuevo; cero frameworks adicionales |
 | P4 | Seguridad Clínica | ✅ Cumple | IA desacoplada de confirmación; guards de inmutabilidad; validación RF-026 |
-| P5 | Protección de Datos | ✅ Cumple | Solo datos sintéticos; AuditLog sin contenido clínico; logs técnicos limpios |
+| P5 | Protección de Datos | ✅ Cumple | Datos reales cifrados en prod; AuditLog sin contenido clínico; logs técnicos limpios |
 | P6 | Alcance Controlado | ✅ Cumple | Módulo clínico único; sin microservicios, K8s, buses, ni infra extra |
 | P7 | Calidad y Pruebas | ✅ Cumple | 12 niveles de prueba; 10 escenarios E2E; dataset de 30 notas para IA |
 | P8 | Usabilidad | ✅ Cumple | Stitch gate preservado; Radix UI para accesibilidad; WCAG AA |
