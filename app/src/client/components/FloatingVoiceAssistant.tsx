@@ -208,17 +208,58 @@ export function FloatingVoiceAssistant() {
           listening ? "Detener escucha del asistente de voz" : "Activar asistente de voz"
         }
         onClick={toggleListening}
-        className={
-          listening
-            ? "size-14 rounded-full bg-destructive text-destructive-foreground shadow-lg animate-pulse"
-            : "size-14 rounded-full bg-primary text-primary-foreground shadow-[0_0_20px_rgba(0,218,243,0.35)] hover:bg-primary/90"
-        }
+        className="group relative size-14 rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-transparent active:scale-100"
       >
-        {listening ? (
-          <Square className="size-5" fill="currentColor" />
-        ) : (
-          <Mic className="size-5" />
-        )}
+        {/* Glow ambiental (diseño VoiceOrb) */}
+        <span
+          aria-hidden="true"
+          className="absolute -inset-14 rounded-full blur-3xl transition-opacity duration-700 motion-reduce:transition-none opacity-70"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(56, 189, 248, 0.16) 0%, rgba(99, 102, 241, 0.08) 45%, transparent 70%)",
+          }}
+        />
+        {/* Anillo conic */}
+        <span
+          aria-hidden="true"
+          className={`absolute inset-0 rounded-full transition-transform duration-700 ${
+            listening ? "voice-orb-ring-fast" : "voice-orb-ring"
+          }`}
+          style={{
+            background: listening
+              ? "conic-gradient(from 0deg, #22d3ee, #0ea5e9, #38bdf8, #22d3ee, #22d3ee)"
+              : "conic-gradient(from 0deg, #22d3ee, #3b82f6, #8b5cf6, #22c55e, #22d3ee)",
+            animationDuration: listening ? "3.2s" : "18s",
+            animationIterationCount: "infinite",
+            filter: "blur(0.5px)",
+          }}
+        />
+        {/* Anillo externo tenue */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-[2px] rounded-full border border-white/10"
+        />
+        {/* Núcleo oscuro */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-[5px] rounded-full bg-[#05070c] transition-all duration-500"
+          style={{
+            boxShadow: listening
+              ? "inset 0 0 20px rgba(0,0,0,0.85), inset 0 0 8px rgba(34,211,238,0.4)"
+              : "inset 0 0 20px rgba(0,0,0,0.85), inset 0 0 8px rgba(56,189,248,0.15)",
+          }}
+        />
+        {/* Icono */}
+        <span className="relative flex items-center justify-center">
+          {listening ? (
+            <Square
+              className="size-4 animate-pulse text-destructive"
+              fill="currentColor"
+            />
+          ) : (
+            <Mic className="size-5 text-cyan-400 transition-colors group-hover:text-cyan-300" />
+          )}
+        </span>
       </Button>
     </div>
   );
