@@ -29,17 +29,17 @@ import { EmergencyAppointmentModal } from "../components/EmergencyAppointmentMod
 export function ClinicalPatientsPage() {
   const { data: user } = useAuth();
   const [searchParams] = useSearchParams();
-  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const qParam = searchParams.get("q") ?? "";
+  const [search, setSearch] = useState(qParam);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
 
-  // Filtro inicial desde la URL (?q=) — lo usa el asistente de voz flotante.
+  // Filtro desde la URL (?q=) — lo usa el asistente de voz flotante.
   useEffect(() => {
-    const q = searchParams.get("q") ?? "";
-    setSearch((prev) => (prev === q ? prev : q));
-  }, [searchParams]);
+    setSearch((prev) => (prev === qParam ? prev : qParam));
+  }, [qParam]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

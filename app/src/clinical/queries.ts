@@ -83,37 +83,53 @@ export const getPatients: GetPatients<
 
   const skip = (page - 1) * pageSize;
 
-  const where: any = {
+  const baseWhere: any = {
     isActive: true,
     ...(user.isMedico && !user.isAdmin
       ? { authorizedMedicos: { some: { medicoId: user.id } } }
       : {}),
-    ...(search
-      ? {
-          OR: [
-            { firstName: { contains: search, mode: "insensitive" as const } },
-            { lastName: { contains: search, mode: "insensitive" as const } },
-            { syntheticId: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
-      : {}),
   };
+
+  const include = {
+    authorizedMedicos: {
+      select: {
+        medicoId: true,
+      },
+    },
+  };
+  const orderBy: any = [{ firstName: "asc" }, { lastName: "asc" }];
+
+  // Búsqueda sin acentos: ILIKE de Postgres no ignora tildes ("andres" no
+  // matchea "Andrés"), así que con término de búsqueda se filtra en JS sobre
+  // el conjunto autorizado (acotado) con plegado de acentos.
+  if (search) {
+    const fold = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const needle = fold(search.trim());
+
+    const candidates = await context.entities.SyntheticPatient.findMany({
+      where: baseWhere,
+      orderBy,
+      take: 5000,
+      include,
+    });
+
+    const matched = candidates.filter((p) =>
+      fold(`${p.firstName} ${p.lastName} ${p.syntheticId}`).includes(needle),
+    );
+    const patients = matched.slice(skip, skip + pageSize);
+    return { patients, totalPages: Math.ceil(matched.length / pageSize) };
+  }
 
   const [patients, total] = await Promise.all([
     context.entities.SyntheticPatient.findMany({
-      where,
-      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      where: baseWhere,
+      orderBy,
       skip,
       take: pageSize,
-      include: {
-        authorizedMedicos: {
-          select: {
-            medicoId: true,
-          },
-        },
-      },
+      include,
     }),
-    context.entities.SyntheticPatient.count({ where }),
+    context.entities.SyntheticPatient.count({ where: baseWhere }),
   ]);
 
   return { patients, totalPages: Math.ceil(total / pageSize) };
