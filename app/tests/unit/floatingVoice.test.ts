@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   formatDictation,
   parseFloatingVoiceCommand,
+  wantsCreateNote,
+  wantsPatientSummary,
 } from "../../src/client/voice/floatingVoice";
 
 describe("formatDictation", () => {
@@ -200,5 +202,36 @@ describe("parseFloatingVoiceCommand", () => {
     expect(parseFloatingVoiceCommand("abrir la agenda de citas").path).toBe(
       "/clinical/agenda",
     );
+  });
+});
+
+describe("wantsCreateNote / wantsPatientSummary (comandos profundos)", () => {
+  it("detecta comando explícito de nota por voz", () => {
+    expect(wantsCreateNote("anota en la historia de PAC-001 que presenta fiebre")).toBe(
+      true,
+    );
+    expect(wantsCreateNote("crea una nota para Ana Paredes")).toBe(true);
+    expect(wantsCreateNote("registra que el paciente refiere náuseas")).toBe(true);
+  });
+
+  it("no confunde dictado clínico ni consultas de resumen con nota", () => {
+    expect(wantsCreateNote("paciente refiere cefalea")).toBe(false);
+    expect(wantsCreateNote("dame el resumen de Ana Paredes")).toBe(false);
+    expect(wantsCreateNote("")).toBe(false);
+  });
+
+  it("detecta consulta explícita de resumen con paciente citado", () => {
+    expect(wantsPatientSummary("dame el resumen de Ana Paredes")).toBe(true);
+    expect(wantsPatientSummary("DoctorIA, dame el resumen de María Torres")).toBe(true);
+    expect(wantsPatientSummary("resumen de PAC-001")).toBe(true);
+    expect(wantsPatientSummary("dame la ficha de Andrés Núñez")).toBe(true);
+  });
+
+  it("no secuestra dictado genérico ni comandos de nota", () => {
+    expect(wantsPatientSummary("paciente refiere cefalea")).toBe(false);
+    expect(wantsPatientSummary("anota en la historia de PAC-001 que hay fiebre")).toBe(
+      false,
+    );
+    expect(wantsPatientSummary("")).toBe(false);
   });
 });

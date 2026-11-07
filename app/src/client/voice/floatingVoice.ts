@@ -3,6 +3,11 @@
 // por palabras clave/regex, dictado en input enfocado y fallback con TTS.
 // Sin dependencias de DOM ni React: testeada en tests/unit/floatingVoice.test.ts.
 
+import {
+  parseVoiceCommand,
+  parseVoiceQuery,
+} from "../../clinical/services/voiceAssistant";
+
 export type FloatingVoiceIntent =
   | { type: "NAVIGATE"; path: string; message: string }
   | { type: "NONE" };
@@ -121,6 +126,32 @@ export function parseFloatingVoiceCommand(transcript: string): FloatingVoiceInte
   }
 
   return { type: "NONE" };
+}
+
+// Comando explícito de nota por voz ("anota en la historia de PAC-001 que…",
+// "crea una nota para Ana…"). Reutiliza el detector de la página del asistente.
+export function wantsCreateNote(text: string): boolean {
+  return parseVoiceCommand(text).intent === "CREATE_NOTE";
+}
+
+// Consulta explícita de resumen/ficha con paciente citado
+// ("dame el resumen de Ana Paredes", "resumen de PAC-001").
+// Exige verbo de petición + sustantivo de resumen para no secuestrar el dictado.
+export function wantsPatientSummary(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  const request =
+    /\bd[aá]me\b|\btrae\b|\bm[uú]estra(?:me)?\b|\bd[ií]me\b|\bquiero\b|\bnecesito\b|\bconsulta[r]?\b|\bdoctoria\b/i.test(
+      t,
+    ) ||
+    /^\s*(?:el\s+|la\s+)?(?:resumen|ficha|historia|s[ií]ntesis|evoluci[oó]n)\s+(?:de|del|sobre)\s+/i.test(
+      t,
+    );
+  const subject =
+    /\bresumen\b|\bficha\b|\bhistoria\b|\bs[ií]ntesis\b|\bevoluci[oó]n\b|\bestado\b|\bdatos\b|\bdetalles\b|\binformaci[oó]n\b|\bsituaci[oó]n\b/i.test(
+      t,
+    );
+  return request && subject && parseVoiceQuery(t).name !== null;
 }
 
 // Dictado en un input/textarea controlado por React: usa el setter nativo

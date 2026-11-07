@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { useAuth } from "wasp/client/auth";
+import { routes } from "wasp/client/router";
+import {
+  createNoteFromVoice,
+  getVoiceAssistantResponse,
+} from "wasp/client/operations";
 import { Mic, Square, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { speak } from "../../clinical/services/tts.service";
+import type { VoiceAssistantResponse } from "../../clinical/services/voiceAssistant";
 import {
   appendToFocusedElement,
   formatDictation,
   parseFloatingVoiceCommand,
+  wantsCreateNote,
+  wantsPatientSummary,
 } from "../voice/floatingVoice";
 
 type PanelState = { status: string; transcript: string } | null;
@@ -17,11 +26,15 @@ const TTS_OPTIONS = { lang: "es-ES", rate: 1.05 } as const;
 export function FloatingVoiceAssistant() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { data: user } = useAuth();
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [panel, setPanel] = useState<PanelState>(null);
+  const [summary, setSummary] = useState<VoiceAssistantResponse | null>(null);
   const recRef = useRef<any>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isMedico = Boolean(user?.isMedico) && !user?.isAdmin;
 
   const visible =
     location.pathname.startsWith("/clinical") ||
@@ -57,18 +70,80 @@ export function FloatingVoiceAssistant() {
     };
   }, [stopListening]);
 
+  // Comandos profundos (solo médico, mismo servidor que la página /clinical/voice):
+  // resumen de paciente o creación de borrador de nota por voz (P4: revisión humana).
+  const runDeepCommand = useCallback(
+    async (text: string, isNote: boolean) => {
+      setSummary(null);
+      setPanel({
+        status: isNote ? "Creando borrador…" : "Procesando consulta…",
+        transcript: text,
+      });
+      try {
+        if (isNote) {
+          const res: any = await createNoteFromVoice({ query: text });
+          if (res?.actionType !== "NOTE_CREATED") {
+            throw new Error("No se pudo crear el borrador de nota.");
+          }
+          setPanel({
+            status: "Nota creada",
+            transcript: `Se guardó una nota para ${res.patientName} (${res.syntheticId}). Abriendo el editor para revisión…`,
+          });
+          speak(
+            `Borrador de nota creado para ${res.patientName}. Abriendo el editor.`,
+            TTS_OPTIONS,
+          );
+          navigate(routes.ClinicalNoteRoute.build({ params: { noteId: res.noteId } }));
+          scheduleHide();
+          return;
+        }
+
+        const res: VoiceAssistantResponse | null = await getVoiceAssistantResponse({
+          query: text,
+        });
+        if (!res) throw new Error("Sin respuesta del asistente");
+        setSummary(res);
+        if (res.patient) {
+          setPanel({
+            status: "Resumen listo",
+            transcript: `${res.patient.firstName} ${res.patient.lastName} (${res.patient.syntheticId})`,
+          });
+          speak(
+            `Resumen clínico de ${res.patient.firstName} ${res.patient.lastName} listo.`,
+            TTS_OPTIONS,
+          );
+        } else {
+          const msg =
+            res.summary[0] ?? "No encontré ningún paciente con ese nombre.";
+          setPanel({ status: "No encontrado", transcript: msg });
+          speak(msg, TTS_OPTIONS);
+          scheduleHide();
+        }
+      } catch (err: any) {
+        const msg = err?.message || "No se pudo completar la consulta";
+        setSummary(null);
+        setPanel({ status: "Error", transcript: msg });
+        speak(msg.length < 90 ? msg : "No se pudo completar la consulta.", TTS_OPTIONS);
+        scheduleHide();
+      }
+    },
+    [navigate, scheduleHide],
+  );
+
   // Router del asistente de referencia: intención → dictado en input enfocado
   // → fallback que repite lo escuchado por TTS.
   const handleVoiceIntent = useCallback(
     (text: string) => {
       if (!text) {
         setPanel(null);
+        setSummary(null);
         return;
       }
 
       const intent = parseFloatingVoiceCommand(text);
       if (intent.type === "NAVIGATE") {
         setPanel({ status: "Listo", transcript: intent.message });
+        setSummary(null);
         speak(intent.message, TTS_OPTIONS);
         navigate(intent.path);
         scheduleHide();
@@ -81,6 +156,27 @@ export function FloatingVoiceAssistant() {
         (active.tagName === "TEXTAREA" ||
           (active.tagName === "INPUT" &&
             (active as HTMLInputElement).type === "text"));
+
+      // Comandos profundos: tienen prioridad sobre el dictado por ser explícitos.
+      const create = wantsCreateNote(text);
+      const query = wantsPatientSummary(text);
+      if (create || query) {
+        if (isMedico) {
+          void runDeepCommand(text, create);
+          return;
+        }
+        if (!typing) {
+          setSummary(null);
+          setPanel({
+            status: "No disponible",
+            transcript: "Consulta reservada al médico asignado.",
+          });
+          speak("Esta consulta está disponible solo para el médico asignado.", TTS_OPTIONS);
+          scheduleHide();
+          return;
+        }
+      }
+
       if (typing) {
         const formatted = formatDictation(text);
         if (appendToFocusedElement(formatted)) {
@@ -95,7 +191,7 @@ export function FloatingVoiceAssistant() {
       speak(text, TTS_OPTIONS);
       scheduleHide();
     },
-    [navigate, scheduleHide],
+    [navigate, scheduleHide, isMedico, runDeepCommand],
   );
 
   const toggleListening = useCallback(() => {
@@ -164,6 +260,7 @@ export function FloatingVoiceAssistant() {
     };
 
     setListening(true);
+    setSummary(null);
     setPanel({ status: "Escuchando...", transcript: "" });
     try {
       rec.start();
@@ -185,7 +282,9 @@ export function FloatingVoiceAssistant() {
         <div
           role="status"
           aria-live="polite"
-          className="w-64 rounded-xl border border-outline-variant bg-background/95 p-3 shadow-lg backdrop-blur"
+          className={`${
+            summary ? "w-80" : "w-64"
+          } rounded-xl border border-outline-variant bg-background/95 p-3 shadow-lg backdrop-blur`}
         >
           <div className="mb-1 flex items-center justify-between gap-2">
             <span className="mono-label flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-primary">
@@ -201,7 +300,10 @@ export function FloatingVoiceAssistant() {
               type="button"
               aria-label="Cerrar aviso de voz"
               className="text-muted-foreground transition-colors hover:text-foreground"
-              onClick={() => setPanel(null)}
+              onClick={() => {
+                setPanel(null);
+                setSummary(null);
+              }}
             >
               <X className="size-3.5" />
             </button>
@@ -211,6 +313,43 @@ export function FloatingVoiceAssistant() {
               <span className="text-muted-foreground">Habla ahora...</span>
             )}
           </p>
+          {summary && (
+            <div className="mt-2 space-y-2 border-t border-outline-variant/60 pt-2">
+              <ul className="space-y-1">
+                {summary.summary.slice(0, 4).map((line) => (
+                  <li key={line} className="flex gap-1.5 text-xs text-foreground/90">
+                    <span className="mt-1.5 block size-1 shrink-0 rounded-full bg-primary" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] leading-snug text-muted-foreground">
+                Signos ilustrativos (datos sintéticos). Revíselos contra la historia
+                antes de decidir.
+              </p>
+              {summary.patient && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 w-full text-xs"
+                  onClick={() => {
+                    const patientId = summary.patient?.id;
+                    setPanel(null);
+                    setSummary(null);
+                    if (patientId) {
+                      navigate(
+                        routes.ClinicalPatientDetailRoute.build({
+                          params: { patientId },
+                        }),
+                      );
+                    }
+                  }}
+                >
+                  Ver ficha completa
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
