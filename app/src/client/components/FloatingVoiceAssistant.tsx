@@ -99,7 +99,9 @@ export function FloatingVoiceAssistant() {
   );
 
   const toggleListening = useCallback(() => {
-    if (listening) {
+    // Si el estado quedó "escuchando" sin reconocimiento vivo (onend perdido),
+    // reiniciar en lugar de solo detener (evita botón muerto).
+    if (listening && recRef.current) {
       stopListening();
       return;
     }
@@ -125,11 +127,20 @@ export function FloatingVoiceAssistant() {
     rec.maxAlternatives = 1;
 
     rec.onresult = (e: any) => {
-      const transcript = (e.results[0][0]?.transcript ?? "").trim();
-      if (transcript) {
-        handleVoiceIntent(transcript);
-      } else {
-        setPanel({ status: "Escuchado", transcript: "" });
+      // Liberar el micrófono de forma explícita: si onend no llega, el
+      // estado queda "escuchando" y el siguiente clic solo detiene (botón muerto).
+      try {
+        const transcript = (e?.results?.[0]?.[0]?.transcript ?? "").trim();
+        stopListening();
+        if (transcript) {
+          handleVoiceIntent(transcript);
+        } else {
+          setPanel({ status: "Escuchado", transcript: "" });
+          scheduleHide();
+        }
+      } catch {
+        stopListening();
+        setPanel({ status: "Error", transcript: "No se pudo leer lo escuchado." });
         scheduleHide();
       }
     };
@@ -208,12 +219,13 @@ export function FloatingVoiceAssistant() {
           listening ? "Detener escucha del asistente de voz" : "Activar asistente de voz"
         }
         onClick={toggleListening}
+        onMouseDown={(e) => e.preventDefault()}
         className="group relative size-14 rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-transparent active:scale-100"
       >
-        {/* Glow ambiental (diseño VoiceOrb) */}
+        {/* Glow ambiental (diseño VoiceOrb) — solo visual: no intercepta clics */}
         <span
           aria-hidden="true"
-          className="absolute -inset-14 rounded-full blur-3xl transition-opacity duration-700 motion-reduce:transition-none opacity-70"
+          className="pointer-events-none absolute -inset-14 rounded-full blur-3xl transition-opacity duration-700 motion-reduce:transition-none opacity-70"
           style={{
             background:
               "radial-gradient(circle, rgba(56, 189, 248, 0.16) 0%, rgba(99, 102, 241, 0.08) 45%, transparent 70%)",
@@ -222,7 +234,7 @@ export function FloatingVoiceAssistant() {
         {/* Anillo conic */}
         <span
           aria-hidden="true"
-          className={`absolute inset-0 rounded-full transition-transform duration-700 ${
+          className={`pointer-events-none absolute inset-0 rounded-full transition-transform duration-700 ${
             listening ? "voice-orb-ring-fast" : "voice-orb-ring"
           }`}
           style={{
@@ -237,12 +249,12 @@ export function FloatingVoiceAssistant() {
         {/* Anillo externo tenue */}
         <span
           aria-hidden="true"
-          className="absolute inset-[2px] rounded-full border border-white/10"
+          className="pointer-events-none absolute inset-[2px] rounded-full border border-white/10"
         />
         {/* Núcleo oscuro */}
         <span
           aria-hidden="true"
-          className="absolute inset-[5px] rounded-full bg-[#05070c] transition-all duration-500"
+          className="pointer-events-none absolute inset-[5px] rounded-full bg-[#05070c] transition-all duration-500"
           style={{
             boxShadow: listening
               ? "inset 0 0 20px rgba(0,0,0,0.85), inset 0 0 8px rgba(34,211,238,0.4)"
@@ -250,7 +262,7 @@ export function FloatingVoiceAssistant() {
           }}
         />
         {/* Icono */}
-        <span className="relative flex items-center justify-center">
+        <span className="pointer-events-none relative flex items-center justify-center">
           {listening ? (
             <Square
               className="size-4 animate-pulse text-destructive"

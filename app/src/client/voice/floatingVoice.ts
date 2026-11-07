@@ -25,15 +25,16 @@ export function formatDictation(raw: string): string {
     .replace(/\s*\bdos\s+puntos\b/gi, ":");
 }
 
-// Extrae el nombre del paciente tras un comando ("buscar paciente Ana Paredes",
-// "abrir ficha de Ana", "ver la historia del paciente Juan"). Exige verbo de
-// comando para no disparar navegación con texto clínico dictado.
+// Extrae el nombre del paciente tras un comando ("buscar/busca paciente Ana
+// Paredes", "abre/abrir ficha de Ana", "ver la historia del paciente Juan").
+// Exige verbo de comando (infinitivo o imperativo) para no disparar
+// navegación con texto clínico dictado.
 // Se ejecuta sobre el texto ORIGINAL para conservar mayúsculas y acentos.
 function extractPatientQuery(original: string): string | null {
   const patterns = [
-    /(?:buscar|abrir|ver|consultar)\s+(?:el\s+|la\s+)?paciente\s+(.+)/i,
-    /(?:buscar|abrir|ver)\s+(?:la\s+)?ficha\s+(?:de|del)\s+(?:el\s+|la\s+)?(.+)/i,
-    /(?:abrir|ver)\s+la\s+historia\s+(?:de|del)\s+(?:el\s+|la\s+)?(.+)/i,
+    /(?:busca|buscar|abre|abrir|ver|mostrar|muestra|consultar|consulta)\s+(?:el\s+|la\s+|a\s+)?paciente\s+(.+)/i,
+    /(?:busca|buscar|abre|abrir|ver)\s+(?:la\s+)?ficha\s+(?:de|del)\s+(?:el\s+|la\s+)?(.+)/i,
+    /(?:abre|abrir|ver)\s+la\s+historia\s+(?:de|del)\s+(?:el\s+|la\s+)?(.+)/i,
   ];
   for (const p of patterns) {
     const m = original.match(p);
@@ -102,13 +103,13 @@ export function parseFloatingVoiceCommand(transcript: string): FloatingVoiceInte
     [/\badmin\b|\badministracion\b/, "/clinical/admin", "Abriendo administración"],
     [/\bauditoria\b/, "/clinical/audit", "Abriendo auditoría"],
     [
-      /(?:abrir|ir a|consultar|mostrar)\s+(?:el\s+|la\s+)?(?:asistente|voz)\b|\basistente de voz\b/,
+      /(?:abre|abrir|ir a|consultar|consulta|mostrar|muestra)\s+(?:el\s+|la\s+)?(?:asistente|voz)\b|\basistente de voz\b/,
       "/clinical/voice",
       "Abriendo asistente de voz",
     ],
     [/\bportal\b|\bmi salud\b/, "/patient/dashboard", "Abriendo mi portal"],
     [
-      /(?:abrir|ver|ir a|mostrar)\s+(?:los\s+|las\s+)?pacientes\b|\bpadron\b|\blista de pacientes\b/,
+      /(?:busca|buscar|abre|abrir|ver|ir a|mostrar|muestra)\s+(?:los\s+|las\s+)?pacientes\b|\bpadron\b|\blista de pacientes\b/,
       "/clinical/patients",
       "Abriendo pacientes",
     ],

@@ -97,6 +97,39 @@ describe("parseFloatingVoiceCommand", () => {
     ).toBe("/clinical/patients?q=Mar%C3%ADa%20L%C3%B3pez");
   });
 
+  it("acepta imperativo 'busca' además de 'buscar'", () => {
+    expect(parseFloatingVoiceCommand("busca paciente Ana Paredes")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/patients?q=Ana%20Paredes",
+      message: "Buscando Ana Paredes",
+    });
+    expect(parseFloatingVoiceCommand("busca paciente ana paredes").path).toBe(
+      "/clinical/patients?q=ana%20paredes",
+    );
+    expect(parseFloatingVoiceCommand("busca la ficha de Juan Pérez").path).toBe(
+      "/clinical/patients?q=Juan%20P%C3%A9rez",
+    );
+    expect(parseFloatingVoiceCommand("muestra el paciente María López").path).toBe(
+      "/clinical/patients?q=Mar%C3%ADa%20L%C3%B3pez",
+    );
+    expect(parseFloatingVoiceCommand("consulta el paciente José Díaz").path).toBe(
+      "/clinical/patients?q=Jos%C3%A9%20D%C3%ADaz",
+    );
+  });
+
+  it("navegación a pacientes acepta 'busca pacientes' y 'mostrar pacientes'", () => {
+    expect(parseFloatingVoiceCommand("busca pacientes")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/patients",
+      message: "Abriendo pacientes",
+    });
+    expect(parseFloatingVoiceCommand("mostrar pacientes")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/patients",
+      message: "Abriendo pacientes",
+    });
+  });
+
   it("navegación general: auditoría, administración, asistente, portal, pacientes", () => {
     expect(parseFloatingVoiceCommand("ver auditoría").type === "NAVIGATE" &&
       (parseFloatingVoiceCommand("ver auditoría") as any).path,
