@@ -58,9 +58,11 @@ export function parseFloatingVoiceCommand(transcript: string): FloatingVoiceInte
   const t = stripAccents(original);
   if (!t) return { type: "NONE" };
 
-  // 1) Agendar turno/cita → agenda con modal de nueva cita abierto
+  // 1) Agendar turno/cita → agenda con modal de nueva cita abierto.
+  //    "agenda cita" (imperativo singular) = "agendar cita"; los plurales
+  //    ("agenda mis citas", "agenda citas pendientes") siguen a la regla 2.
   if (
-    /\bagendar\b|\bnueva cita\b|\bcrear cita\b|\bnuevo turno\b|\bcrear turno\b/.test(t)
+    /\bagendar\b|\bagenda\s+(?:una\s+|la\s+)?cita\b|\bnueva cita\b|\bcrear cita\b|\bnuevo turno\b|\bcrear turno\b/.test(t)
   ) {
     return {
       type: "NAVIGATE",

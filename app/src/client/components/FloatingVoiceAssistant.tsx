@@ -178,7 +178,9 @@ export function FloatingVoiceAssistant() {
   if (!visible || !supported) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
+    // z-[100] por encima de los overlays de Radix Dialog (z-50): si no, con un
+    // modal abierto el overlay tapa el botón y el micrófono queda "congelado".
+    <div className="fixed bottom-5 right-5 z-[100] flex flex-col items-end gap-3">
       {panel && (
         <div
           role="status"
@@ -219,6 +221,7 @@ export function FloatingVoiceAssistant() {
           listening ? "Detener escucha del asistente de voz" : "Activar asistente de voz"
         }
         onClick={toggleListening}
+        onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.preventDefault()}
         className="group relative size-14 rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-transparent active:scale-100"
       >

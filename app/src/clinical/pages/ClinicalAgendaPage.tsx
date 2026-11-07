@@ -101,7 +101,7 @@ function MetricTile({
 
 export function ClinicalAgendaPage() {
   const { data: user } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showNewCita, setShowNewCita] = useState(
     () => searchParams.get("new") === "1",
@@ -119,13 +119,20 @@ export function ClinicalAgendaPage() {
   });
 
   // Parámetros de URL del asistente de voz flotante (?new=1, ?status=...).
+  // ?new=1 se elimina al abrir el modal: si quedara en la URL, repetir el
+  // comando de voz navegaría a la misma URL y el modal no volvería a abrirse.
   useEffect(() => {
-    if (searchParams.get("new") === "1") setShowNewCita(true);
+    if (searchParams.get("new") === "1") {
+      setShowNewCita(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("new");
+      setSearchParams(next, { replace: true });
+    }
     const s = searchParams.get("status");
     if (s === "SCHEDULED" || s === "IN_PROGRESS" || s === "COMPLETED") {
       setStatusFilter(s);
     }
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]);
 
   const { confirm, ConfirmDialog } = useConfirm();
 

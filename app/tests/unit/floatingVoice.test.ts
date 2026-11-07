@@ -175,4 +175,30 @@ describe("parseFloatingVoiceCommand", () => {
     const r = parseFloatingVoiceCommand("agendar cita pendiente");
     expect(r.type === "NAVIGATE" && r.path).toBe("/clinical/agenda?new=1");
   });
+
+  it("'agenda cita' (imperativo) abre el modal de nueva cita", () => {
+    expect(parseFloatingVoiceCommand("agenda cita")).toEqual({
+      type: "NAVIGATE",
+      path: "/clinical/agenda?new=1",
+      message: "Abriendo nueva cita",
+    });
+    expect(parseFloatingVoiceCommand("agenda una cita").path).toBe(
+      "/clinical/agenda?new=1",
+    );
+    expect(parseFloatingVoiceCommand("agenda la cita").path).toBe(
+      "/clinical/agenda?new=1",
+    );
+  });
+
+  it("plurales/posesivos con 'agenda' siguen abriendo la agenda normal", () => {
+    expect(parseFloatingVoiceCommand("agenda mis citas").path).toBe(
+      "/clinical/agenda",
+    );
+    expect(parseFloatingVoiceCommand("agenda citas pendientes").path).toBe(
+      "/clinical/agenda?status=SCHEDULED",
+    );
+    expect(parseFloatingVoiceCommand("abrir la agenda de citas").path).toBe(
+      "/clinical/agenda",
+    );
+  });
 });
