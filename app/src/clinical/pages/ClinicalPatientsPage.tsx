@@ -7,7 +7,6 @@ import { useAuth } from "wasp/client/auth";
 import {
   Activity,
   ChevronRight,
-  Mic,
   Plus,
   Search,
   ShieldCheck,
@@ -110,14 +109,6 @@ export function ClinicalPatientsPage() {
               <Siren className="size-4 animate-pulse" />
               🚨 Cita Emergente
             </Button>
-          )}
-          {user?.isMedico && (
-            <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-cyan-500 dark:hover:bg-cyan-400 dark:text-slate-950 font-semibold shadow-[0_0_20px_rgba(0,218,243,0.35)]">
-                <Mic className="size-4" />
-                Asistente de voz
-              </Button>
-            </WaspRouterLink>
           )}
         </div>
       </div>

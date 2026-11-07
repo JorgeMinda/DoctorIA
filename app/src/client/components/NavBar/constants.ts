@@ -8,5 +8,4 @@ export const marketingNavigationItems: NavigationItem[] = [
 
 export const clinicalNavigationItems: NavigationItem[] = [
   { name: "Pacientes", to: "/clinical/patients" },
-  { name: "Asistente de voz", to: "/clinical/voice" },
 ] as const;

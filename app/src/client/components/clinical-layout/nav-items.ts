@@ -1,6 +1,5 @@
 import {
   CalendarDays,
-  Mic,
   ScrollText,
   Settings,
   Users,
@@ -26,7 +25,6 @@ export const clinicalNavGroups: ClinicalNavGroup[] = [
     items: [
       { name: "Pacientes", to: "/clinical/patients", icon: Users },
       { name: "Mi agenda", to: "/clinical/agenda", icon: CalendarDays },
-      { name: "Asistente de voz", to: "/clinical/voice", icon: Mic },
     ],
   },
   {
@@ -48,7 +46,6 @@ export function getNavGroupsForRole(role: ClinicalRole | null): ClinicalNavGroup
         items: [
           { name: "Pacientes", to: "/clinical/patients", icon: Users },
           { name: "Mi agenda", to: "/clinical/agenda", icon: CalendarDays },
-          { name: "Asistente de voz", to: "/clinical/voice", icon: Mic },
         ],
       },
       {
@@ -125,6 +122,10 @@ export function getClinicalSectionTitle(pathname: string): string {
   }
   if (pathname.startsWith("/clinical/epicrises/")) {
     return "Epicrisis";
+  }
+  // Ruta oculta en el menú (entrada por CTA/voz), pero conserva su título.
+  if (pathname.startsWith("/clinical/voice")) {
+    return "Asistente de voz";
   }
   const found = clinicalNavGroups
     .flatMap((group) => group.items)
