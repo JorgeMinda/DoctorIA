@@ -175,6 +175,28 @@
 
 ---
 
+## Sesión nov-2026 (5–8 nov): Asistente de voz flotante + asistencia híbrida
+
+**Contexto**: trabajo directo en `main` desde la copia Windows (sin `wasp` local; builds y migraciones validados en Render).
+
+- [X] T048 Fix agenda: `NewAppointmentModal` faltante en la rama de vista del médico (`f43264d`)
+- [X] T049 Docs: Constitución P5 → "Protección de Datos Clínicos" v2.0.0 — datos reales cifrados en prod, sintéticos en dev/demo (`6a4d2c9`)
+- [X] T050 Eliminar botón "Dictar" por sección en la nota clínica — la voz vive solo en el widget flotante (`2910f08`)
+- [X] T051 Crear asistente de voz flotante: Web Speech API + router de intención + TTS de respaldo (`4e02a7d`)
+- [X] T052 Adaptar el flotante al comportamiento de referencia: frase única, navegación filtrada, dictado, TTS (`60458e7`)
+- [X] T053 Restyle del botón flotante con estética VoiceOrb: glow ambiental, anillo cónico, núcleo oscuro (`33139d9`)
+- [X] T054 Búsqueda de pacientes insensible a tildes — fold de acentos server-side (`fc277ce`)
+- [X] T055 Fix voz: aceptar "busca"/"buscar", `stopListening()` explícito tras cada resultado y guard de estado obsoleto en `toggleListening` — micrófono no se congela (`33de436`)
+- [X] T056 Fix voz: "agenda cita" abre el modal; limpiar `?new=1` al abrir para reabrir en cada comando; overlay flotante `z-[100]` con `pointer-events-none` + `stopPropagation` sobre modales Radix (`6cc34e2`)
+- [X] T057 Asistente híbrido: el flotante ejecuta RF-030 (`getVoiceAssistantResponse` → panel expandido `w-80` con aviso P4) y RF-031 (`createNoteFromVoice` → panel + TTS + enlace) solo para médico; gates `wantsCreateNote`/`wantsPatientSummary` en `floatingVoice.ts` con tests unitarios (`eb3faf5`)
+- [X] T058 Ocultar "Asistente de voz" del sidebar/topbar/detalle de paciente — la ruta queda por CTA de landing, comando de voz y URL directa con título de sección (`8b6245a`)
+- [X] T059 QA de la sesión: Vitest **195/195** (13 archivos) + `tsc --noEmit` limpio, sin regresiones
+- [X] T060 Actualizar `CONTEXT.md` y `tasks.md` con el estado de la sesión (P10 Gobierno) — esta actualización
+
+**Checkpoint**: asistente flotante operativo y híbrido (navegación + RF-030 + RF-031, solo médico), 195/195 tests verdes, docs de gobierno al día. Pendientes de aprobación del usuario: diff `schema.prisma` (`documento @unique`, con chequeo de duplicados + migración) y alcance de la UI de píldora de estados de cita.
+
+---
+
 ## Dependencias y orden de ejecución (Semanas 5-8)
 
 - **T032 → T033–T035**: Plan primero, contactos y materiales después (paralelizables).
@@ -190,3 +212,4 @@
 - Semana 5 en curso: Enfoque comercial y adquisición de primeros usuarios
 - La meta individual obligatoria de 2 clientes por Doer en la Semana 6 es crítica para validación post-beta
 - Cada semana tiene un checkpoint entregable que valida el progreso antes de pasar a la siguiente fase
+- Sesión nov-2026 cerrada (5–8 nov): asistente de voz flotante + híbrido RF-030/RF-031 (T048–T060), 195/195 tests; en cola de aprobación: diff `documento @unique` y UI de píldora de estados de cita

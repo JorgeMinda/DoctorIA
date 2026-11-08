@@ -1,6 +1,6 @@
 # CONTEXT: DoctorIA MVP — Estado actual del proyecto (para IA colaboradora)
 
-**Última actualización**: 2026-08-18 · **Rama de trabajo**: `001-doctoria-mvp` → se promueve a `main` (deploy de Render)
+**Última actualización**: 2026-11-08 · **Rama de trabajo**: `main` directo (desde la sesión nov-2026; antes `001-doctoria-mvp` → `main`)
 **Autor de este contexto**: agente principal del equipo DoctorIA
 
 > **Reglas de comportamiento para agentes** (dominio, arquitectura, off-limits, comandos): ver [AGENTS.md](AGENTS.md) en la raíz. Este `CONTEXT.md` documenta el **estado mutable** del proyecto (cambia cada sesión); `AGENTS.md` documenta lo **casi-estático**.
@@ -21,10 +21,10 @@ MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El 
 | 2. Especificación | 20–26 jul | ✅ spec.md + plan.md + research.md (fechados 08-ago, desfase documentado) |
 | 3. Desarrollo del Core | 27 jul–2 ago | ✅ CERRADA — MVP funcional en staging + tasks.md T001–T020 |
 | 4. QA y Producción | 3–9 ago | ✅ CERRADA — HTTPS, QA 5/5, production-checklist |
-| 5. Estrategia comercial | 10–16 ago | ⏳ **VIGENTE** — plan de adquisición + agenda de 5 contactos creados (ver `specs/001-doctoria-mvp/week5-commercial-plan.md`) |
-| 6. Ejecución comercial | 17–23 ago | ⏳ Futuro |
-| 7. Iteración con datos | 24–30 ago | ⏳ Futuro |
-| 8. Demo Day | 31 ago–6 sep | ⏳ Futuro |
+| 5. Estrategia comercial | 10–16 ago | ✅ según tasks.md (T032–T035) — plan de adquisición + agenda de 5 contactos (`week5-commercial-plan.md`) |
+| 6. Ejecución comercial | 17–23 ago | ✅ según tasks.md (T036–T039) |
+| 7. Iteración con datos | 24–30 ago | ✅ según tasks.md (T040–T043) |
+| 8. Demo Day | 31 ago–6 sep | ✅ según tasks.md (T044–T047) |
 
 ---
 
@@ -33,7 +33,7 @@ MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El 
 - **Framework**: Wasp 0.25.0 (template Open SaaS) — app monolítica, TypeScript 6.0.3, Node ≥24.14.1 (local WSL: Node v24.19.0 vía nvm)
 - **Frontend**: React 19.2.x, TailwindCSS 4.x, Radix UI, lucide-react
 - **Backend**: Express (Wasp), Prisma 5.19.1 + PostgreSQL
-- **Pruebas**: Vitest 4.1.x (unit/integration, 43 tests), Playwright 1.55.1 (E2E)
+- **Pruebas**: Vitest 4.1.x (unit/integration, 195 tests / 13 archivos), Playwright 1.55.1 (E2E)
 - **Despliegue**: Render (blueprint `render.yaml`) — client estático Vite + server Node + Postgres 18 free tier
 - **Email**: Resend (remitente provisional `onboarding@resend.dev`; solo entrega a la cuenta Resend registrada)
 
@@ -118,7 +118,18 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **Defecto D-01 corregido** (commit `94b6fe0`): el CTA `Comenzar` (Hero + FinalCTA) apuntaba a `SignupRoute`; ahora apunta a `ClinicalVoiceRoute` (`/clinical/voice`), que redirige a `/login` por auth guard — en vez de signup.
 - Documentos: `specs/001-doctoria-mvp/qa/week4-qa-report.md` y `specs/001-doctoria-mvp/checklists/production.md`.
 - **E2E flujo clínico completo (16-ago)**: verificado por API contra producción (login → create-note → IA → edición draft → confirm → audit, 6/6 pasos). Hallazgo **CRITICAL**: `requestAIStructuring` (actions.ts L197-210) escribe sin revalidar el estado de la nota, de modo que una llamada IA que quedó en vuelo puede sobrescribir ediciones manuales del médico; reportado en `week4-qa-report.md` (sección *Flujo clínico completo*).
-- Suites locales: Vitest 43/43 verde, Playwright E2E 10/10 verde.
+- Suites locales: Vitest **195/195** verde (13 archivos; era 43 al cierre de Semana 4), Playwright E2E 10/10 verde.
+
+### Sesión nov-2026 (5–8 nov) — Asistente de voz flotante + asistencia híbrida — COMPLETO
+
+- **Asistente de voz flotante** (`client/components/FloatingVoiceAssistant.tsx` + `client/voice/floatingVoice.ts`): botón-orbe fijo con Web Speech API (dictado), router de intención (navegación a rutas clínicas), TTS con respaldo; overlay `z-[100]` por encima de modales Radix (anillos decorativos `pointer-events-none`; `onMouseDown`/`onPointerDown` `stopPropagation` para no robar el foco del micrófono).
+- **Correcciones de voz**: verbos `busca|abre|consulta|mostrar` + `agenda (una|la) cita`; `stopListening()` explícito tras cada resultado del recognizer (micrófono no se congela); guard de estado obsoleto en `toggleListening`; `?new=1` se limpia al abrir el modal para reabrir en cada comando.
+- **Asistente híbrido (RF-030 + RF-031)**: el flotante —solo médico, gates `wantsCreateNote`/`wantsPatientSummary` en `floatingVoice.ts`— ejecuta `getVoiceAssistantResponse` (resumen de paciente en panel expandido `w-80`, viñetas, aviso P4, enlace "Ver ficha completa") y `createNoteFromVoice` (nota creada → panel + TTS + enlace a la nota). Ambas operations server-side con `ensureMedico` + auditoría (RNF-002). La página `/clinical/voice` se conserva (chips, sparkline, demo, transcripción progresiva).
+- **Navegación**: link "Asistente de voz" retirado del sidebar/topbar (`nav-items.ts`, `NavBar/constants.ts`) y del detalle de paciente; `/clinical/voice` queda accesible por CTA de landing (`Hero`/`FinalCTA`), comando de voz y URL directa (con título de sección).
+- **Búsqueda de pacientes sin tildes**: fold de acentos server-side — "andres" encuentra "Andrés" (`fc277ce`).
+- **Docs**: Constitución P5 → "Protección de Datos Clínicos" v2.0.0 (prod con datos reales cifrados; dev/demo solo sintéticos) — `6a4d2c9`.
+- **Validación**: Vitest **195/195** + `tsc --noEmit` limpio (copia Windows); builds/migraciones validados en Render tras cada push. Commits `f43264d`…`8b6245a` en `main`.
+- **Pendientes de aprobación**: diff `schema.prisma` (`documento @unique`) y UI de píldora de estados de cita (ver §7).
 
 ### Rediseño visual "Clinical Intelligence" (frente de UI, 17–18 ago) — COMPLETO
 
@@ -135,12 +146,9 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 ## 6. Repositorio y flujo de trabajo
 
 - **Remote**: `https://github.com/JorgeMinda/DoctorIA` (user `JorgeMinda`)
-- **Rama de trabajo**: `001-doctoria-mvp` — se promueve a `main` vía merge/push directo (Render deploya `main`)
-- **Dos copias locales**:
-  - **Activa para desarrollo**: WSL nativo `/home/minda/DoctorIA` (compila/builds, `wasp build`, tests unitarios)
-  - **Respaldo + push**: Windows `C:\Users\minda\Desktop\doctoria\doctoria` (tiene Git Credential Manager; desde ahí se hacen los `git push origin 001-doctoria-mvp:main`)
-- **Regla práctica para push**: los commits se preparan en WSL, se replican a la copia Windows (por archivo o `git`), y se pushean desde Windows con `git push origin 001-doctoria-mvp:main`.
-- WSL git NO tiene credenciales GitHub (el push desde WSL queda colgado esperando password).
+- **Rama de trabajo**: `main` directo (desde la sesión nov-2026; antes se trabajaba en `001-doctoria-mvp` y se promovía a `main`). Render deploya `main` en ~2 min.
+- **Copia activa (nov-2026)**: Windows `C:\Users\minda\Desktop\doctoria\doctoria` — desarrollo, commits y push desde aquí (Git Credential Manager). Tests: `node node_modules/vitest/dist/cli.js run` (workdir `app/`).
+- **Copia WSL** `/home/minda/DoctorIA`: histórica; única conocida con `wasp` instalado (`wasp build`, `wasp db migrate dev`). En Windows NO hay `wasp` — build y migraciones se validan/aplican en Render. El WSL git NO tiene credenciales GitHub (push desde WSL queda colgado).
 
 ### Comandos útiles (desde WSL nativo `/home/minda/DoctorIA/app`)
 
@@ -166,7 +174,7 @@ specs/001-doctoria-mvp/
 │   └── production.md      # Checklist producción (Semana 4, 100%)
 ├── qa/week4-qa-report.md  # Reporte QA (D-01 + verificación 5/5 + flujo clínico completo 16-ago)
 ├── qa/week34-informe.md   # Informe detallado de las Semanas 3-4 (16-ago, mismo formato que Semana 2)
-└── tasks.md               # Registro de tareas T001–T031 (Semana 3–4)
+└── tasks.md               # Registro de tareas T001–T060 (Semanas 3–8 + sesión nov-2026)
 ```
 
 ---
@@ -182,10 +190,13 @@ specs/001-doctoria-mvp/
 | Latencia IA (~120–130 s) | PENDIENTE — **MAJOR**: 3 intentos × timeout 30 s + backoff de OpenRouter free (aiService.ts). Mitigación: reducir `AI_MAX_RETRIES` a 1 o mover IA a job/cola con progreso (16-ago) |
 | IA no determinista | PENDIENTE — **MINOR**: dos corridas devuelven divisiones distintas de las secciones; mitigar con `temperature` baja o bloqueo del campo editado (16-ago) |
 | DB free expira 30 días | Requiere plan pagado para pilotos largos |
+| CORS (fix `b62bf4e`) | VERIFICAR — `server.middlewareConfigFn` con orígenes Render/dominiopropio commiteado (26-oct), aún sin verificación en vivo de `/auth/me` y `/auth/email/login` |
+| `schema.prisma`: `documento @unique` | PENDIENTE — diff mostrado al usuario: aplicar `@unique` a `SyntheticPatient.documento` (`tipoDocumento`/`documento`/`documentHash @unique` ya existen desde `c5d8b0e`). Requiere: aprobación explícita + chequeo de duplicados en DB + migración (`wasp db migrate dev` en WSL). Justifica: lookup por texto plano en `actions.ts:2740` |
+| UI píldora de estado de cita | PENDIENTE — pedido: píldora pequeña con iniciales + badge "En curso" al Iniciar + mensaje al Completar (toast ya existe en `runTransition`). Nota: `apt-block-pill`/`pill-confirmado` son clases de la app de referencia, NO existen en DoctorIA; el equivalente está en `statusLabels.ts:15-22`, `ClinicalCalendarView.tsx:191,539`, `ClinicalAgendaPage.tsx:53`, `MedicoAgendaPanel.tsx:39`, `PatientDashboard.tsx:102`. Falta definir alcance (calendario / lista / ambos / portal paciente) |
 
 ---
 
-## 8. Próximos pasos (Semana 5 — vigente)
+## 8. Próximos pasos
 
 1. ✓ **Frente visual cerrado (17–18 ago)**: rediseño Clinical Intelligence + auth Ambient Voice Interface, validado 4/4 contra prod y en `main`.
 2. **Estrategia comercial**: plan de adquisición de clientes + agenda de 5 contactos reales documentados en `specs/001-doctoria-mvp/week5-commercial-plan.md`.
@@ -201,7 +212,7 @@ specs/001-doctoria-mvp/
 - **P4 Seguridad clínica**: IA asistiva, nunca confirmatoria; registro CONFIRMED inmutable (adendas).
 - **P5 Protección de datos**: datos reales en producción con cifrado; sintéticos en dev/demo; sin PII en logs; secrets fuera de git.
 - **P3 Reutilización**: sin frameworks nuevos; usar Wasp/Prisma/Radix existentes.
-- **P7 Calidad**: toda tarea con tests verdes (Vitest 43, Playwright 10) y QA documentado.
+- **P7 Calidad**: toda tarea con tests verdes (Vitest 195/195, Playwright 10) y QA documentado.
 - **P10 Gobierno**: decisiones documentadas en `plan.md`/`research.md` (PD-01..03); tareas en `tasks.md` por Doer.
 - **Idioma**: UI y documentos del equipo en español; código/comentarios en inglés.
 - **No commitear** sin que el usuario lo pida explícitamente; respetar flujo WSL→Windows→push.
