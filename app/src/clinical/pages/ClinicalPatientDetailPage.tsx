@@ -36,7 +36,7 @@ import { Button } from "../../client/components/ui/button";
 import { toast } from "../../client/hooks/use-toast";
 import { useConfirm } from "../../client/hooks/use-confirm";
 import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
-import { citaStatusLabel } from "../services/statusLabels";
+import { CitaBadge, initialsOf } from "../components/CitaBadge";
 import { PatientProfileHeader } from "../components/PatientProfileHeader";
 import { PatientClinicalSummary } from "../components/PatientClinicalSummary";
 import { PatientQuickActions } from "../components/PatientQuickActions";
@@ -283,6 +283,7 @@ export function ClinicalPatientDetailPage() {
       {isSecretariaView ? (
         <SecretaryView
           patientId={patient.id}
+          patientInitials={initialsOf(patient)}
           citas={detail.latestCitas ?? []}
           printableEpicrises={printableEpicrises ?? []}
           busyCitaId={busyCitaId}
@@ -375,20 +376,10 @@ export function ClinicalPatientDetailPage() {
                               minute: "2-digit",
                             })}
                           </span>
-                          <Badge
-                            variant={
-                              cita.status === "COMPLETED"
-                                ? "success"
-                                : cita.status === "IN_PROGRESS"
-                                  ? "warning"
-                                  : cita.status === "CANCELLED"
-                                    ? "destructive"
-                                    : "outline"
-                            }
-                            className="mono-label"
-                          >
-                            {citaStatusLabel(cita.status)}
-                          </Badge>
+                          <CitaBadge
+                            status={cita.status}
+                            patientInitials={initialsOf(patient)}
+                          />
                         </div>
                         <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
                           <span>{cita.durationMinutes ?? 30} min</span>
@@ -562,6 +553,7 @@ export function ClinicalPatientDetailPage() {
 
 function SecretaryView({
   patientId,
+  patientInitials,
   citas,
   printableEpicrises,
   busyCitaId,
@@ -571,6 +563,7 @@ function SecretaryView({
   onDone,
 }: {
   patientId: string;
+  patientInitials: string;
   citas: any[];
   printableEpicrises: any[];
   busyCitaId: string | null;
@@ -651,20 +644,10 @@ function SecretaryView({
                     <span className="text-sm font-semibold text-foreground">
                       {new Date(cita.scheduledAt).toLocaleString()}
                     </span>
-                    <Badge
-                      variant={
-                        cita.status === "COMPLETED"
-                          ? "success"
-                          : cita.status === "IN_PROGRESS"
-                            ? "warning"
-                            : cita.status === "CANCELLED"
-                              ? "destructive"
-                              : "outline"
-                      }
-                      className="mono-label"
-                    >
-                      {citaStatusLabel(cita.status)}
-                    </Badge>
+                    <CitaBadge
+                      status={cita.status}
+                      patientInitials={patientInitials}
+                    />
                   </div>
                   <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
                     <span>{cita.durationMinutes ?? 30} min</span>

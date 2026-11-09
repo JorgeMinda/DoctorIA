@@ -59,7 +59,7 @@ import {
 } from "../../client/components/ui/card";
 import { Badge } from "../../client/components/ui/badge";
 import { patientAge, sexLabel } from "../services/clinicalFormat";
-import { citaStatusLabel } from "../services/statusLabels";
+import { CitaBadge, initialsOf } from "../components/CitaBadge";
 import { MedicoAgendaPanel } from "../components/MedicoAgendaPanel";
 import { EditAppointmentModal } from "../components/EditAppointmentModal";
 
@@ -1499,21 +1499,6 @@ function AssignmentsTab({
 // Tab: Citas (agendamiento para cada doctor)
 // ---------------------------------------------------------------------------
 
-function citaBadgeVariant(status: string) {
-  if (status === "COMPLETED") return "success";
-  if (status === "IN_PROGRESS") return "warning";
-  if (status === "CANCELLED") return "destructive";
-  return "outline";
-}
-
-function AdminCitaBadge({ status }: { status: string }) {
-  return (
-    <Badge variant={citaBadgeVariant(status) as any} className="mono-label">
-      {citaStatusLabel(status)}
-    </Badge>
-  );
-}
-
 function AdminScheduleForm({
   notice,
   reportError,
@@ -2163,7 +2148,10 @@ function AdminCitasTab({
                           <span className="text-xs font-medium text-foreground">
                             {cita.patient.firstName} {cita.patient.lastName} ({cita.patient.syntheticId})
                           </span>
-                          <AdminCitaBadge status={cita.status} />
+                          <CitaBadge
+                            status={cita.status}
+                            patientInitials={initialsOf(cita.patient)}
+                          />
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Médico: {cita.medico.fullName ?? cita.medico.email} · {cita.durationMinutes} min
@@ -2259,7 +2247,10 @@ function AdminCitasTab({
                       <Badge variant="outline" className="mono-label">
                         {cita.patient.syntheticId}
                       </Badge>
-                      <AdminCitaBadge status={cita.status} />
+                      <CitaBadge
+                        status={cita.status}
+                        patientInitials={initialsOf(cita.patient)}
+                      />
                       {!cita.secretaryId && cita.status === "SCHEDULED" && (
                         <Badge variant="outline" className="border-amber-500/50 bg-amber-500/10 text-amber-500 text-[10px]">
                           Solicitud Paciente

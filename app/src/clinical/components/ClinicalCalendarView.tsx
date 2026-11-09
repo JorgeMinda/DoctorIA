@@ -31,8 +31,13 @@ import {
 import { CitaBadge, initialsOf } from "./CitaBadge";
 import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
 import { toast } from "../../client/hooks/use-toast";
+import {
+  type CalendarViewMode,
+  getCalendarHeaderTitle,
+  getCitaStatusColor,
+} from "../services/calendarFormat";
 
-export type CalendarViewMode = "day" | "week" | "month" | "year" | "list";
+export type { CalendarViewMode };
 
 interface CalendarViewProps {
   citas: any[];
@@ -108,45 +113,8 @@ export function ClinicalCalendarView({
     }
   };
 
-  // Formato del título del calendario
-  const getHeaderTitle = () => {
-    const months = [
-      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-    ];
-    if (viewMode === "day") {
-      return `${currentDate.toLocaleDateString("es-ES", { weekday: "long" })}, ${currentDate.getDate()} de ${months[currentDate.getMonth()]} de ${currentDate.getFullYear()}`;
-    }
-    if (viewMode === "week") {
-      const startOfWeek = new Date(currentDate);
-      const day = startOfWeek.getDay() || 7;
-      startOfWeek.setDate(startOfWeek.getDate() - day + 1);
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6);
-      return `${startOfWeek.getDate()} ${months[startOfWeek.getMonth()].slice(0, 3)} - ${endOfWeek.getDate()} ${months[endOfWeek.getMonth()]} ${endOfWeek.getFullYear()}`;
-    }
-    if (viewMode === "month") {
-      return `${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-    }
-    if (viewMode === "year") {
-      return `Año ${currentDate.getFullYear()}`;
-    }
-    return "Todas las Citas";
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30";
-      case "IN_PROGRESS":
-        return "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 animate-pulse hover:bg-cyan-500/30";
-      case "CANCELLED":
-        return "bg-destructive/20 text-destructive border-destructive/40 opacity-60";
-      default:
-        return "bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30";
-    }
-  };
-
+  // ----------------------------------------------------
+  // VISTA D�?A (Day View)
   // ----------------------------------------------------
   // VISTA DÍA (Day View)
   // ----------------------------------------------------
@@ -181,7 +149,7 @@ export function ClinicalCalendarView({
                   <div
                     key={cita.id}
                     onClick={(e) => handleCitaClick(cita, e)}
-                    className={`cursor-pointer rounded-lg border p-2 text-xs transition-all shadow-sm flex items-center justify-between gap-2 hover:scale-[1.01] ${getStatusColor(cita.status)}`}
+                    className={`cursor-pointer rounded-lg border p-2 text-xs transition-all shadow-sm flex items-center justify-between gap-2 hover:scale-[1.01] ${getCitaStatusColor(cita.status)}`}
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -269,7 +237,7 @@ export function ClinicalCalendarView({
                     <div
                       key={cita.id}
                       onClick={(e) => handleCitaClick(cita, e)}
-                      className={`cursor-pointer rounded-lg border p-2 text-[11px] transition-transform hover:scale-[1.02] shadow-sm ${getStatusColor(cita.status)}`}
+                      className={`cursor-pointer rounded-lg border p-2 text-[11px] transition-transform hover:scale-[1.02] shadow-sm ${getCitaStatusColor(cita.status)}`}
                     >
                       <div className="font-semibold truncate flex items-center justify-between">
                         <span>
@@ -392,7 +360,7 @@ export function ClinicalCalendarView({
                     <div
                       key={c.id}
                       onClick={(e) => handleCitaClick(c, e)}
-                      className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium border hover:scale-[1.02] transition-transform ${getStatusColor(c.status)}`}
+                      className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium border hover:scale-[1.02] transition-transform ${getCitaStatusColor(c.status)}`}
                       title={`${c.patient.firstName} ${c.patient.lastName} - ${new Date(c.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                     >
                       {new Date(c.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {c.patient.firstName}
@@ -470,7 +438,7 @@ export function ClinicalCalendarView({
                 </Button>
               </div>
               <h2 className="text-base sm:text-lg font-bold text-foreground capitalize">
-                {getHeaderTitle()}
+                {getCalendarHeaderTitle(viewMode, currentDate)}
               </h2>
             </div>
 

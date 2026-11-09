@@ -10,7 +10,9 @@ expand(loadEnv({ path: ".env.server", quiet: true }));
 // El schema de env de Wasp solo acepta NODE_ENV=development|production;
 // vitest inyecta "test", así que se normaliza antes de importar wasp/server.
 process.env.NODE_ENV = "development";
-if (!process.env.RESEND_API_KEY) process.env.RESEND_API_KEY = "";
+// Clave dummy: el SDK de Wasp inicializa el email sender (Resend) al importar
+// `wasp/server` y el constructor lanza si la clave está vacía. Ningún test envía emails.
+if (!process.env.RESEND_API_KEY) process.env.RESEND_API_KEY = "re_test_dummy_key";
 
 export default defineConfig({
   // Los tests importan componentes .tsx; el tsconfig de la app usa
