@@ -129,7 +129,7 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **Búsqueda de pacientes sin tildes**: fold de acentos server-side — "andres" encuentra "Andrés" (`fc277ce`).
 - **Docs**: Constitución P5 → "Protección de Datos Clínicos" v2.0.0 (prod con datos reales cifrados; dev/demo solo sintéticos) — `6a4d2c9`.
 - **Validación**: Vitest **195/195** + `tsc --noEmit` limpio (copia Windows); builds/migraciones validados en Render tras cada push. Commits `f43264d`…`8b6245a` en `main`.
-- **Pendientes de aprobación**: diff `schema.prisma` (`documento @unique`) y UI de píldora de estados de cita (ver §7).
+- **8-nov (cierre)**: deuda CRITICAL del race `requestAIStructuring` documentada como resuelta (ya implementada desde `daba56e`); `@unique` en `SyntheticPatient.documento` + migración `20261108235104` aplicada en local y staging (`f756540`; chequeo de duplicados OK, seeds upsert idempotentes, deploy verificado 200/200); badges de citas unificados con `STATUS_CONFIG` + iniciales + inmutabilidad en `MedicoAgendaPanel` (`8f368a5`); Docker apartado del flujo de BD (contenedor `doctoria-db` devuelto a su estado original; sin cambios estructurales pendientes).
 
 ### Rediseño visual "Clinical Intelligence" (frente de UI, 17–18 ago) — COMPLETO
 
@@ -191,8 +191,11 @@ specs/001-doctoria-mvp/
 | IA no determinista | PENDIENTE — **MINOR**: dos corridas devuelven divisiones distintas de las secciones; mitigar con `temperature` baja o bloqueo del campo editado (16-ago) |
 | DB free expira 30 días | Requiere plan pagado para pilotos largos |
 | CORS (fix `b62bf4e`) | VERIFICAR — `server.middlewareConfigFn` con orígenes Render/dominiopropio commiteado (26-oct), aún sin verificación en vivo de `/auth/me` y `/auth/email/login` |
-| `schema.prisma`: `documento @unique` | PENDIENTE — diff mostrado al usuario: aplicar `@unique` a `SyntheticPatient.documento` (`tipoDocumento`/`documento`/`documentHash @unique` ya existen desde `c5d8b0e`). Requiere: aprobación explícita + chequeo de duplicados en DB + migración (`wasp db migrate dev` en WSL). Justifica: lookup por texto plano en `actions.ts:2740` |
-| UI píldora de estado de cita | PENDIENTE — pedido: píldora pequeña con iniciales + badge "En curso" al Iniciar + mensaje al Completar (toast ya existe en `runTransition`). Nota: `apt-block-pill`/`pill-confirmado` son clases de la app de referencia, NO existen en DoctorIA; el equivalente está en `statusLabels.ts:15-22`, `ClinicalCalendarView.tsx:191,539`, `ClinicalAgendaPage.tsx:53`, `MedicoAgendaPanel.tsx:39`, `PatientDashboard.tsx:102`. Falta definir alcance (calendario / lista / ambos / portal paciente) |
+| `schema.prisma`: `documento @unique` | ✅ **RESUELTO** (8-nov, `f756540`) — `SyntheticPatient.documento` con `@unique`; migración `20261108235104_add_unique_synthetic_patient_documento` generada con `prisma migrate diff` y aplicada en local + staging (deploy verificado 200/200); chequeo de duplicados OK; seeds idempotentes (upsert por `syntheticId`). Docker NO es requisito de la BD |
+| UI badges de estado de cita | **PARCIAL** — HECHO en panel médico (8-nov, `8f368a5`): `STATUS_CONFIG` en `statusLabels.ts` (label/short/variant) + `CitaBadge` con iniciales + inmutabilidad (IN_PROGRESS → solo Completar; COMPLETED/CANCELLED/NO_SHOW → solo lectura; toast "Cita completada" ya existente). PENDIENTE: extender a calendario/lista/portal + unificar label "Atendido" (badge) vs "Completada" (métricas) — decisión del usuario. Descartado: campos `formCost/formObservation` (sin columnas nuevas en `Cita`, decisión 8-nov) |
+| Email de vinculación de paciente | PENDIENTE — **MINOR**: `getPatientLinkEmailContent` (`auth/email-and-pass/emails.ts:28`) está definido pero NUNCA se usa; el flujo `PatientLinkRequest` no envía ningún email (la notificación es solo visual en UI) |
+| Seeds: cuentas paciente sin vínculo | PENDIENTE — **MINOR**: `dbSeeds.ts:239-244` crea 6 cuentas (`PAC-008..013`) que no existen como pacientes (solo se siembran PAC-001..006) → esas cuentas quedan sin vínculo a ningún paciente (portal vacío). Corregir para que apunten a PAC-001..006 o crear esos pacientes |
+| Cobertura de tests | PENDIENTE — **MINOR**: sin unitarias para portal de paciente, export ICS, vista de calendario, `linkPatientAccount` y `manageCitaByMedico` (13 archivos / 195 tests cubren guards, voz, IA, ciclo de citas, validaciones) |
 
 ---
 
@@ -203,6 +206,7 @@ specs/001-doctoria-mvp/
 3. Preparar demo de la aplicación (landing + flujo clínico con cuentas seed).
 4. Iterar el MVP con feedback de pilotos (Semana 7).
 5. ~~Fix pendiente (CRITICAL): revalidar `updatedAt` en `requestAIStructuring`~~ ✅ **RESUELTO** (`daba56e`, CAS `expectedUpdatedAt`); queda re-verificar en el próximo QA manual.
+6. **Decisiones UI abiertas (8-nov)**: alcance de badges de citas (¿calendario/lista/portal?) y label unificado "Atendido" vs "Completada".
 
 > **Nota de despliegue (15-ago)**: la integración de IA migró de Gemini (bloqueado 403) a **OpenRouter**. El deploy de Render requiere la variable `OPENROUTER_API_KEY` configurada en el dashboard (el free tier `gpt-oss-20b:free` funciona para demo; para producción usar clave paga/BYOK).
 
@@ -215,4 +219,4 @@ specs/001-doctoria-mvp/
 - **P7 Calidad**: toda tarea con tests verdes (Vitest 195/195, Playwright 10) y QA documentado.
 - **P10 Gobierno**: decisiones documentadas en `plan.md`/`research.md` (PD-01..03); tareas en `tasks.md` por Doer.
 - **Idioma**: UI y documentos del equipo en español; código/comentarios en inglés.
-- **No commitear** sin que el usuario lo pida explícitamente; respetar flujo WSL→Windows→push.
+- **No commitear** sin que el usuario lo pida explícitamente; commits/push directos desde la copia Windows en `main` (ver §6).
