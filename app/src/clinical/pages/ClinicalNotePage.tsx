@@ -70,6 +70,7 @@ function ClinicalNotePageContent() {
     },
     { enabled: Boolean(user && noteId), staleTime: 30_000, refetchOnWindowFocus: false },
   );
+  const aiProgress = note?.aiProgress ?? null;
 
   const updateDraftFn = useAction(updateClinicalNoteDraft);
   const requestAIFn = useAction(requestAIStructuring);
@@ -91,6 +92,7 @@ function ClinicalNotePageContent() {
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saving, setSaving] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiNow, setAiNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [addendumOpen, setAddendumOpen] = useState(false);
@@ -100,6 +102,20 @@ function ClinicalNotePageContent() {
   const [aiInstruction, setAiInstruction] = useState("");
   const [cie11Open, setCie11Open] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
+
+  // Cola IA con progreso: mientras se estructura, refresca la nota (aiProgress)
+  // y actualiza el reloj para mostrar el tiempo transcurrido.
+  useEffect(() => {
+    if (!aiBusy) return;
+    const elapsed = setInterval(() => setAiNow(Date.now()), 1000);
+    const poll = setInterval(() => {
+      void refetch();
+    }, 1500);
+    return () => {
+      clearInterval(elapsed);
+      clearInterval(poll);
+    };
+  }, [aiBusy]);
 
   // Dictado por voz a nivel de nota
   const [isDictating, setIsDictating] = useState(false);
@@ -314,10 +330,58 @@ function ClinicalNotePageContent() {
     setError(null);
     try {
       // Token CAS: versión de la nota vista por el cliente (Fase 7).
-      await requestAIFn({
+      const result = await requestAIFn({
         noteId: note.id,
         expectedUpdatedAt: new Date(note.updatedAt).toISOString(),
       });
+      if (
+        result &&
+        typeof result === "object" &&
+        "status" in result &&
+        (result as { status?: string }).status === "CONFLICT"
+      ) {
+        // La nota cambió durante la IA: el borrador generado se conserva y el
+        // médico decide aplicarlo o mantener sus cambios (human-in-the-loop).
+        const draft = (result as {
+          aiDraft: {
+            motivoConsulta: string | null;
+            notaClinica: string | null;
+            examenFisico: string | null;
+            valoracionClinica: string | null;
+            planIndicaciones: string | null;
+          };
+        }).aiDraft;
+        const apply = await confirm({
+          title: "El documento cambió mientras la IA procesaba",
+          description:
+            "La estructuración terminó, pero la nota fue editada en el proceso. ¿Aplicar el borrador de la IA (reemplaza las secciones con el contenido generado) o conservar tus cambios actuales?",
+          confirmText: "Aplicar borrador IA",
+          cancelText: "Conservar mis cambios",
+          variant: "default",
+        });
+        if (apply) {
+          const payload: {
+            noteId: string;
+            motivoConsulta?: string;
+            notaClinica?: string;
+            examenFisico?: string;
+            valoracionClinica?: string;
+            planIndicaciones?: string;
+          } = { noteId: note.id };
+          if (draft.motivoConsulta != null) payload.motivoConsulta = draft.motivoConsulta;
+          if (draft.notaClinica != null) payload.notaClinica = draft.notaClinica;
+          if (draft.examenFisico != null) payload.examenFisico = draft.examenFisico;
+          if (draft.valoracionClinica != null) payload.valoracionClinica = draft.valoracionClinica;
+          if (draft.planIndicaciones != null) payload.planIndicaciones = draft.planIndicaciones;
+          await updateDraftFn(payload);
+          await refetch();
+          toast({ title: "Borrador de IA aplicado" });
+        } else {
+          await refetch();
+          toast({ title: "Se conservaron tus cambios" });
+        }
+        return;
+      }
       await refetch();
       toast({ title: "Nota estructurada con IA" });
     } catch (err: any) {
@@ -617,9 +681,31 @@ function ClinicalNotePageContent() {
           </CardHeader>
           <CardContent className="space-y-4">
             {aiBusy && (
-              <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin text-primary" />
-                DoctorIA está generando un borrador…
+              <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  {aiProgress?.state === "QUEUED" ? (
+                    <span>
+                      En cola de estructuración
+                      {aiProgress.position > 0
+                        ? ` (posición ${aiProgress.position + 1})`
+                        : " (siguiente)"}
+                      …
+                    </span>
+                  ) : aiProgress?.state === "RUNNING" ? (
+                    <span>
+                      DoctorIA está estructurando la nota…
+                      {aiProgress.startedAt
+                        ? ` ${Math.max(0, Math.floor((aiNow - aiProgress.startedAt) / 1000))}s`
+                        : ""}
+                    </span>
+                  ) : (
+                    <span>DoctorIA está generando un borrador…</span>
+                  )}
+                </div>
+                <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-primary/10">
+                  <div className="h-full w-1/3 animate-pulse rounded-full bg-primary/60" />
+                </div>
               </div>
             )}
             <SectionEditor draft={draft} onChange={persistDraft} disabled={aiBusy} />

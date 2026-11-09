@@ -193,8 +193,12 @@
 - [X] T059 QA de la sesión: Vitest **195/195** (13 archivos) + `tsc --noEmit` limpio, sin regresiones
 - [X] T060 Actualizar `CONTEXT.md` y `tasks.md` con el estado de la sesión (P10 Gobierno) — esta actualización
 - [X] T061 Extender los badges unificados a toda la UI de citas: componente compartido `CitaBadge.tsx` + `STATUS_CONFIG` fuente única en panel médico, lista de agenda (4 vistas), calendario (día + detalle, con iniciales) y portal del paciente (labels desde `STATUS_CONFIG`, casos "Por confirmar/Confirmada" de secretaría conservados); label COMPLETED unificado a **"Completada"** (decisión del usuario, 8-nov)
+- [X] T062 Completar `CitaBadge` en las 2 últimas vistas con texto plano: detalle de paciente (vista médico y secretaría, con iniciales del paciente) y panel de admin (reemplaza `AdminCitaBadge`/`citaBadgeVariant` locales por el componente compartido)
+- [X] T063 Suite de tests +52 → **247/247** (19 archivos): ICS del portal (8), `manageCitaByMedico` (14), vinculación `requestPatientLink` (7), calendario (11; helpers puros extraídos a `services/calendarFormat.ts`), `aiQueue` (5) y `requestAIStructuring` (7); `vitest.config.ts` con clave Resend dummy para poder importar `wasp/server` real en tests de acciones
+- [X] T064 `aiDraft` en el conflicto CAS (human-in-the-loop): `requestAIStructuring` devuelve `{status:"CONFLICT", aiDraft}` en P2025 (audita `status:CONFLICT`, ya no lanza 409 tras pagar la IA) y el cliente ofrece "Aplicar borrador IA" vs "Conservar mis cambios" con `useConfirm`
+- [X] T065 Cola IA single-slot con progreso: `services/aiQueue.ts` (FIFO en memoria, sin tablas nuevas) envuelve la llamada IA; `getClinicalNote` expone `aiProgress` (QUEUED/RUNNING + posición + startedAt) y la página refresca la nota cada 1.5 s mostrando cola, posición, segundos transcurridos y barra de progreso
 
-**Checkpoint**: asistente flotante operativo y híbrido (navegación + RF-030 + RF-031, solo médico), 195/195 tests verdes, docs de gobierno al día. Cerrados el 8-nov: `documento @unique` (`f756540`) y badges de citas en panel/lista/calendario/portal con label "Completada" (T061).
+**Checkpoint**: asistente flotante operativo y híbrido (navegación + RF-030 + RF-031, solo médico), **247/247 tests verdes**, docs de gobierno al día. Cerrados el 8-nov: `documento @unique` (`f756540`), badges en toda la UI de citas (T061–T062), cobertura de tests de citas/vínculo/calendario/IA (T063), `aiDraft` en conflicto 409 (T064) y cola IA con progreso (T065).
 
 ---
 
@@ -213,4 +217,4 @@
 - Semana 5 en curso: Enfoque comercial y adquisición de primeros usuarios
 - La meta individual obligatoria de 2 clientes por Doer en la Semana 6 es crítica para validación post-beta
 - Cada semana tiene un checkpoint entregable que valida el progreso antes de pasar a la siguiente fase
-- Sesión nov-2026 cerrada (5–8 nov): asistente de voz flotante + híbrido RF-030/RF-031 (T048–T061), 195/195 tests; cerrados el 8-nov: `documento @unique` + migración (`f756540`) y badges de citas en panel/lista/calendario/portal con label "Completada" (`8f368a5` + T061)
+- Sesión nov-2026 cerrada (5–8 nov): asistente de voz flotante + híbrido RF-030/RF-031 (T048–T065), **247/247 tests**; cerrados el 8-nov: `documento @unique` (`f756540`), badges en toda la UI de citas (T061–T062), cobertura de tests (T063), `aiDraft` en conflicto 409 (T064) y cola IA con progreso (T065)

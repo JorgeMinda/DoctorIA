@@ -72,6 +72,7 @@ import {
   SECTION_LABELS,
 } from "./services/noteValidation";
 import { canTransitionCita, isCitaStatusValid } from "./services/citaLifecycle";
+import { runWithAiSlot } from "./services/aiQueue";
 import {
   buildVoiceError,
   buildVoiceSummary,
@@ -226,6 +227,24 @@ type RequestAIStructuringInput = z.infer<
   typeof requestAIStructuringInputSchema
 >;
 
+// Resultado de conflicto (CAS): la nota cambió durante la generación y el
+// borrador IA se devuelve para que el médico decida aplicarlo o conservar sus
+// cambios. No lanza 409 en este caso (el draft ya se pagó a la IA).
+type RequestAIStructuringConflict = {
+  status: "CONFLICT";
+  message: string;
+  aiDraft: {
+    motivoConsulta: string | null;
+    notaClinica: string | null;
+    examenFisico: string | null;
+    valoracionClinica: string | null;
+    planIndicaciones: string | null;
+    unclassifiedContent: string | null;
+  };
+};
+
+type RequestAIStructuringResult = ClinicalNote | RequestAIStructuringConflict;
+
 // Mapea errores del servicio de IA a HttpError controlados (FASE 8):
 // - AIInvalidResponseError -> 502 (respuesta estructuralmente invÃ¡lida, nada se guardÃ³)
 // - resto (timeout/red/429) -> 504 (servicio no disponible)
@@ -246,7 +265,7 @@ function mapAIServiceError(err: unknown): never {
 
 export const requestAIStructuring: RequestAIStructuring<
   RequestAIStructuringInput,
-  ClinicalNote
+  RequestAIStructuringResult
 > = async (rawArgs, context) => {
   const user = ensureMedico(context.user);
 
@@ -281,55 +300,79 @@ export const requestAIStructuring: RequestAIStructuring<
     );
   }
 
-  let result;
-  try {
-    result = await structureClinicalText({
-      text: note.originalText,
-      mode: "NOTE",
-    });
-  } catch (err) {
-    // RNF-008: falla de IA -> la nota permanece en DRAFT_MANUAL, texto intacto
-    mapAIServiceError(err);
-  }
-
-  // CAS update (Fase 7): si nadie tocÃ³ la nota durante la generaciÃ³n,
-  // updatedAt coincide y el write aplica; si no, Prisma lanza P2025.
-  let updated: ClinicalNote;
-  try {
-    updated = await context.entities.ClinicalNote.update({
-      where: { id: note.id, updatedAt: new Date(expectedUpdatedAt) },
-      data: {
-        status: "DRAFT_AI_ASSISTED",
-        aiAssisted: true,
-        motivoConsulta: result.sections.motivoConsulta ?? undefined,
-        notaClinica: result.sections.notaClinica ?? undefined,
-        examenFisico: result.sections.examenFisico ?? undefined,
-        valoracionClinica: result.sections.valoracionClinica ?? undefined,
-        planIndicaciones: result.sections.planIndicaciones ?? undefined,
-        unclassifiedContent: result.unclassifiedContent ?? undefined,
-      },
-    });
-  } catch (err: any) {
-    if (err?.code === "P2025") {
-      throw new HttpError(
-        409,
-        "El documento fue modificado mientras la IA procesaba. Recarga para ver los cambios.",
-      );
+  // Cola single-slot (free tier): una llamada IA a la vez, con progreso
+  // expuesto vía getClinicalNote (aiProgress).
+  return await runWithAiSlot(note.id, async (): Promise<RequestAIStructuringResult> => {
+    let result;
+    try {
+      result = await structureClinicalText({
+        text: note.originalText,
+        mode: "NOTE",
+      });
+    } catch (err) {
+      // RNF-008: falla de IA -> la nota permanece en DRAFT_MANUAL, texto intacto
+      mapAIServiceError(err);
     }
-    throw err;
-  }
 
-  await createAuditEntry({
-    userId: user.id,
-    action: "REQUEST_AI_STRUCTURING",
-    resourceType: "NOTE",
-    resourceId: note.id,
-    patientId: note.patientId,
-    clinicalNoteId: note.id,
-    metadata: { source: "AI", status: "DRAFT_AI_ASSISTED" },
+    // CAS update (Fase 7): si nadie tocÃ³ la nota durante la generaciÃ³n,
+    // updatedAt coincide y el write aplica; si no, Prisma lanza P2025.
+    let updated: ClinicalNote;
+    try {
+      updated = await context.entities.ClinicalNote.update({
+        where: { id: note.id, updatedAt: new Date(expectedUpdatedAt) },
+        data: {
+          status: "DRAFT_AI_ASSISTED",
+          aiAssisted: true,
+          motivoConsulta: result.sections.motivoConsulta ?? undefined,
+          notaClinica: result.sections.notaClinica ?? undefined,
+          examenFisico: result.sections.examenFisico ?? undefined,
+          valoracionClinica: result.sections.valoracionClinica ?? undefined,
+          planIndicaciones: result.sections.planIndicaciones ?? undefined,
+          unclassifiedContent: result.unclassifiedContent ?? undefined,
+        },
+      });
+    } catch (err: any) {
+      if (err?.code === "P2025") {
+        // Conflicto: no se pierde el borrador IA generado; el cliente ofrece
+        // aplicarlo (updateClinicalNoteDraft) o conservar los cambios actuales.
+        await createAuditEntry({
+          userId: user.id,
+          action: "REQUEST_AI_STRUCTURING",
+          resourceType: "NOTE",
+          resourceId: note.id,
+          patientId: note.patientId,
+          clinicalNoteId: note.id,
+          metadata: { source: "AI", status: "CONFLICT" },
+        });
+        return {
+          status: "CONFLICT",
+          message:
+            "El documento fue modificado mientras la IA procesaba. Puedes aplicar el borrador generado o conservar tus cambios.",
+          aiDraft: {
+            motivoConsulta: result.sections.motivoConsulta ?? null,
+            notaClinica: result.sections.notaClinica ?? null,
+            examenFisico: result.sections.examenFisico ?? null,
+            valoracionClinica: result.sections.valoracionClinica ?? null,
+            planIndicaciones: result.sections.planIndicaciones ?? null,
+            unclassifiedContent: result.unclassifiedContent ?? null,
+          },
+        };
+      }
+      throw err;
+    }
+
+    await createAuditEntry({
+      userId: user.id,
+      action: "REQUEST_AI_STRUCTURING",
+      resourceType: "NOTE",
+      resourceId: note.id,
+      patientId: note.patientId,
+      clinicalNoteId: note.id,
+      metadata: { source: "AI", status: "DRAFT_AI_ASSISTED" },
+    });
+
+    return updated;
   });
-
-  return updated;
 };
 
 // ---------------------------------------------------------------------------

@@ -34,6 +34,7 @@ import {
 } from "./services/guards";
 import { assertMedicoPatientAccess } from "./services/patientAccess";
 import { createAuditEntry } from "./services/audit";
+import { getAiProgress } from "./services/aiQueue";
 import {
   buildVoiceSummary,
   buildVoiceError,
@@ -485,6 +486,13 @@ type ClinicalNoteDetail = {
     firstName: string;
     lastName: string;
   };
+  // Progreso de la cola IA en memoria (null = sin solicitud activa).
+  aiProgress: {
+    state: "QUEUED" | "RUNNING";
+    queuedAt: number;
+    startedAt: number | null;
+    position: number;
+  } | null;
 };
 
 export const getClinicalNote: GetClinicalNote<
@@ -522,7 +530,10 @@ export const getClinicalNote: GetClinicalNote<
 
   await assertMedicoPatientAccess(user.id, note.patientId);
 
-  return note as unknown as ClinicalNoteDetail;
+  return {
+    ...(note as unknown as ClinicalNoteDetail),
+    aiProgress: getAiProgress(noteId),
+  };
 };
 
 // ---------------------------------------------------------------------------
