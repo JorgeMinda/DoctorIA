@@ -10,7 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Button } from "../../client/components/ui/button";
 import { Badge } from "../../client/components/ui/badge";
 import { StatusBadge } from "../../clinical/components/StatusBadge";
-import { citaStatusLabel } from "../../clinical/services/statusLabels";
+import {
+  STATUS_CONFIG,
+  type AppointmentStatus,
+} from "../../clinical/services/statusLabels";
 import { toast } from "../../client/hooks/use-toast";
 import { PatientProfileModal } from "../components/PatientProfileModal";
 import { RequestAppointmentModal } from "../components/RequestAppointmentModal";
@@ -65,7 +68,7 @@ export function PatientCitaBadge({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 animate-pulse shadow-sm">
         <span className="size-1.5 rounded-full bg-cyan-400" />
-        En curso
+        {STATUS_CONFIG.IN_PROGRESS.label}
       </span>
     );
   }
@@ -74,7 +77,7 @@ export function PatientCitaBadge({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400/90 border border-emerald-500/20 shadow-sm">
         <span className="size-1.5 rounded-full bg-emerald-400/80" />
-        Completada
+        {STATUS_CONFIG.COMPLETED.label}
       </span>
     );
   }
@@ -83,7 +86,7 @@ export function PatientCitaBadge({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30 shadow-sm">
         <span className="size-1.5 rounded-full bg-rose-400" />
-        Cancelada
+        {STATUS_CONFIG.CANCELLED.label}
       </span>
     );
   }
@@ -92,14 +95,14 @@ export function PatientCitaBadge({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-slate-500/15 text-slate-400 border border-slate-500/30 shadow-sm">
         <span className="size-1.5 rounded-full bg-slate-400" />
-        No asistió
+        {STATUS_CONFIG.NO_SHOW.label}
       </span>
     );
   }
 
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground border border-outline-variant">
-      {citaStatusLabel(cita.status)}
+      {STATUS_CONFIG[cita.status as AppointmentStatus]?.label ?? cita.status}
     </span>
   );
 }

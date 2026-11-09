@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../../client/components/ui/dialog";
-import { citaStatusLabel } from "../services/statusLabels";
+import { CitaBadge, initialsOf } from "./CitaBadge";
 import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
 import { toast } from "../../client/hooks/use-toast";
 
@@ -188,9 +188,7 @@ export function ClinicalCalendarView({
                         <span className="font-semibold text-foreground truncate">
                           {cita.patient.firstName} {cita.patient.lastName} ({cita.patient.syntheticId})
                         </span>
-                        <Badge variant="outline" className="text-[10px] mono-label">
-                          {citaStatusLabel(cita.status)}
-                        </Badge>
+                        <CitaBadge status={cita.status} />
                       </div>
                       <p className="text-muted-foreground text-[11px] truncate">
                         {new Date(cita.scheduledAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })} · {cita.durationMinutes} min · {cita.reason || "Consulta médica"}
@@ -536,20 +534,14 @@ export function ClinicalCalendarView({
             <div className="space-y-5">
               <DialogHeader className="space-y-2 pb-3 border-b border-outline-variant/40">
                 <div className="flex items-center justify-between">
-                  <Badge
-                    variant={
-                      selectedDetailCita.status === "COMPLETED"
-                        ? "success"
-                        : selectedDetailCita.status === "IN_PROGRESS"
-                        ? "warning"
-                        : selectedDetailCita.status === "CANCELLED"
-                        ? "destructive"
-                        : "outline"
+                  <CitaBadge
+                    status={selectedDetailCita.status}
+                    patientInitials={
+                      selectedDetailCita.patient
+                        ? initialsOf(selectedDetailCita.patient)
+                        : undefined
                     }
-                    className="text-xs px-2.5 py-0.5 mono-label"
-                  >
-                    {citaStatusLabel(selectedDetailCita.status)}
-                  </Badge>
+                  />
                   <span className="text-xs font-mono text-muted-foreground flex items-center gap-1.5">
                     <Clock className="size-3.5 text-primary" />
                     {selectedDetailCita.durationMinutes || 30} min

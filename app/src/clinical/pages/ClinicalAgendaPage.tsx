@@ -39,21 +39,7 @@ import { citaStatusLabel } from "../services/statusLabels";
 import { NewAppointmentModal } from "../components/NewAppointmentModal";
 import { EditAppointmentModal } from "../components/EditAppointmentModal";
 import { ClinicalCalendarView } from "../components/ClinicalCalendarView";
-
-function citaBadgeVariant(status: string) {
-  if (status === "COMPLETED") return "success";
-  if (status === "IN_PROGRESS") return "warning";
-  if (status === "CANCELLED") return "destructive";
-  return "outline";
-}
-
-function CitaBadge({ status }: { status: string }) {
-  return (
-    <Badge variant={citaBadgeVariant(status) as any} className="mono-label">
-      {citaStatusLabel(status)}
-    </Badge>
-  );
-}
+import { CitaBadge, initialsOf } from "../components/CitaBadge";
 
 import { useConfirm } from "../../client/hooks/use-confirm";
 
@@ -508,7 +494,7 @@ export function ClinicalAgendaPage() {
                       <Badge variant="outline" className="mono-label">
                         {cita.patient.syntheticId}
                       </Badge>
-                      <CitaBadge status={cita.status} />
+                      <CitaBadge status={cita.status} patientInitials={initialsOf(cita.patient)} />
                       {!cita.secretaryId && cita.status === "SCHEDULED" && (
                         <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px]">
                           Solicitud Paciente
@@ -704,7 +690,7 @@ export function ClinicalAgendaPage() {
                         <Badge variant="outline" className="mono-label">
                           {cita.patient.syntheticId}
                         </Badge>
-                        <CitaBadge status={cita.status} />
+                        <CitaBadge status={cita.status} patientInitials={initialsOf(cita.patient)} />
                       </div>
                       <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
                         <span>{new Date(cita.scheduledAt).toLocaleString()}</span>
@@ -895,7 +881,7 @@ export function ClinicalAgendaPage() {
                       <Badge variant="outline" className="mono-label">
                         {cita.patient.syntheticId}
                       </Badge>
-                      <CitaBadge status={cita.status} />
+                      <CitaBadge status={cita.status} patientInitials={initialsOf(cita.patient)} />
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
@@ -1017,7 +1003,7 @@ export function ClinicalAgendaPage() {
                       <Badge variant="outline" className="mono-label">
                         {cita.patient.syntheticId}
                       </Badge>
-                      <CitaBadge status={cita.status} />
+                      <CitaBadge status={cita.status} patientInitials={initialsOf(cita.patient)} />
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">

@@ -192,8 +192,9 @@
 - [X] T058 Ocultar "Asistente de voz" del sidebar/topbar/detalle de paciente — la ruta queda por CTA de landing, comando de voz y URL directa con título de sección (`8b6245a`)
 - [X] T059 QA de la sesión: Vitest **195/195** (13 archivos) + `tsc --noEmit` limpio, sin regresiones
 - [X] T060 Actualizar `CONTEXT.md` y `tasks.md` con el estado de la sesión (P10 Gobierno) — esta actualización
+- [X] T061 Extender los badges unificados a toda la UI de citas: componente compartido `CitaBadge.tsx` + `STATUS_CONFIG` fuente única en panel médico, lista de agenda (4 vistas), calendario (día + detalle, con iniciales) y portal del paciente (labels desde `STATUS_CONFIG`, casos "Por confirmar/Confirmada" de secretaría conservados); label COMPLETED unificado a **"Completada"** (decisión del usuario, 8-nov)
 
-**Checkpoint**: asistente flotante operativo y híbrido (navegación + RF-030 + RF-031, solo médico), 195/195 tests verdes, docs de gobierno al día. Pendientes de aprobación del usuario: diff `schema.prisma` (`documento @unique`, con chequeo de duplicados + migración) y alcance de la UI de píldora de estados de cita.
+**Checkpoint**: asistente flotante operativo y híbrido (navegación + RF-030 + RF-031, solo médico), 195/195 tests verdes, docs de gobierno al día. Cerrados el 8-nov: `documento @unique` (`f756540`) y badges de citas en panel/lista/calendario/portal con label "Completada" (T061).
 
 ---
 
@@ -212,4 +213,4 @@
 - Semana 5 en curso: Enfoque comercial y adquisición de primeros usuarios
 - La meta individual obligatoria de 2 clientes por Doer en la Semana 6 es crítica para validación post-beta
 - Cada semana tiene un checkpoint entregable que valida el progreso antes de pasar a la siguiente fase
-- Sesión nov-2026 cerrada (5–8 nov): asistente de voz flotante + híbrido RF-030/RF-031 (T048–T060), 195/195 tests; en cola de aprobación: diff `documento @unique` y UI de píldora de estados de cita
+- Sesión nov-2026 cerrada (5–8 nov): asistente de voz flotante + híbrido RF-030/RF-031 (T048–T061), 195/195 tests; cerrados el 8-nov: `documento @unique` + migración (`f756540`) y badges de citas en panel/lista/calendario/portal con label "Completada" (`8f368a5` + T061)

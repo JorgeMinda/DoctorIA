@@ -26,40 +26,8 @@ import {
   CardTitle,
 } from "../../client/components/ui/card";
 import { Badge } from "../../client/components/ui/badge";
-import { cn } from "../../client/utils";
-import {
-  STATUS_CONFIG,
-  type AppointmentStatus,
-} from "../services/statusLabels";
+import { CitaBadge, initialsOf } from "./CitaBadge";
 import { toast } from "../../client/hooks/use-toast";
-
-function initialsOf(patient: { firstName: string; lastName: string }) {
-  return `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase();
-}
-
-function CitaBadge({
-  status,
-  patientInitials,
-}: {
-  status: string;
-  patientInitials?: string;
-}) {
-  const config =
-    STATUS_CONFIG[status as AppointmentStatus] ?? STATUS_CONFIG.SCHEDULED;
-  return (
-    <Badge
-      variant={config.variant}
-      className={cn("mono-label gap-1.5", config.className)}
-    >
-      {patientInitials && (
-        <span className="flex size-4 items-center justify-center rounded-full bg-black/10 text-[9px] font-extrabold uppercase">
-          {patientInitials}
-        </span>
-      )}
-      {config.label}
-    </Badge>
-  );
-}
 
 function metric(value: number | string, label: string) {
   return (

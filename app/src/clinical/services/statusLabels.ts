@@ -48,7 +48,7 @@ export const STATUS_CONFIG: Record<AppointmentStatus, StatusConfig> = {
     variant: "default",
     className: "animate-pulse font-semibold",
   },
-  COMPLETED: { label: "Atendido", short: "CP", variant: "success" },
+  COMPLETED: { label: "Completada", short: "CP", variant: "success" },
   CANCELLED: { label: "Cancelada", short: "CC", variant: "destructive" },
   NO_SHOW: { label: "No asistio", short: "NA", variant: "destructive" },
   NOT_STARTED: { label: "No iniciada", short: "NI", variant: "outline" },
