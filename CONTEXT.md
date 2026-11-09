@@ -117,7 +117,7 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **5/5 flujos E2E superados** contra staging: (1) Home→Comenzar→intake, (2) entry points visibles, (3) login desde home, (4) sesión persistente, (5) credenciales inválidas controladas.
 - **Defecto D-01 corregido** (commit `94b6fe0`): el CTA `Comenzar` (Hero + FinalCTA) apuntaba a `SignupRoute`; ahora apunta a `ClinicalVoiceRoute` (`/clinical/voice`), que redirige a `/login` por auth guard — en vez de signup.
 - Documentos: `specs/001-doctoria-mvp/qa/week4-qa-report.md` y `specs/001-doctoria-mvp/checklists/production.md`.
-- **E2E flujo clínico completo (16-ago)**: verificado por API contra producción (login → create-note → IA → edición draft → confirm → audit, 6/6 pasos). Hallazgo **CRITICAL**: `requestAIStructuring` (actions.ts L197-210) escribe sin revalidar el estado de la nota, de modo que una llamada IA que quedó en vuelo puede sobrescribir ediciones manuales del médico; reportado en `week4-qa-report.md` (sección *Flujo clínico completo*).
+- **E2E flujo clínico completo (16-ago)**: verificado por API contra producción (login → create-note → IA → edición draft → confirm → audit, 6/6 pasos). Hallazgo **CRITICAL**: `requestAIStructuring` (actions.ts L197-210) escribe sin revalidar el estado de la nota, de modo que una llamada IA que quedó en vuelo puede sobrescribir ediciones manuales del médico; reportado en `week4-qa-report.md` (sección *Flujo clínico completo*) — **corregido el 24-ago** (`daba56e`: CAS `expectedUpdatedAt` server-side + envío desde el cliente).
 - Suites locales: Vitest **195/195** verde (13 archivos; era 43 al cierre de Semana 4), Playwright E2E 10/10 verde.
 
 ### Sesión nov-2026 (5–8 nov) — Asistente de voz flotante + asistencia híbrida — COMPLETO
@@ -186,7 +186,7 @@ specs/001-doctoria-mvp/
 | Entrevistas de Semana 1 | Deuda — 5/8; continúa validación con pilotos |
 | Google Stitch (PD-03) | ✅ **HECHO** — pantallas del flujo clínico diseñadas e implementadas (UI directa validada, 15-ago) |
 | Deploy manual del client | Documentado como caveat del free tier |
-| Race en `requestAIStructuring` | PENDIENTE — **CRITICAL**: escritura sin revalidar (actions.ts L197-210); una llamada IA en vuelo puede sobrescribir ediciones del médico. Fix propuesto: revalidar estado/`updatedAt` justo antes de escribir (409 si cambió) |
+| Race en `requestAIStructuring` | ✅ **RESUELTO** (24-ago, `daba56e`, FASE 3+7) — CAS con `expectedUpdatedAt`: fail-fast 409 antes de gastar la llamada IA + `update` atómico `where:{id,updatedAt}` tras la IA (P2025→409); el cliente envía `expectedUpdatedAt` y maneja 409/502 con mensaje unificado (`ClinicalNotePage.tsx:317-324`) |
 | Latencia IA (~120–130 s) | PENDIENTE — **MAJOR**: 3 intentos × timeout 30 s + backoff de OpenRouter free (aiService.ts). Mitigación: reducir `AI_MAX_RETRIES` a 1 o mover IA a job/cola con progreso (16-ago) |
 | IA no determinista | PENDIENTE — **MINOR**: dos corridas devuelven divisiones distintas de las secciones; mitigar con `temperature` baja o bloqueo del campo editado (16-ago) |
 | DB free expira 30 días | Requiere plan pagado para pilotos largos |
@@ -202,7 +202,7 @@ specs/001-doctoria-mvp/
 2. **Estrategia comercial**: plan de adquisición de clientes + agenda de 5 contactos reales documentados en `specs/001-doctoria-mvp/week5-commercial-plan.md`.
 3. Preparar demo de la aplicación (landing + flujo clínico con cuentas seed).
 4. Iterar el MVP con feedback de pilotos (Semana 7).
-5. **Fix pendiente (CRITICAL, de deuda técnica)**: revalidar estado/`updatedAt` en `requestAIStructuring` antes de escribir para evitar que una llamada IA tardía sobrescriba ediciones del médico.
+5. ~~Fix pendiente (CRITICAL): revalidar `updatedAt` en `requestAIStructuring`~~ ✅ **RESUELTO** (`daba56e`, CAS `expectedUpdatedAt`); queda re-verificar en el próximo QA manual.
 
 > **Nota de despliegue (15-ago)**: la integración de IA migró de Gemini (bloqueado 403) a **OpenRouter**. El deploy de Render requiere la variable `OPENROUTER_API_KEY` configurada en el dashboard (el free tier `gpt-oss-20b:free` funciona para demo; para producción usar clave paga/BYOK).
 
