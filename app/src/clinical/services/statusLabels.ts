@@ -21,6 +21,39 @@ export const CITA_STATUS_LABELS: Record<string, string> = {
   NOT_STARTED: "No iniciada",
 };
 
+// Badges unificados de citas (sesión nov-2026): fuente única para el UI
+// (píldora con iniciales + label). `short` queda disponible para vistas
+// compactas (calendario). Los textos de tablas/filtros siguen en
+// CITA_STATUS_LABELS; este config gobierna SOLO los badges.
+export type AppointmentStatus =
+  | "SCHEDULED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "NO_SHOW"
+  | "NOT_STARTED";
+
+export interface StatusConfig {
+  label: string;
+  short: string;
+  variant: "default" | "success" | "warning" | "destructive" | "outline";
+  className?: string;
+}
+
+export const STATUS_CONFIG: Record<AppointmentStatus, StatusConfig> = {
+  SCHEDULED: { label: "Agendada", short: "AG", variant: "warning" },
+  IN_PROGRESS: {
+    label: "En curso",
+    short: "EC",
+    variant: "default",
+    className: "animate-pulse font-semibold",
+  },
+  COMPLETED: { label: "Atendido", short: "CP", variant: "success" },
+  CANCELLED: { label: "Cancelada", short: "CC", variant: "destructive" },
+  NO_SHOW: { label: "No asistio", short: "NA", variant: "destructive" },
+  NOT_STARTED: { label: "No iniciada", short: "NI", variant: "outline" },
+};
+
 export const AUDIT_ACTION_LABELS: Record<string, string> = {
   VIEW_PATIENT: "Vio paciente",
   CREATE_NOTE: "Creó nota",

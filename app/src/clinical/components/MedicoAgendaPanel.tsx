@@ -26,20 +26,37 @@ import {
   CardTitle,
 } from "../../client/components/ui/card";
 import { Badge } from "../../client/components/ui/badge";
-import { citaStatusLabel } from "../services/statusLabels";
+import { cn } from "../../client/utils";
+import {
+  STATUS_CONFIG,
+  type AppointmentStatus,
+} from "../services/statusLabels";
 import { toast } from "../../client/hooks/use-toast";
 
-function citaBadgeVariant(status: string) {
-  if (status === "COMPLETED") return "success";
-  if (status === "IN_PROGRESS") return "warning";
-  if (status === "CANCELLED") return "destructive";
-  return "outline";
+function initialsOf(patient: { firstName: string; lastName: string }) {
+  return `${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase();
 }
 
-function CitaBadge({ status }: { status: string }) {
+function CitaBadge({
+  status,
+  patientInitials,
+}: {
+  status: string;
+  patientInitials?: string;
+}) {
+  const config =
+    STATUS_CONFIG[status as AppointmentStatus] ?? STATUS_CONFIG.SCHEDULED;
   return (
-    <Badge variant={citaBadgeVariant(status) as any} className="mono-label">
-      {citaStatusLabel(status)}
+    <Badge
+      variant={config.variant}
+      className={cn("mono-label gap-1.5", config.className)}
+    >
+      {patientInitials && (
+        <span className="flex size-4 items-center justify-center rounded-full bg-black/10 text-[9px] font-extrabold uppercase">
+          {patientInitials}
+        </span>
+      )}
+      {config.label}
     </Badge>
   );
 }
@@ -345,7 +362,10 @@ export function MedicoAgendaPanel({ medicoId }: { medicoId: string }) {
                     <Badge variant="outline" className="mono-label">
                       {cita.patient.syntheticId}
                     </Badge>
-                    <CitaBadge status={cita.status} />
+                    <CitaBadge
+                      status={cita.status}
+                      patientInitials={initialsOf(cita.patient)}
+                    />
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
@@ -399,31 +419,33 @@ export function MedicoAgendaPanel({ medicoId }: { medicoId: string }) {
                       Completar
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busyId === cita.id}
-                    onClick={() =>
-                      setEditingId(editingId === cita.id ? null : cita.id)
-                    }
-                  >
-                    <Pencil className="size-3.5" />
-                    Editar
-                  </Button>
-                  {cita.status !== "COMPLETED" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-destructive"
-                      disabled={busyId === cita.id}
-                      onClick={() => handleDelete(cita)}
-                    >
-                      <Trash2 className="size-3.5" />
-                      Eliminar
-                    </Button>
-                  )}
                   {(cita.status === "SCHEDULED" ||
-                    cita.status === "IN_PROGRESS") && (
+                    cita.status === "NOT_STARTED") && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === cita.id}
+                        onClick={() =>
+                          setEditingId(editingId === cita.id ? null : cita.id)
+                        }
+                      >
+                        <Pencil className="size-3.5" />
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive"
+                        disabled={busyId === cita.id}
+                        onClick={() => handleDelete(cita)}
+                      >
+                        <Trash2 className="size-3.5" />
+                        Eliminar
+                      </Button>
+                    </>
+                  )}
+                  {cita.status === "SCHEDULED" && (
                     <Button
                       size="sm"
                       variant="outline"
