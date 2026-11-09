@@ -97,7 +97,7 @@ model SyntheticPatient {
 
   // Identificación real de producción
   tipoDocumento   DocumentType  @default(CEDULA)
-  documento       String?       @db.VarChar(30) // documento normalizado
+  documento       String?       @unique @db.VarChar(30) // documento normalizado único
   documentHash    String?       @unique         // HMAC-SHA256 para búsqueda sin exponer PII
   paisEmisor      String?       @default("EC")
 
