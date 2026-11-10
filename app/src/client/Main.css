@@ -61,7 +61,7 @@
   --color-outline-variant: hsl(var(--outline-variant));
   --color-primary-bright: hsl(var(--primary-bright));
 
-  /* Paleta corporativa HVQ 2026 (Manual de Marca) */
+  /* Paleta corporativa 2026 (Manual de Marca ****) */
   --color-wine-300: #f0a3bb;
   --color-wine-400: #e04879;
   --color-wine-500: #c22d5c;
@@ -246,14 +246,14 @@
     --card-subtle-foreground: 216 45% 15%;
     --popover: 0 0% 100%;
     --popover-foreground: 216 45% 13%;
-    --primary: 341 71% 33%; /* #8e183e — vino corporativo HVQ */
+    --primary: 341 71% 33%; /* #8e183e — vino corporativo */
     --primary-foreground: 0 0% 100%;
     --secondary: 341 62% 47%; /* #c22d5c */
     --secondary-foreground: 0 0% 100%;
     --secondary-muted: 344 40% 96%;
     --secondary-muted-foreground: 341 40% 30%;
     --muted: 210 25% 94%;
-    --muted-foreground: 210 3% 42%; /* gris HVQ #58595b */
+    --muted-foreground: 210 3% 42%; /* gris corporativo #58595b */
     --accent: 344 30% 95%;
     --accent-foreground: 341 70% 33%;
     --destructive: 0 72% 51%;
@@ -547,25 +547,22 @@
   background-position: center center;
   background-attachment: fixed;
   background-repeat: no-repeat;
-  /* Modo Claro: atmósfera cálida con tinte vino HVQ */
+  /* Modo Claro: atmósfera cálida con tinte vino corporativo */
   background-image: linear-gradient(
       to bottom,
       rgba(255, 240, 244, 0.65),
       rgba(250, 220, 230, 0.78)
-    ),
-    url('/doctoria_hud_hologram_doctor.jpg');
-  transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
+    );
 }
 
 :where(.dark, .dark *) .global-futuristic-bg,
 .dark .global-futuristic-bg {
-  /* Modo Oscuro: Cabina nocturna profunda con hologramas cian de alto contraste */
+  /* Modo Oscuro: Cabina nocturna profunda de alto contraste (sin imagen de fondo) */
   background-image: linear-gradient(
       to bottom,
       rgba(5, 10, 24, 0.70),
       rgba(2, 6, 16, 0.88)
-    ),
-    url('/doctoria_hud_hologram_doctor.jpg');
+    );
 }
 
 /* ========== GLASSMORPHISM (CRISTAL CLARO vs CABINA OSCURA) ========== */
@@ -582,7 +579,7 @@
 
 :where(.dark, .dark *) .clinical-glass-card,
 .dark .clinical-glass-card {
-  /* Modo Oscuro: Cristal obsidiana profundo con microborde vino HVQ */
+  /* Modo Oscuro: Cristal obsidiana profundo con microborde vino corporativo */
   background-color: rgba(10, 18, 32, 0.70);
   border: 1px solid rgba(224, 72, 121, 0.32);
   box-shadow: 0 10px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(224, 72, 121, 0.1);

@@ -9,7 +9,7 @@ export function AppFooterBar({ className }: { className?: string }) {
       )}
     >
       <span>
-        © 2026 DoctorIA · Hospital Vozandes Quito — Todos los derechos
+        © 2026 DoctorIA — Todos los derechos
         reservados.
       </span>
       <span className="flex gap-4">

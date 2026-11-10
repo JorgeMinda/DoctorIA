@@ -102,7 +102,7 @@ export function Footer({
         <div className="border-t border-white/10 bg-[#141016]">
           <div className="flex flex-col gap-2 py-4 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:text-xs">
             <p>
-              © 2026 DoctorIA · Hospital Vozandes Quito — Todos los derechos
+              © 2026 DoctorIA — Todos los derechos
               reservados.
             </p>
             <div className="flex gap-4">
