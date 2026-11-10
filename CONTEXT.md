@@ -150,8 +150,7 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **Auth**: barra `AuthPageLayout` → `from-wine-600 via-violet-900 to-[#58595b]`; `ambientAuthTheme.ts` brand `#8e183e` / accent `#e04879` / focus+submit glows vino.
 - **Bulk replace** (~19 archivos): glows `rgba(cianes)` → `rgba(224,72,121`, clases `cyan/sky/teal/indigo-400|500`, `emerald-300|500` de marca → `wine-*`, conic gradients de VoiceOrb/FloatingVoiceAssistant → rampa wine, auroras hex de DoctorMascot → wine, botones DoctorMascot → `bg-wine-500 text-white`.
 - **Regla de consistencia (clave)**: marca (cyan/sky/teal/blue/indigo antiguos) → wine; **semánticos se conservan verdes**: `emerald` = éxito/approbación (badges "Operativa/Confirmada/Completada", botones "Aprobar/Completar/Crear Ficha" con hover `emerald-500`, paneles de éxito, slots "disponibles", dots online, `rule.ok`, tendencia vital up, COMPLETED en `calendarFormat`), `amber` = warning, `destructive` = rojo. Estados del orbe de voz: listening wine, processing violet, responding emerald.
-- **Limitación conocida**: JPG holograma HUD cian (`/doctoria_hud_hologram_doctor.jpg`) de fondo auth/global — imagen no recolorable; overlays ajustados a tinte cálido; posible reemplazo futuro.
-- **Validación**: `tsc --noEmit` limpio + Vitest **271/271** (20 archivos). Tarea T067 en `tasks.md`.
+- **Sin imagen de fondo** (10-nov): el JPG holograma HUD cian y `bg-medical-futuristic` fueron eliminados (decisión del usuario); los fondos auth/global son ahora solo gradientes (tinte vino en claro, cabina obsidiana en oscuro). Validación: `tsc --noEmit` limpio + Vitest **277/277** (21 archivos, cierre de T068). Tareas T067–T068 en `tasks.md`.
 
 ### Footer + agendamiento del portal paciente (10-nov) — T068
 
