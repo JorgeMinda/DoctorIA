@@ -17,6 +17,7 @@ import {
   AlertCircle,
   ArrowLeft,
   CalendarDays,
+  ClipboardList,
   FileText,
   FilePlus2,
   Loader2,
@@ -49,6 +50,16 @@ import { extractSuggestedDiagnoses } from "../services/clinicalFormat";
 import { useConfirm } from "../../client/hooks/use-confirm";
 import { RoleGuard } from "../../client/components/RoleGuard";
 import { toast } from "../../client/hooks/use-toast";
+import {
+  CAPTURE_FIELDS,
+  applyCaptureAnswer,
+  initialCaptureState,
+  transition,
+  type CaptureEffect,
+  type CaptureEvent,
+  type CaptureState,
+} from "../../client/voice/captureFsm";
+import { ttsService } from "../services/tts.service";
 
 export function ClinicalNotePage() {
   return (
@@ -121,6 +132,36 @@ function ClinicalNotePageContent() {
   const [isDictating, setIsDictating] = useState(false);
   const [dictationTranscript, setDictationTranscript] = useState("");
   const pageRecognitionRef = useRef<any>(null);
+
+  // Captura guiada (FSM Formulario 002 → secciones SOAP)
+  const [capture, setCapture] = useState<CaptureState>(initialCaptureState);
+  const captureRef = useRef<CaptureState>(capture);
+  const captureRecRef = useRef<any>(null);
+  const micSuppressedRef = useRef(false);
+  const draftRef = useRef(draft);
+
+  useEffect(() => {
+    captureRef.current = capture;
+  }, [capture]);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  const stopCaptureRecognition = () => {
+    micSuppressedRef.current = true;
+    const rec = captureRecRef.current;
+    captureRecRef.current = null;
+    if (rec) {
+      rec.onend = null;
+      rec.onresult = null;
+      try {
+        rec.stop();
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   const stopPageDictation = () => {
     if (pageRecognitionRef.current) {
@@ -225,6 +266,8 @@ function ClinicalNotePageContent() {
   useEffect(() => {
     return () => {
       stopPageDictation();
+      stopCaptureRecognition();
+      ttsService.stop();
       if (autosaveTimer.current) {
         clearTimeout(autosaveTimer.current);
       }
@@ -302,6 +345,119 @@ function ClinicalNotePageContent() {
       sectionsNotApplicable: next.sectionsNotApplicable,
     });
   };
+
+  // --- Captura guiada (FSM) ------------------------------------------------
+  // El host aplica los efectos de la FSM: TTS (tts.service), micrófono
+  // (SpeechRecognition con barge-in) y persistDraft (secciones SOAP).
+  const startCaptureRecognition = () => {
+    if (captureRecRef.current) return;
+    const SR =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+
+    micSuppressedRef.current = false;
+    const rec = new SR();
+    captureRecRef.current = rec;
+    rec.lang = "es-ES";
+    rec.continuous = true;
+    rec.interimResults = false;
+
+    rec.onresult = (e: any) => {
+      let final = "";
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          final += e.results[i][0].transcript + " ";
+        }
+      }
+      const text = final.trim();
+      if (text) dispatchCapture({ type: "TRANSCRIPT", text });
+    };
+
+    rec.onerror = () => {
+      // Silencioso: onend se encarga de reanudar si la FSM sigue esperando.
+    };
+
+    rec.onend = () => {
+      if (captureRecRef.current !== rec) return;
+      captureRecRef.current = null;
+      const st = captureRef.current;
+      const waiting = st.step === "LISTEN" || st.step === "CONFIRM";
+      if (!micSuppressedRef.current && waiting) {
+        startCaptureRecognition();
+      }
+    };
+
+    try {
+      rec.start();
+    } catch {
+      // ignore
+    }
+  };
+
+  const runCaptureEffects = (effects: CaptureEffect[]) => {
+    for (const eff of effects) {
+      switch (eff.type) {
+        case "LISTEN_OFF":
+          stopCaptureRecognition();
+          break;
+        case "LISTEN_ON":
+          startCaptureRecognition();
+          break;
+        case "SPEAK":
+          // Barge-in: el micrófono se apaga mientras habla el TTS y se
+          // reabre con el evento TTS_DONE que dispara onEnd.
+          stopCaptureRecognition();
+          ttsService.speak(eff.text, {
+            onEnd: () => dispatchCapture({ type: "TTS_DONE" }),
+          });
+          break;
+        case "COMMIT": {
+          const field = CAPTURE_FIELDS.find((f) => f.id === eff.fieldId);
+          if (!field) break;
+          const next: SectionDraft = {
+            ...draftRef.current,
+            sections: { ...draftRef.current.sections },
+          };
+          next.sections[eff.section] = applyCaptureAnswer(
+            next.sections[eff.section],
+            field,
+            eff.text,
+          );
+          persistDraft(next);
+          break;
+        }
+        case "FINISHED":
+          stopCaptureRecognition();
+          toast({
+            title: "Captura guiada finalizada",
+            description: `${Object.keys(eff.answers).length} de ${CAPTURE_FIELDS.length} campos capturados.`,
+          });
+          break;
+        case "CANCELLED":
+          stopCaptureRecognition();
+          break;
+      }
+    }
+  };
+
+  const dispatchCapture = (ev: CaptureEvent) => {
+    const { state, effects } = transition(captureRef.current, ev);
+    captureRef.current = state;
+    setCapture(state);
+    runCaptureEffects(effects);
+  };
+
+  const startCapture = () => {
+    stopPageDictation();
+    ttsService.stop();
+    const { state, effects } = transition(initialCaptureState(), { type: "START" });
+    captureRef.current = state;
+    setCapture(state);
+    runCaptureEffects(effects);
+  };
+
+  const captureRunning =
+    capture.step === "ASK" || capture.step === "LISTEN" || capture.step === "CONFIRM";
 
   const handleSave = async () => {
     setSaving(true);
@@ -631,11 +787,25 @@ function ClinicalNotePageContent() {
                     variant="outline"
                     size="sm"
                     onClick={startPageDictation}
-                    disabled={aiBusy || saving}
+                    disabled={aiBusy || saving || captureRunning}
                     className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
                   >
                     <Mic className="size-4" />
                     {dictationTranscript ? "Continuar dictando" : "Dictar consulta por voz"}
+                  </Button>
+                )}
+                {!captureRunning && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={startCapture}
+                    disabled={aiBusy || saving}
+                    className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                    title="Captura guiada campo por campo según el Formulario 002 (MSP)"
+                  >
+                    <ClipboardList className="size-4" />
+                    Captura guiada (Form. 002)
                   </Button>
                 )}
                 {note.status === "DRAFT_MANUAL" && (
@@ -643,7 +813,7 @@ function ClinicalNotePageContent() {
                     type="button"
                     size="sm"
                     onClick={handleRequestAI}
-                    disabled={saving || aiBusy}
+                    disabled={saving || aiBusy || captureRunning}
                     className="gap-1.5 shadow-[0_0_15px_rgba(0,218,243,0.25)]"
                   >
                     {aiBusy ? (
@@ -666,6 +836,56 @@ function ClinicalNotePageContent() {
                 <p className="italic text-foreground">
                   {dictationTranscript || "Comienza a hablar para dictar la nota clínica…"}
                 </p>
+              </div>
+            )}
+
+            {/* Estado de la captura guiada (FSM Formulario 002) */}
+            {captureRunning && (
+              <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                    <span className="font-medium">
+                      Captura guiada · campo{" "}
+                      {Math.min(capture.fieldIndex + 1, CAPTURE_FIELDS.length)}/
+                      {CAPTURE_FIELDS.length} —{" "}
+                      {CAPTURE_FIELDS[capture.fieldIndex]?.label}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => dispatchCapture({ type: "SKIP" })}
+                    >
+                      Omitir
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => dispatchCapture({ type: "CANCEL" })}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  <p>
+                    {capture.step === "ASK"
+                      ? "Preguntando…"
+                      : capture.step === "LISTEN"
+                        ? "Escuchando…"
+                        : "Confirmando…"}{" "}
+                    — di «sí» / «no» para confirmar, «omitir» o «cancelar».
+                  </p>
+                  {capture.step === "CONFIRM" && capture.captured && (
+                    <p className="text-foreground">
+                      Último valor: “{capture.captured}”
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>
@@ -718,7 +938,7 @@ function ClinicalNotePageContent() {
               {note.status === "DRAFT_MANUAL" && (
                 <Button
                   onClick={handleRequestAI}
-                  disabled={saving || aiBusy}
+                  disabled={saving || aiBusy || captureRunning}
                   className="shadow-[0_0_20px_rgba(0,218,243,0.25)]"
                 >
                   {aiBusy ? (
@@ -757,7 +977,10 @@ function ClinicalNotePageContent() {
                   </button>
                 )}
               </div>
-              <Button onClick={handleConfirm} disabled={saving || aiBusy}>
+              <Button
+                onClick={handleConfirm}
+                disabled={saving || aiBusy || captureRunning}
+              >
                 <ShieldCheck className="size-4" />
                 Confirmar nota
               </Button>

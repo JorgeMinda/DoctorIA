@@ -130,6 +130,7 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **Docs**: Constitución P5 → "Protección de Datos Clínicos" v2.0.0 (prod con datos reales cifrados; dev/demo solo sintéticos) — `6a4d2c9`.
 - **Validación**: Vitest **195/195** + `tsc --noEmit` limpio (copia Windows); builds/migraciones validados en Render tras cada push. Commits `f43264d`…`8b6245a` en `main`.
 - **8-nov (cierre)**: deuda CRITICAL del race `requestAIStructuring` documentada como resuelta (ya implementada desde `daba56e`); `@unique` en `SyntheticPatient.documento` + migración `20261108235104` aplicada en local y staging (`f756540`; chequeo de duplicados OK, seeds upsert idempotentes, deploy verificado 200/200); badges de citas unificados con `STATUS_CONFIG` + iniciales + inmutabilidad en `MedicoAgendaPanel` (`8f368a5`); Docker apartado del flujo de BD (contenedor `doctoria-db` devuelto a su estado original; sin cambios estructurales pendientes).
+- **9-nov — Captura guiada conversacional (FSM Formulario 002)**: máquina de estados pura `client/voice/captureFsm.ts` (IDLE→ASK→LISTEN→CONFIRM→COMMIT por campo→DONE/CANCELLED) que recorre los 6 campos del Formulario 002 MSP (motivo, antecedentes, enfermedad actual, examen físico, diagnóstico, plan) con eco TTS + confirmación sí/no, comandos «omitir/cancelar/terminar» y anti-falsos-positivos («sí»/«no» solo significan confirmación en CONFIRM). Parser local sin IA (números en palabras reservados para fase 2). Host en `ClinicalNotePage`: barge-in (mic pausado durante TTS, reanudado con `TTS_DONE`), commits vía `persistDraft` (RNF-004 intacto), panel de estado campo N/6 con botones Omitir/Cancelar. **Fase 2 (diseñado, no implementado)**: §5 signos vitales → `createVitalSignAction`; fallback IA por turno (requiere operation nueva Wasp, codegen solo WSL). Tests +24 → **271/271** (T066).
 
 ### Rediseño visual "Clinical Intelligence" (frente de UI, 17–18 ago) — COMPLETO
 
@@ -174,7 +175,7 @@ specs/001-doctoria-mvp/
 │   └── production.md      # Checklist producción (Semana 4, 100%)
 ├── qa/week4-qa-report.md  # Reporte QA (D-01 + verificación 5/5 + flujo clínico completo 16-ago)
 ├── qa/week34-informe.md   # Informe detallado de las Semanas 3-4 (16-ago, mismo formato que Semana 2)
-└── tasks.md               # Registro de tareas T001–T060 (Semanas 3–8 + sesión nov-2026)
+└── tasks.md               # Registro de tareas T001–T066 (Semanas 3–8 + sesión nov-2026)
 ```
 
 ---
@@ -196,7 +197,7 @@ specs/001-doctoria-mvp/
 | UI badges de estado de cita | ✅ **RESUELTO** (8-nov) — componente compartido `clinical/components/CitaBadge.tsx` + `STATUS_CONFIG` como fuente única (label/short/variant): panel médico (`8f368a5`), **lista de agenda** (4 vistas, con iniciales), **calendario** (bloque de día + diálogo de detalle con iniciales), **portal del paciente** (píldora propia con labels desde `STATUS_CONFIG`; conserva los casos "Por confirmar/Confirmada" de secretaría), **detalle de paciente** (vista médico y secretaría) y **panel de admin** (T062, reemplaza `AdminCitaBadge` local). Label COMPLETED unificado a **"Completada"**. Descartado: campos `formCost/formObservation` (sin columnas nuevas en `Cita`, decisión 8-nov) |
 | Email de vinculación de paciente | PENDIENTE — **MINOR**: `getPatientLinkEmailContent` (`auth/email-and-pass/emails.ts:28`) está definido pero NUNCA se usa; el flujo `PatientLinkRequest` no envía ningún email (la notificación es solo visual en UI) |
 | Seeds: cuentas paciente sin vínculo | PENDIENTE — **MINOR**: `dbSeeds.ts:239-244` crea 6 cuentas (`PAC-008..013`) que no existen como pacientes (solo se siembran PAC-001..006) → esas cuentas quedan sin vínculo a ningún paciente (portal vacío). Corregir para que apunten a PAC-001..006 o crear esos pacientes |
-| Cobertura de tests | ✅ **RESUELTO** (8-nov, T063) — **247/247 tests en 19 archivos**: se añadieron unitarias de ICS del portal, `manageCitaByMedico`, vinculación (`requestPatientLink`), calendario (helpers puros extraídos a `services/calendarFormat.ts`), `aiQueue` y `requestAIStructuring`. Opcional futuro: tests de render de componentes si se incorpora testing-library |
+| Cobertura de tests | ✅ **RESUELTO** (8–9-nov, T063+T066) — **271/271 tests en 20 archivos**: unitarias de ICS del portal, `manageCitaByMedico`, vinculación (`requestPatientLink`), calendario (helpers puros extraídos a `services/calendarFormat.ts`), `aiQueue`, `requestAIStructuring` y **FSM de captura guiada** (`captureFsm.test.ts`, 24 tests: flujo feliz 6 campos, corrección, anti-falsos-positivos, comandos, parser local). Opcional futuro: tests de render de componentes si se incorpora testing-library |
 
 ---
 
@@ -208,6 +209,7 @@ specs/001-doctoria-mvp/
 4. Iterar el MVP con feedback de pilotos (Semana 7).
 5. ~~Fix pendiente (CRITICAL): revalidar `updatedAt` en `requestAIStructuring`~~ ✅ **RESUELTO** (`daba56e`, CAS `expectedUpdatedAt`); queda re-verificar en el próximo QA manual.
 6. ~~Decisiones UI abiertas (8-nov): alcance de badges y label~~ ✅ **RESUELTO**: badges extendidos a calendario/lista/portal con `CitaBadge` compartido + label unificado **"Completada"** (T061).
+7. **Captura guiada fase 2** (T066 diseñó el MVP sin rehacer): §5 signos vitales del Formulario 002 → campo `signosVitales` de la FSM enrutado a `createVitalSignAction` (PA, FC, FR, temperatura, SatO₂, peso, talla; `normalizeNumberWords` ya listo); fallback IA por turno → operation nueva Wasp (codegen solo en WSL) en lugar del parser local.
 
 > **Nota de despliegue (15-ago)**: la integración de IA migró de Gemini (bloqueado 403) a **OpenRouter**. El deploy de Render requiere la variable `OPENROUTER_API_KEY` configurada en el dashboard (el free tier `gpt-oss-20b:free` funciona para demo; para producción usar clave paga/BYOK).
 

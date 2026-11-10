@@ -5,6 +5,6 @@ Override específico del módulo `app/`. Para las reglas globales del proyecto (
 ## Específico de `app/`
 
 - Build del proyecto Wasp (genera `.wasp/out`): ejecutar desde `app/` con el binario de Wasp del PATH (Node v24.19.0 via nvm en WSL).
-- Tests unitarios: Vitest (247 tests / 19 archivos) — `node node_modules/vitest/dist/cli.js run` (desde `app/`, en la copia de trabajo).
+- Tests unitarios: Vitest (271 tests / 20 archivos) — `node node_modules/vitest/dist/cli.js run` (desde `app/`, en la copia de trabajo).
 - E2E: Playwright desde `e2e-tests/` contra la app levantada en `localhost:3000/3001` (dev) o contra staging.
 - No editar `.wasp/out/` (build generado).
