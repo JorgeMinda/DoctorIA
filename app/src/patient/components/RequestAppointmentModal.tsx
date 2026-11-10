@@ -7,9 +7,13 @@ import {
 } from "wasp/client/operations";
 import { toast } from "../../client/hooks/use-toast";
 import { Button } from "../../client/components/ui/button";
-import { Input } from "../../client/components/ui/input";
 import { Label } from "../../client/components/ui/label";
 import { Textarea } from "../../client/components/ui/textarea";
+import { MonthCalendar } from "../../client/components/ui/month-calendar";
+import {
+  PATIENT_ATTENTION_CATEGORIES,
+  filterDoctorsByCategory,
+} from "../patientCategories";
 import {
   Select,
   SelectContent,
@@ -56,6 +60,7 @@ export function RequestAppointmentModal({
   onDone,
 }: RequestAppointmentModalProps) {
   const [medicoId, setMedicoId] = useState("");
+  const [category, setCategory] = useState("all");
   const [date, setDate] = useState("");
   const [debouncedDate, setDebouncedDate] = useState("");
   const [time, setTime] = useState("");
@@ -96,6 +101,7 @@ export function RequestAppointmentModal({
 
   const resetForm = () => {
     setMedicoId("");
+    setCategory("all");
     setDate("");
     setTime("");
     setReason("");
@@ -110,10 +116,24 @@ export function RequestAppointmentModal({
   }, [open]);
 
   const doctors: any[] = Array.isArray(doctorsData) ? doctorsData : [];
+  const filteredDoctors = filterDoctorsByCategory(doctors, category);
   const freeSlots: string[] = (slotsData as any)?.freeSlots ?? [];
   const baseSlots = Array.from(new Set([...ALL_DAY_SLOTS, ...freeSlots])).sort();
 
   const selectedDoctor = doctors.find((d) => d.id === medicoId);
+
+  const handleCategoryChange = (categoryId: string) => {
+    setCategory(categoryId);
+    if (medicoId) {
+      const stillVisible = filterDoctorsByCategory(doctors, categoryId).some(
+        (d) => d.id === medicoId,
+      );
+      if (!stillVisible) {
+        setMedicoId("");
+        setTime("");
+      }
+    }
+  };
 
   const isSlotPast = (slotTime: string) => {
     if (!date) return false;
@@ -279,6 +299,35 @@ export function RequestAppointmentModal({
               <Label htmlFor="doctor-select" className="text-xs font-semibold text-foreground">
                 1. Selecciona Profesional Médico *
               </Label>
+              <div
+                className="flex flex-wrap gap-1.5 pb-0.5"
+                role="group"
+                aria-label="Filtrar por necesidad de atención"
+              >
+                {PATIENT_ATTENTION_CATEGORIES.map((cat) => {
+                  const isActive = category === cat.id;
+                  const count = filterDoctorsByCategory(doctors, cat.id).length;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleCategoryChange(cat.id)}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all ${
+                        isActive
+                          ? "border-primary bg-primary/15 text-primary shadow-[0_0_8px_rgba(224,72,121,0.25)]"
+                          : "border-outline-variant bg-surface-container/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      }`}
+                    >
+                      {cat.label}
+                      <span
+                        className={`font-mono text-[10px] ${isActive ? "text-primary" : "text-muted-foreground/70"}`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
               <Select
                 value={medicoId}
                 onValueChange={(val) => {
@@ -294,14 +343,14 @@ export function RequestAppointmentModal({
                     placeholder={
                       loadingDoctors
                         ? "Cargando médicos disponibles…"
-                        : doctors.length === 0
-                        ? "No hay médicos disponibles"
+                        : filteredDoctors.length === 0
+                        ? "Sin médicos en esta categoría"
                         : "Selecciona un médico"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent className="border-outline-variant bg-surface text-xs">
-                  {doctors.map((doc: any) => (
+                  {filteredDoctors.map((doc: any) => (
                     <SelectItem key={doc.id} value={doc.id}>
                       <div className="flex items-center gap-2">
                         <Stethoscope className="size-3.5 text-primary" />
@@ -327,21 +376,18 @@ export function RequestAppointmentModal({
               )}
             </div>
 
-            {/* 2. Selección de Fecha */}
+            {/* 2. Selección de Fecha (calendario visual) */}
             <div className="space-y-1.5">
-              <Label htmlFor="appointment-date" className="text-xs font-semibold text-foreground">
+              <Label className="text-xs font-semibold text-foreground">
                 2. Fecha deseada *
               </Label>
-              <Input
-                id="appointment-date"
-                type="date"
-                min={todayStr}
-                value={date}
-                onChange={(e) => {
-                  setDate(e.target.value);
+              <MonthCalendar
+                selected={date || undefined}
+                onSelect={(d) => {
+                  setDate(d);
                   setTime("");
                 }}
-                className="border-outline-variant bg-surface-container/60 text-xs font-mono h-10"
+                minDate={todayStr}
               />
             </div>
 

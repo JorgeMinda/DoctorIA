@@ -15,7 +15,7 @@ Este proyecto es un Spec Kit con gobernanza. Verifica SIEMPRE contra la document
 - `specs/001-doctoria-mvp/contracts/clinical-operations.md` — 17 operaciones clínicas (queries/actions).
 - `specs/001-doctoria-mvp/plan.md` — plan de trabajo.
 - `specs/001-doctoria-mvp/quickstart.md` — 10 escenarios E2E.
-- `specs/001-doctoria-mvp/tasks.md` — registro de tareas ejecutadas (T001–T066, Semanas 3–8 + sesión nov-2026).
+- `specs/001-doctoria-mvp/tasks.md` — registro de tareas ejecutadas (T001–T068, Semanas 3–8 + sesión nov-2026).
 - `specs/001-doctoria-mvp/checklists/production.md` — checklist de producción.
 - `specs/001-doctoria-mvp/qa/week4-qa-report.md` — reporte de QA.
 - `.specify/memory/constitution.md` — 10 principios del proyecto (v1.0.0).

@@ -15,6 +15,7 @@ import {
   type AppointmentStatus,
 } from "../../clinical/services/statusLabels";
 import { toast } from "../../client/hooks/use-toast";
+import { AppFooterBar } from "../../client/components/AppFooterBar";
 import { PatientProfileModal } from "../components/PatientProfileModal";
 import { RequestAppointmentModal } from "../components/RequestAppointmentModal";
 import {
@@ -970,6 +971,8 @@ function PatientDashboardContent() {
           setActiveTab("citas");
         }}
       />
+
+      <AppFooterBar className="mt-10" />
     </div>
   );
 }

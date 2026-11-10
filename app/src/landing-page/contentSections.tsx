@@ -142,10 +142,16 @@ export const footerNavigation = {
   app: [
     { name: "Iniciar sesión", href: "/login" },
     { name: "Registrarse", href: "/signup" },
-    { name: "Pacientes", href: "/clinical/patients" },
+    { name: "Solicitar cita", href: "/patient/dashboard" },
+    { name: "Panel clínico", href: "/clinical/voice" },
   ],
   company: [
     { name: "DoctorIA", href: "/" },
+    { name: "Características", href: "/#features" },
     { name: "Documentación", href: "https://wasp.sh/docs" },
+  ],
+  legal: [
+    { name: "Política de Privacidad", href: "#" },
+    { name: "Términos de Servicio", href: "#" },
   ],
 };

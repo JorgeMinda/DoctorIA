@@ -7,6 +7,7 @@ import {
 } from "../ui/sheet";
 import { Sidebar, SidebarContent } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { AppFooterBar } from "../AppFooterBar";
 import { cn } from "../../utils";
 
 export function ClinicalLayout({ children }: { children: ReactNode }) {
@@ -48,6 +49,7 @@ export function ClinicalLayout({ children }: { children: ReactNode }) {
         >
           <Topbar onOpenMobile={() => setMobileOpen(true)} />
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+          <AppFooterBar />
         </div>
       </div>
 

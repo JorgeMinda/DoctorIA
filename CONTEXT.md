@@ -33,7 +33,7 @@ MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El 
 - **Framework**: Wasp 0.25.0 (template Open SaaS) — app monolítica, TypeScript 6.0.3, Node ≥24.14.1 (local WSL: Node v24.19.0 vía nvm)
 - **Frontend**: React 19.2.x, TailwindCSS 4.x, Radix UI, lucide-react
 - **Backend**: Express (Wasp), Prisma 5.19.1 + PostgreSQL
-- **Pruebas**: Vitest 4.1.x (unit/integration, 271 tests / 20 archivos), Playwright 1.55.1 (E2E)
+- **Pruebas**: Vitest 4.1.x (unit/integration, 277 tests / 21 archivos), Playwright 1.55.1 (E2E)
 - **Despliegue**: Render (blueprint `render.yaml`) — client estático Vite + server Node + Postgres 18 free tier
 - **Email**: Resend (remitente provisional `onboarding@resend.dev`; solo entrega a la cuenta Resend registrada)
 
@@ -153,6 +153,14 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **Limitación conocida**: JPG holograma HUD cian (`/doctoria_hud_hologram_doctor.jpg`) de fondo auth/global — imagen no recolorable; overlays ajustados a tinte cálido; posible reemplazo futuro.
 - **Validación**: `tsc --noEmit` limpio + Vitest **271/271** (20 archivos). Tarea T067 en `tasks.md`.
 
+### Footer HVQ + agendamiento del portal paciente (10-nov) — T068
+
+- **Fat footer landing** (`landing-page/components/Footer.tsx` + `footerNavigation` en `contentSections.tsx`): columna de marca (wordmark DoctorIA, tagline, contacto "Quito · Ecuador" + horario clínico Lun–Vie 08:00–19:30, redes sociales con `href="#"` placeholders — sin URLs inventadas), columnas Aplicación / Proyecto / Legal, acento gradiente wine al borde superior y **sub-footer oscuro** `#141016` con "© 2026 DoctorIA · Hospital Vozandes Quito — Todos los derechos reservados" + Política de Privacidad / Términos (`#` pendientes de contenido legal).
+- **Barras en app**: componente compartido `client/components/AppFooterBar.tsx` (copyright + enlaces legales) montado en `ClinicalLayout` (bajo `<main>`) y al cierre de `PatientDashboard`.
+- **Calendario visual**: nuevo `client/components/ui/month-calendar.tsx` (grid lu–do, navegación de meses, `minDate` hoy, día seleccionado en primary con glow, hoy con borde) reemplaza al `<input type="date">` nativo en `RequestAppointmentModal`; las píldoras de horario en tiempo real (`getAvailableSlots`) se conservan.
+- **Selector de necesidades de atención**: `patient/patientCategories.ts` — 6 categorías estáticas (Todos, Atención General, Odontología, Pediatría, Urgencias, Especialidades como catch-all) con keywords sin acentos (`matchesCategory`/`filterDoctorsByCategory`); chips con conteo en el paso 1 del modal que filtran el select de médicos (cambio de categoría limpia médico/horario si sale del filtro). Tests +6 → **277/277** (21 archivos).
+- **Separación por roles (alcance del usuario)**: el portal del paciente queda visual y directo (agendador + calendario + píldoras, sin complejidad); la interfaz conversacional con cards de aprobación queda reservada a médico/secretaría/admin (ya es así: la FSM de captura y los cards de aprobación viven en `/clinical/*`). **Diferido** (decisión 10-nov): directorio de médicos con foto/especialidad/horarios/ubicación — requiere datos que aún no existen en BD (sin campos de foto/ubicación/horario); se retoma cuando el usuario los provea.
+
 ---
 
 ## 6. Repositorio y flujo de trabajo
@@ -186,7 +194,7 @@ specs/001-doctoria-mvp/
 │   └── production.md      # Checklist producción (Semana 4, 100%)
 ├── qa/week4-qa-report.md  # Reporte QA (D-01 + verificación 5/5 + flujo clínico completo 16-ago)
 ├── qa/week34-informe.md   # Informe detallado de las Semanas 3-4 (16-ago, mismo formato que Semana 2)
-└── tasks.md               # Registro de tareas T001–T066 (Semanas 3–8 + sesión nov-2026)
+└── tasks.md               # Registro de tareas T001–T068 (Semanas 3–8 + sesión nov-2026)
 ```
 
 ---
@@ -208,7 +216,7 @@ specs/001-doctoria-mvp/
 | UI badges de estado de cita | ✅ **RESUELTO** (8-nov) — componente compartido `clinical/components/CitaBadge.tsx` + `STATUS_CONFIG` como fuente única (label/short/variant): panel médico (`8f368a5`), **lista de agenda** (4 vistas, con iniciales), **calendario** (bloque de día + diálogo de detalle con iniciales), **portal del paciente** (píldora propia con labels desde `STATUS_CONFIG`; conserva los casos "Por confirmar/Confirmada" de secretaría), **detalle de paciente** (vista médico y secretaría) y **panel de admin** (T062, reemplaza `AdminCitaBadge` local). Label COMPLETED unificado a **"Completada"**. Descartado: campos `formCost/formObservation` (sin columnas nuevas en `Cita`, decisión 8-nov) |
 | Email de vinculación de paciente | PENDIENTE — **MINOR**: `getPatientLinkEmailContent` (`auth/email-and-pass/emails.ts:28`) está definido pero NUNCA se usa; el flujo `PatientLinkRequest` no envía ningún email (la notificación es solo visual en UI) |
 | Seeds: cuentas paciente sin vínculo | PENDIENTE — **MINOR**: `dbSeeds.ts:239-244` crea 6 cuentas (`PAC-008..013`) que no existen como pacientes (solo se siembran PAC-001..006) → esas cuentas quedan sin vínculo a ningún paciente (portal vacío). Corregir para que apunten a PAC-001..006 o crear esos pacientes |
-| Cobertura de tests | ✅ **RESUELTO** (8–9-nov, T063+T066) — **271/271 tests en 20 archivos**: unitarias de ICS del portal, `manageCitaByMedico`, vinculación (`requestPatientLink`), calendario (helpers puros extraídos a `services/calendarFormat.ts`), `aiQueue`, `requestAIStructuring` y **FSM de captura guiada** (`captureFsm.test.ts`, 24 tests: flujo feliz 6 campos, corrección, anti-falsos-positivos, comandos, parser local). Opcional futuro: tests de render de componentes si se incorpora testing-library |
+| Cobertura de tests | ✅ **RESUELTO** (8–10-nov, T063+T066+T068) — **277/277 tests en 21 archivos**: unitarias de ICS del portal, `manageCitaByMedico`, vinculación (`requestPatientLink`), calendario (helpers puros extraídos a `services/calendarFormat.ts`), `aiQueue`, `requestAIStructuring`, **FSM de captura guiada** (`captureFsm.test.ts`, 24 tests) y **categorías del portal paciente** (`patientCategories.test.ts`, 6 tests). Opcional futuro: tests de render de componentes si se incorpora testing-library |
 
 ---
 
@@ -230,7 +238,7 @@ specs/001-doctoria-mvp/
 - **P4 Seguridad clínica**: IA asistiva, nunca confirmatoria; registro CONFIRMED inmutable (adendas).
 - **P5 Protección de datos**: datos reales en producción con cifrado; sintéticos en dev/demo; sin PII en logs; secrets fuera de git.
 - **P3 Reutilización**: sin frameworks nuevos; usar Wasp/Prisma/Radix existentes.
-- **P7 Calidad**: toda tarea con tests verdes (Vitest 271/271, Playwright 10) y QA documentado.
+- **P7 Calidad**: toda tarea con tests verdes (Vitest 277/277, Playwright 10) y QA documentado.
 - **P10 Gobierno**: decisiones documentadas en `plan.md`/`research.md` (PD-01..03); tareas en `tasks.md` por Doer.
 - **Idioma**: UI y documentos del equipo en español; código/comentarios en inglés.
 - **No commitear** sin que el usuario lo pida explícitamente; commits/push directos desde la copia Windows en `main` (ver §6).
