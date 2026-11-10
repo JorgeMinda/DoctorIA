@@ -1,6 +1,6 @@
 # CONTEXT: DoctorIA MVP — Estado actual del proyecto (para IA colaboradora)
 
-**Última actualización**: 2026-11-08 · **Rama de trabajo**: `main` directo (desde la sesión nov-2026; antes `001-doctoria-mvp` → `main`)
+**Última actualización**: 2026-11-10 · **Rama de trabajo**: `main` directo (desde la sesión nov-2026; antes `001-doctoria-mvp` → `main`)
 **Autor de este contexto**: agente principal del equipo DoctorIA
 
 > **Reglas de comportamiento para agentes** (dominio, arquitectura, off-limits, comandos): ver [AGENTS.md](AGENTS.md) en la raíz. Este `CONTEXT.md` documenta el **estado mutable** del proyecto (cambia cada sesión); `AGENTS.md` documenta lo **casi-estático**.
@@ -33,7 +33,7 @@ MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El 
 - **Framework**: Wasp 0.25.0 (template Open SaaS) — app monolítica, TypeScript 6.0.3, Node ≥24.14.1 (local WSL: Node v24.19.0 vía nvm)
 - **Frontend**: React 19.2.x, TailwindCSS 4.x, Radix UI, lucide-react
 - **Backend**: Express (Wasp), Prisma 5.19.1 + PostgreSQL
-- **Pruebas**: Vitest 4.1.x (unit/integration, 195 tests / 13 archivos), Playwright 1.55.1 (E2E)
+- **Pruebas**: Vitest 4.1.x (unit/integration, 271 tests / 20 archivos), Playwright 1.55.1 (E2E)
 - **Despliegue**: Render (blueprint `render.yaml`) — client estático Vite + server Node + Postgres 18 free tier
 - **Email**: Resend (remitente provisional `onboarding@resend.dev`; solo entrega a la cuenta Resend registrada)
 
@@ -142,6 +142,17 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **Validación visual contra prod (18-ago)**: Playwright `e2e-tests/playwright.prod.config.ts` + `tests/redesignProdValidation.spec.ts` → **4/4 verde** contra `doctoria-client.onrender.com` (login ambiental, dashboard médico, detalle de paciente, auditoría + voz). `tsc -p tsconfig.src.json` limpio salvo el error preexistente `aiService.ts:57` (OPENROUTER_API_KEY del SDK); Vitest no-IA 36/36.
 - Commits: `26be1fa` (tokens+layout), `3984528` (fix build crossorigin), `27fe648` (páginas clínicas), `61dca5b` (auth ambiental). Todos en `main`.
 
+### Rebrand institucional HVQ 2026 (10-nov) — COMPLETO
+
+- **Fuente**: Manual de Marca HVQ 2026 (Hospital Vozandes Quito) — colores corporativos **`#8e183e` (vino)**, `#7e0d42` (vino oscuro), `#58595b` (gris); tipografía **Montserrat**. Decisión del usuario: rebrand completo (app + landing + auth + emails), Montserrat en toda la app (JetBrains Mono se mantiene para datos/labels), gradiente auth en vino.
+- **Colores** (`app/src/client/Main.css`): rampa `--color-wine-300..900` en `@theme` (`300 #f0a3bb`, `400 #e04879`, `500 #c22d5c`, `600 #8e183e`, `700 #7e0d42`, `900 #4a0a24`); `--primary` light `341 71% 33%` (#8e183e exacto, blanco 8.9:1), dark `341 71% 58%` (#e04879, contraste 4.7:1 — el vino exacto no pasa contraste como texto en oscuro); `--ring`/`--primary-bright`/`--secondary` y neutros (`--muted-foreground/--outline/--border`) → gris HVQ `210 3% x`; auroras, glass-card/input, keyframes y gradiente light `global-futuristic-bg` → tinte vino.
+- **Fuentes**: Montserrat (`head.wasp.ts` Google Fonts + `--font-sans`), reemplaza Hanken Grotesk.
+- **Auth**: barra `AuthPageLayout` → `from-wine-600 via-violet-900 to-[#58595b]`; `ambientAuthTheme.ts` brand `#8e183e` / accent `#e04879` / focus+submit glows vino.
+- **Bulk replace** (~19 archivos): glows `rgba(cianes)` → `rgba(224,72,121`, clases `cyan/sky/teal/indigo-400|500`, `emerald-300|500` de marca → `wine-*`, conic gradients de VoiceOrb/FloatingVoiceAssistant → rampa wine, auroras hex de DoctorMascot → wine, botones DoctorMascot → `bg-wine-500 text-white`.
+- **Regla de consistencia (clave)**: marca (cyan/sky/teal/blue/indigo antiguos) → wine; **semánticos se conservan verdes**: `emerald` = éxito/approbación (badges "Operativa/Confirmada/Completada", botones "Aprobar/Completar/Crear Ficha" con hover `emerald-500`, paneles de éxito, slots "disponibles", dots online, `rule.ok`, tendencia vital up, COMPLETED en `calendarFormat`), `amber` = warning, `destructive` = rojo. Estados del orbe de voz: listening wine, processing violet, responding emerald.
+- **Limitación conocida**: JPG holograma HUD cian (`/doctoria_hud_hologram_doctor.jpg`) de fondo auth/global — imagen no recolorable; overlays ajustados a tinte cálido; posible reemplazo futuro.
+- **Validación**: `tsc --noEmit` limpio + Vitest **271/271** (20 archivos). Tarea T067 en `tasks.md`.
+
 ---
 
 ## 6. Repositorio y flujo de trabajo
@@ -219,7 +230,7 @@ specs/001-doctoria-mvp/
 - **P4 Seguridad clínica**: IA asistiva, nunca confirmatoria; registro CONFIRMED inmutable (adendas).
 - **P5 Protección de datos**: datos reales en producción con cifrado; sintéticos en dev/demo; sin PII en logs; secrets fuera de git.
 - **P3 Reutilización**: sin frameworks nuevos; usar Wasp/Prisma/Radix existentes.
-- **P7 Calidad**: toda tarea con tests verdes (Vitest 195/195, Playwright 10) y QA documentado.
+- **P7 Calidad**: toda tarea con tests verdes (Vitest 271/271, Playwright 10) y QA documentado.
 - **P10 Gobierno**: decisiones documentadas en `plan.md`/`research.md` (PD-01..03); tareas en `tasks.md` por Doer.
 - **Idioma**: UI y documentos del equipo en español; código/comentarios en inglés.
 - **No commitear** sin que el usuario lo pida explícitamente; commits/push directos desde la copia Windows en `main` (ver §6).

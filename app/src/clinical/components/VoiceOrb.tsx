@@ -12,17 +12,17 @@ interface VoiceOrbProps {
 
 // Paleta de glow por estado (cian/azul/violeta/verde, estética "ambient assistant").
 const STATE_GLOW: Record<VoiceAssistantState, string> = {
-  IDLE: "radial-gradient(circle, rgba(56,189,248,0.16) 0%, rgba(99,102,241,0.08) 45%, transparent 70%)",
-  LISTENING: "radial-gradient(circle, rgba(34,211,238,0.35) 0%, rgba(56,189,248,0.18) 45%, transparent 70%)",
+  IDLE: "radial-gradient(circle, rgba(224,72,121,0.16) 0%, rgba(99,102,241,0.08) 45%, transparent 70%)",
+  LISTENING: "radial-gradient(circle, rgba(224,72,121,0.35) 0%, rgba(224,72,121,0.18) 45%, transparent 70%)",
   PROCESSING: "radial-gradient(circle, rgba(139,92,246,0.4) 0%, rgba(99,102,241,0.22) 45%, transparent 70%)",
   RESPONDING: "radial-gradient(circle, rgba(52,211,153,0.35) 0%, rgba(34,197,94,0.18) 45%, transparent 70%)",
 };
 
 // Anillo conic por estado.
 const STATE_RING: Record<VoiceAssistantState, string> = {
-  IDLE: "conic-gradient(from 0deg, #22d3ee, #3b82f6, #8b5cf6, #22c55e, #22d3ee)",
-  LISTENING: "conic-gradient(from 0deg, #22d3ee, #0ea5e9, #38bdf8, #22d3ee, #22d3ee)",
-  PROCESSING: "conic-gradient(from 0deg, #8b5cf6, #6366f1, #3b82f6, #8b5cf6, #8b5cf6)",
+  IDLE: "conic-gradient(from 0deg, #e04879, #8e183e, #7e0d42, #c22d5c, #e04879)",
+  LISTENING: "conic-gradient(from 0deg, #f0a3bb, #e04879, #c22d5c, #f0a3bb, #f0a3bb)",
+  PROCESSING: "conic-gradient(from 0deg, #4a0a24, #7e0d42, #8e183e, #4a0a24, #4a0a24)",
   RESPONDING: "conic-gradient(from 0deg, #34d399, #22c55e, #a7f3d0, #34d399, #34d399)",
 };
 
@@ -122,12 +122,12 @@ export function VoiceOrb({ state, onActivate, disabled, className }: VoiceOrbPro
           style={{
             boxShadow: `inset 0 0 40px rgba(0,0,0,0.85), inset 0 0 12px ${
               state === "IDLE"
-                ? "rgba(56,189,248,0.15)"
+                ? "rgba(224,72,121,0.15)"
                 : state === "PROCESSING"
                   ? "rgba(139,92,246,0.4)"
                   : state === "RESPONDING"
                     ? "rgba(52,211,153,0.4)"
-                    : "rgba(34,211,238,0.4)"
+                    : "rgba(224,72,121,0.4)"
             }`,
           }}
         >
@@ -138,7 +138,7 @@ export function VoiceOrb({ state, onActivate, disabled, className }: VoiceOrbPro
             style={{
               background:
                 state === "IDLE"
-                  ? "#22d3ee"
+                  ? "#e04879"
                   : state === "LISTENING"
                     ? "#67e8f9"
                     : state === "PROCESSING"
@@ -146,7 +146,7 @@ export function VoiceOrb({ state, onActivate, disabled, className }: VoiceOrbPro
                       : "#34d399",
               boxShadow:
                 state === "IDLE"
-                  ? "0 0 12px rgba(34,211,238,0.8)"
+                  ? "0 0 12px rgba(224,72,121,0.8)"
                   : state === "PROCESSING"
                     ? "0 0 20px rgba(167,139,250,0.9)"
                     : "0 0 20px rgba(52,211,153,0.9)",
@@ -178,7 +178,7 @@ export function VoiceOrb({ state, onActivate, disabled, className }: VoiceOrbPro
         aria-hidden="true"
         className="mt-8 flex h-12 items-center gap-[3px]"
         style={{
-          filter: "drop-shadow(0 0 6px rgba(34,211,238,0.35))",
+          filter: "drop-shadow(0 0 6px rgba(224,72,121,0.35))",
         }}
       >
         {Array.from({ length: WAVE_BARS }).map((_, i) => (
@@ -187,12 +187,12 @@ export function VoiceOrb({ state, onActivate, disabled, className }: VoiceOrbPro
             className={cn(
               "w-[3px] rounded-full",
               state === "LISTENING"
-                ? "voice-wave-bar bg-cyan-400"
+                ? "voice-wave-bar bg-wine-400"
                 : state === "PROCESSING"
                   ? "voice-wave-bar bg-violet-400"
                   : state === "RESPONDING"
                     ? "bg-emerald-400/60"
-                    : "bg-cyan-400/30",
+                    : "bg-wine-400/30",
             )}
             style={{
               height:

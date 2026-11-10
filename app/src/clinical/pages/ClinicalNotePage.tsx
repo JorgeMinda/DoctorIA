@@ -814,7 +814,7 @@ function ClinicalNotePageContent() {
                     size="sm"
                     onClick={handleRequestAI}
                     disabled={saving || aiBusy || captureRunning}
-                    className="gap-1.5 shadow-[0_0_15px_rgba(0,218,243,0.25)]"
+                    className="gap-1.5 shadow-[0_0_15px_rgba(224,72,121,0.25)]"
                   >
                     {aiBusy ? (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -939,7 +939,7 @@ function ClinicalNotePageContent() {
                 <Button
                   onClick={handleRequestAI}
                   disabled={saving || aiBusy || captureRunning}
-                  className="shadow-[0_0_20px_rgba(0,218,243,0.25)]"
+                  className="shadow-[0_0_20px_rgba(224,72,121,0.25)]"
                 >
                   {aiBusy ? (
                     <Loader2 className="size-4 animate-spin" />

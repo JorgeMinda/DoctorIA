@@ -141,7 +141,7 @@ export function LinkPatientPage() {
 
         <Card className="border-outline-variant bg-surface/90 backdrop-blur-xl shadow-xl">
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary shadow-[0_0_15px_rgba(0,218,243,0.15)]">
+            <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary shadow-[0_0_15px_rgba(224,72,121,0.15)]">
               <UserCheck className="size-6" />
             </div>
             <CardTitle className="text-lg font-semibold">

@@ -47,7 +47,7 @@ export function getCitaStatusColor(status: string): string {
     case "COMPLETED":
       return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30";
     case "IN_PROGRESS":
-      return "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 animate-pulse hover:bg-cyan-500/30";
+      return "bg-wine-500/20 text-wine-300 border-wine-500/40 animate-pulse hover:bg-wine-500/30";
     case "CANCELLED":
       return "bg-destructive/20 text-destructive border-destructive/40 opacity-60";
     default:

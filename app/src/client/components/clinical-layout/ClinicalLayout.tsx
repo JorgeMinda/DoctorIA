@@ -30,7 +30,7 @@ export function ClinicalLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="relative min-h-screen text-slate-900 dark:text-slate-100 selection:bg-cyan-500/20 bg-transparent transition-colors duration-300">
+    <div className="relative min-h-screen text-slate-900 dark:text-slate-100 selection:bg-wine-500/20 bg-transparent transition-colors duration-300">
       {/* Fondo Global Fijo con soporte Cockpit Holográfico y Glassmorphism */}
       <div className="global-futuristic-bg" aria-hidden="true" />
 

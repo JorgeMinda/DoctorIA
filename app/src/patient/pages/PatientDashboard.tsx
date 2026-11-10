@@ -66,8 +66,8 @@ export function PatientCitaBadge({
 
   if (cita.status === "IN_PROGRESS") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 animate-pulse shadow-sm">
-        <span className="size-1.5 rounded-full bg-cyan-400" />
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-wine-500/15 text-wine-400 border border-wine-500/30 animate-pulse shadow-sm">
+        <span className="size-1.5 rounded-full bg-wine-400" />
         {STATUS_CONFIG.IN_PROGRESS.label}
       </span>
     );
@@ -345,7 +345,7 @@ function PatientDashboardContent() {
 
         <Card className="border-outline-variant bg-surface/60 shadow-sm p-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
+            <div className="p-2 rounded-lg bg-wine-500/10 text-wine-300 shrink-0">
               <HeartPulse className="size-4" />
             </div>
             <div className="min-w-0">

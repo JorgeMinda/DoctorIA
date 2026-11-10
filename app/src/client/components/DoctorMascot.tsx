@@ -294,10 +294,10 @@ export function DoctorMascotDemoStudio() {
   );
 
   const [colors, setColors] = useState({
-    base: "#0b1220",
-    aurora1: "#0ea5a4",
-    aurora2: "#6366f1",
-    aurora3: "#10b981",
+    base: "#141016",
+    aurora1: "#8e183e",
+    aurora2: "#e04879",
+    aurora3: "#7e0d42",
   });
 
   useEffect(() => {
@@ -328,13 +328,13 @@ export function DoctorMascotDemoStudio() {
       <header className="relative z-20 backdrop-blur-md bg-slate-900/60 border-b border-slate-700/50 px-4 py-3 sm:px-6">
         <div className="mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-400">
+            <div className="p-2 rounded-xl bg-wine-500/20 border border-wine-500/40 text-wine-400">
               <HeartPulse className="w-5 h-5 animate-pulse" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
                 Mascota Médica DoctorIA{" "}
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-wine-500/20 text-wine-300 border border-wine-500/30">
                   Aurora UI
                 </span>
               </h3>
@@ -349,7 +349,7 @@ export function DoctorMascotDemoStudio() {
               onClick={() => setActiveTab("preview")}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
                 activeTab === "preview"
-                  ? "bg-teal-500 text-slate-950 font-semibold shadow-md shadow-teal-500/20"
+                  ? "bg-wine-500 text-white font-semibold shadow-md shadow-wine-500/20"
                   : "text-slate-300 hover:text-white hover:bg-slate-700/50"
               }`}
             >
@@ -359,7 +359,7 @@ export function DoctorMascotDemoStudio() {
               onClick={() => setActiveTab("controls")}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
                 activeTab === "controls"
-                  ? "bg-teal-500 text-slate-950 font-semibold shadow-md shadow-teal-500/20"
+                  ? "bg-wine-500 text-white font-semibold shadow-md shadow-wine-500/20"
                   : "text-slate-300 hover:text-white hover:bg-slate-700/50"
               }`}
             >
@@ -369,7 +369,7 @@ export function DoctorMascotDemoStudio() {
               onClick={() => setActiveTab("code")}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
                 activeTab === "code"
-                  ? "bg-teal-500 text-slate-950 font-semibold shadow-md shadow-teal-500/20"
+                  ? "bg-wine-500 text-white font-semibold shadow-md shadow-wine-500/20"
                   : "text-slate-300 hover:text-white hover:bg-slate-700/50"
               }`}
             >
@@ -387,7 +387,7 @@ export function DoctorMascotDemoStudio() {
             </div>
 
             <div className="w-full clinical-glass-card rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-indigo-500 to-emerald-500" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-wine-600 via-wine-700 to-wine-500" />
 
               <div className="text-center mb-5">
                 <h4 className="text-lg font-bold text-white tracking-wide">
@@ -416,7 +416,7 @@ export function DoctorMascotDemoStudio() {
                       }}
                       onFocus={mascot.onUserFocus}
                       onBlur={mascot.onFieldBlur}
-                      className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition"
+                      className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-wine-500 focus:ring-1 focus:ring-wine-500 transition"
                     />
                   </div>
                 </div>
@@ -435,7 +435,7 @@ export function DoctorMascotDemoStudio() {
                       onChange={(e) => setPassword(e.target.value)}
                       onFocus={mascot.onPasswordFocus}
                       onBlur={mascot.onFieldBlur}
-                      className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-9 pr-9 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                      className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-9 pr-9 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-wine-500 focus:ring-1 focus:ring-wine-500 transition"
                     />
                     <button
                       type="button"
@@ -453,7 +453,7 @@ export function DoctorMascotDemoStudio() {
 
                 <div className="pt-1 flex items-center justify-between text-xs text-slate-400">
                   <span className="flex items-center gap-1.5 text-[11px]">
-                    <Activity className="w-3 h-3 text-teal-400" /> Simular:
+                    <Activity className="w-3 h-3 text-wine-400" /> Simular:
                   </span>
                   <div className="flex gap-1.5">
                     <button
@@ -461,7 +461,7 @@ export function DoctorMascotDemoStudio() {
                       onClick={() => setSimulationResult("success")}
                       className={`px-2 py-0.5 rounded text-[10px] border transition ${
                         simulationResult === "success"
-                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold"
+                          ? "bg-wine-600/20 text-wine-300 border-wine-600/50 font-bold"
                           : "border-slate-700 hover:bg-slate-800"
                       }`}
                     >
@@ -484,7 +484,7 @@ export function DoctorMascotDemoStudio() {
                 <button
                   type="submit"
                   disabled={mascot.state === "validating"}
-                  className="w-full mt-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-semibold py-2 px-4 rounded-xl shadow-lg shadow-teal-500/25 active:scale-[0.98] transition flex items-center justify-center gap-2 text-xs disabled:opacity-50"
+                  className="w-full mt-2 bg-gradient-to-r from-wine-600 to-wine-500 hover:from-wine-500 hover:to-wine-400 text-white font-semibold py-2 px-4 rounded-xl shadow-lg shadow-wine-500/25 active:scale-[0.98] transition flex items-center justify-center gap-2 text-xs disabled:opacity-50"
                 >
                   {mascot.state === "validating" ? (
                     <>
@@ -501,7 +501,7 @@ export function DoctorMascotDemoStudio() {
 
               <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
                 <span className="text-slate-400 text-[11px]">Estado Mascot:</span>
-                <span className="font-mono font-bold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded bg-slate-800 text-teal-300 border border-slate-700">
+                <span className="font-mono font-bold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded bg-slate-800 text-wine-300 border border-slate-700">
                   {mascot.state}
                 </span>
               </div>
@@ -513,7 +513,7 @@ export function DoctorMascotDemoStudio() {
           <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="clinical-glass-card rounded-2xl p-5 shadow-xl">
               <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                <PlayCircle className="w-4 h-4 text-teal-400" /> Pruebas de Estado
+                <PlayCircle className="w-4 h-4 text-wine-400" /> Pruebas de Estado
               </h4>
               <p className="text-[11px] text-slate-400 mb-3">
                 Fuerza la animación de la mascota a un estado específico.
@@ -531,13 +531,13 @@ export function DoctorMascotDemoStudio() {
                     id: "focus-user",
                     label: "Focus Usuario",
                     icon: User,
-                    color: "hover:border-teal-500",
+                    color: "hover:border-wine-500",
                   },
                   {
                     id: "focus-password",
                     label: "Focus Contraseña",
                     icon: Lock,
-                    color: "hover:border-indigo-500",
+                    color: "hover:border-wine-500",
                   },
                   {
                     id: "validating",
@@ -549,7 +549,7 @@ export function DoctorMascotDemoStudio() {
                     id: "success",
                     label: "Éxito (Hop)",
                     icon: CheckCircle2,
-                    color: "hover:border-emerald-500",
+                    color: "hover:border-wine-500",
                   },
                   {
                     id: "error",
@@ -565,11 +565,11 @@ export function DoctorMascotDemoStudio() {
                       st.color
                     } ${
                       mascot.state === st.id
-                        ? "ring-2 ring-teal-400 bg-slate-800 text-white"
+                        ? "ring-2 ring-wine-400 bg-slate-800 text-white"
                         : "text-slate-300"
                     }`}
                   >
-                    <st.icon className="w-3.5 h-3.5 text-teal-400" />
+                    <st.icon className="w-3.5 h-3.5 text-wine-400" />
                     {st.label}
                   </button>
                 ))}
@@ -592,14 +592,14 @@ export function DoctorMascotDemoStudio() {
                       "a".repeat(Math.round(((val + 4) / 8) * 24))
                     );
                   }}
-                  className="w-full accent-teal-400 bg-slate-800 rounded-lg cursor-pointer"
+                  className="w-full accent-wine-400 bg-slate-800 rounded-lg cursor-pointer"
                 />
               </div>
             </div>
 
             <div className="clinical-glass-card rounded-2xl p-5 shadow-xl">
               <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                <Palette className="w-4 h-4 text-indigo-400" /> Paleta CSS
+                <Palette className="w-4 h-4 text-wine-300" /> Paleta CSS
               </h4>
               <p className="text-[11px] text-slate-400 mb-3">
                 Ajusta las variables de color del fondo y del aura en vivo.
@@ -660,10 +660,10 @@ export function DoctorMascotDemoStudio() {
               <button
                 onClick={() =>
                   setColors({
-                    base: "#0b1220",
-                    aurora1: "#0ea5a4",
-                    aurora2: "#6366f1",
-                    aurora3: "#10b981",
+                    base: "#141016",
+                    aurora1: "#8e183e",
+                    aurora2: "#e04879",
+                    aurora3: "#7e0d42",
                   })
                 }
                 className="mt-3 w-full py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 transition"
@@ -678,7 +678,7 @@ export function DoctorMascotDemoStudio() {
           <div className="w-full max-w-xl clinical-glass-card rounded-2xl p-5 shadow-2xl">
             <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <Code className="w-4 h-4 text-teal-400" /> Integración del Hook
+                <Code className="w-4 h-4 text-wine-400" /> Integración del Hook
               </h4>
               <span className="text-[11px] text-slate-400">
                 DoctorMascot Props
@@ -687,7 +687,7 @@ export function DoctorMascotDemoStudio() {
 
             <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 text-xs font-mono">
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
-                <span className="text-teal-400 font-bold block mb-1">
+                <span className="text-wine-400 font-bold block mb-1">
                   // 1. Hook de estado
                 </span>
                 <p className="text-slate-300 leading-relaxed text-[11px]">
@@ -701,7 +701,7 @@ export function DoctorMascotDemoStudio() {
               </div>
 
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
-                <span className="text-indigo-400 font-bold block mb-1">
+                <span className="text-wine-300 font-bold block mb-1">
                   // 2. Control de Inputs
                 </span>
                 <pre className="text-slate-300 whitespace-pre-wrap text-[11px]">

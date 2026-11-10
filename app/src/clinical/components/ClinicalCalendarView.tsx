@@ -218,7 +218,7 @@ export function ClinicalCalendarView({
               key={idx}
               className={`rounded-xl border p-2 min-h-[360px] flex flex-col justify-between transition-colors ${
                 isToday(date)
-                  ? "border-primary/50 bg-primary/5 shadow-[0_0_15px_rgba(0,218,243,0.1)]"
+                  ? "border-primary/50 bg-primary/5 shadow-[0_0_15px_rgba(224,72,121,0.1)]"
                   : "border-outline-variant/40 bg-surface/30"
               }`}
             >
@@ -340,7 +340,7 @@ export function ClinicalCalendarView({
                 onClick={() => onNewCitaAtDate?.(date)}
                 className={`group min-h-24 rounded-xl border p-2 flex flex-col justify-between transition-all cursor-pointer hover:border-primary/50 hover:bg-primary/5 ${
                   isToday(date)
-                    ? "border-primary/60 bg-primary/10 shadow-[0_0_15px_rgba(0,218,243,0.15)] ring-1 ring-primary/40"
+                    ? "border-primary/60 bg-primary/10 shadow-[0_0_15px_rgba(224,72,121,0.15)] ring-1 ring-primary/40"
                     : "border-outline-variant/40 bg-surface/40"
                 }`}
               >
@@ -643,7 +643,7 @@ export function ClinicalCalendarView({
                       to={routes.ClinicalPatientDetailRoute.to}
                       params={{ patientId: selectedDetailCita.patient.id }}
                     >
-                      <Button size="sm" className="text-xs gap-1.5 shadow-[0_0_12px_rgba(0,218,243,0.3)]">
+                      <Button size="sm" className="text-xs gap-1.5 shadow-[0_0_12px_rgba(224,72,121,0.3)]">
                         <span>Ir a Ficha Clínica</span>
                         <ArrowRight className="size-3.5" />
                       </Button>
@@ -679,7 +679,7 @@ export function ClinicalCalendarView({
                             await onRunTransition(selectedDetailCita.id, "IN_PROGRESS", "Iniciar atención");
                             setSelectedDetailCita((prev: any) => prev ? { ...prev, status: "IN_PROGRESS" } : null);
                           }}
-                          className="text-xs bg-cyan-600 hover:bg-cyan-500 text-white h-8"
+                          className="text-xs bg-wine-600 hover:bg-wine-500 text-white h-8"
                         >
                           <Activity className="size-3.5 mr-1" />
                           Iniciar Atención

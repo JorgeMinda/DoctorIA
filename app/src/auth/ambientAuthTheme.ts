@@ -4,7 +4,7 @@
 
 export const AUTH_APPEARANCE = {
   colors: {
-    waspYellow: "#22d3ee",
+    waspYellow: "#e04879",
     gray700: "#9aa5b1",
     gray600: "#2b3442",
     gray500: "#8b96a5",
@@ -12,13 +12,13 @@ export const AUTH_APPEARANCE = {
     red: "#3d1f2b",
     darkRed: "#f87171",
     green: "#123026",
-    brand: "#22d3ee",
-    brandAccent: "#5ad7ff",
+    brand: "#8e183e",
+    brandAccent: "#e04879",
     errorBackground: "#3d1f2b",
     errorText: "#fca5a5",
     successBackground: "#123026",
     successText: "#86efac",
-    submitButtonText: "#05070c",
+    submitButtonText: "#ffffff",
     formErrorText: "#f87171",
   },
   fontSizes: {
@@ -42,14 +42,14 @@ export const AUTH_AMBIENT_STYLE = `
     opacity: 1 !important;
   }
   [data-login-ambient] input:focus {
-    border-color: #22d3ee !important;
-    box-shadow: 0 0 0 1px #22d3ee, 0 0 18px rgba(34, 211, 238, 0.25) !important;
+    border-color: #8e183e !important;
+    box-shadow: 0 0 0 1px #8e183e, 0 0 18px rgba(142, 24, 62, 0.25) !important;
     outline: none !important;
   }
   [data-login-ambient] button[type="submit"] {
-    box-shadow: 0 0 24px rgba(34, 211, 238, 0.3) !important;
+    box-shadow: 0 0 24px rgba(142, 24, 62, 0.3) !important;
   }
   [data-login-ambient] button[type="submit"]:hover {
-    box-shadow: 0 0 32px rgba(90, 215, 255, 0.4) !important;
+    box-shadow: 0 0 32px rgba(224, 72, 121, 0.4) !important;
   }
 `;

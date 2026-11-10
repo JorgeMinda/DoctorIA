@@ -79,7 +79,7 @@ export function ClinicalPatientsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-cyan-600 dark:text-cyan-400 font-semibold">
+          <p className="mono-label mb-1 text-[11px] uppercase tracking-widest text-wine-600 dark:text-wine-400 font-semibold">
             Panel clínico
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -116,7 +116,7 @@ export function ClinicalPatientsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="clinical-glass-card">
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary dark:border-cyan-400/30 dark:bg-cyan-500/15 dark:text-cyan-400">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary dark:border-wine-400/30 dark:bg-wine-500/15 dark:text-wine-400">
               <Users className="size-5" />
             </div>
             <div className="min-w-0">
@@ -131,7 +131,7 @@ export function ClinicalPatientsPage() {
         </Card>
         <Card className="clinical-glass-card">
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary dark:border-cyan-400/30 dark:bg-cyan-500/15 dark:text-cyan-400">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary dark:border-wine-400/30 dark:bg-wine-500/15 dark:text-wine-400">
               <Activity className="size-5" />
             </div>
             <div className="min-w-0">
@@ -149,7 +149,7 @@ export function ClinicalPatientsPage() {
         </Card>
         <Card className="clinical-glass-card">
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-primary/30 dark:border-cyan-400/40 shadow-[0_0_15px_rgba(0,218,243,0.3)]">
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-primary/30 dark:border-wine-400/40 shadow-[0_0_15px_rgba(224,72,121,0.3)]">
               <img
                 src="/doctoria_robot_assistant.jpg"
                 alt="DoctorIA"
@@ -179,7 +179,7 @@ export function ClinicalPatientsPage() {
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
         <Input
-          className="clinical-glass-input pl-9 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:border-primary dark:focus:border-cyan-400 focus:ring-primary/20 dark:focus:ring-cyan-400/20"
+          className="clinical-glass-input pl-9 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:border-primary dark:focus:border-wine-400 focus:ring-primary/20 dark:focus:ring-wine-400/20"
           placeholder="Buscar por nombre, apellido o identificador sintético (PAC-…)"
           value={search}
           onChange={(e) => {
@@ -219,7 +219,7 @@ export function ClinicalPatientsPage() {
           )}
           {data && data.patients.length === 0 && (
             <div className="flex flex-col items-center justify-center px-5 py-12 text-center">
-              <div className="relative mb-3 size-16 overflow-hidden rounded-2xl border border-primary/30 shadow-[0_0_16px_rgba(0,218,243,0.2)]">
+              <div className="relative mb-3 size-16 overflow-hidden rounded-2xl border border-primary/30 shadow-[0_0_16px_rgba(224,72,121,0.2)]">
                 <img
                   src="/doctoria_robot_assistant.jpg"
                   alt="DoctorIA Assistant"
@@ -243,9 +243,9 @@ export function ClinicalPatientsPage() {
             data.patients.map((patient) => (
               <div
                 key={patient.id}
-                className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary/5 dark:hover:bg-cyan-500/10"
+                className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-primary/5 dark:hover:bg-wine-500/10"
               >
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary dark:border-cyan-400/30 dark:bg-cyan-500/15 text-sm font-bold dark:text-cyan-300">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary dark:border-wine-400/30 dark:bg-wine-500/15 text-sm font-bold dark:text-wine-300">
                   {patient.firstName[0]}
                   {patient.lastName[0]}
                 </div>
@@ -282,7 +282,7 @@ export function ClinicalPatientsPage() {
                   params={{ patientId: patient.id }}
                   className="shrink-0"
                 >
-                  <Button variant="outline" size="sm" className="gap-1.5 border-slate-300 dark:border-white/20 bg-white/80 dark:bg-white/5 hover:bg-primary hover:text-white hover:border-primary dark:hover:bg-cyan-500/25 dark:hover:border-cyan-400 dark:hover:text-white text-slate-800 dark:text-white shadow-sm transition-all">
+                  <Button variant="outline" size="sm" className="gap-1.5 border-slate-300 dark:border-white/20 bg-white/80 dark:bg-white/5 hover:bg-primary hover:text-white hover:border-primary dark:hover:bg-wine-500/25 dark:hover:border-wine-400 dark:hover:text-white text-slate-800 dark:text-white shadow-sm transition-all">
                     Ver historia
                     <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                   </Button>

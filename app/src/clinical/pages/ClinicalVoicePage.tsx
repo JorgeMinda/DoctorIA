@@ -516,7 +516,7 @@ function ClinicalVoicePageContent() {
               }}
               className={`rounded-full h-8 gap-1.5 px-3 text-xs transition-colors ${
                 isVoiceEnabled
-                  ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(0,218,243,0.3)]"
+                  ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(224,72,121,0.3)]"
                   : "border-outline-variant bg-surface text-muted-foreground hover:text-foreground"
               }`}
               title={
@@ -557,9 +557,9 @@ function ClinicalVoicePageContent() {
         </div>
 
         {/* DoctorIA Companion Card */}
-        <div className="mb-6 overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-surface/80 to-surface/60 p-4 shadow-[0_4px_24px_rgba(0,218,243,0.08)] backdrop-blur-md">
+        <div className="mb-6 overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-surface/80 to-surface/60 p-4 shadow-[0_4px_24px_rgba(224,72,121,0.08)] backdrop-blur-md">
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl border-2 border-primary/40 shadow-[0_0_20px_rgba(0,218,243,0.35)]">
+            <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl border-2 border-primary/40 shadow-[0_0_20px_rgba(224,72,121,0.35)]">
               <img
                 src="/doctoria_robot_assistant.jpg"
                 alt="DoctorIA Asistente Clínico"
@@ -602,7 +602,7 @@ function ClinicalVoicePageContent() {
             <span
               className={
                 phase === "LISTENING"
-                  ? "text-cyan-400"
+                  ? "text-wine-400"
                   : phase === "PROCESSING"
                     ? "text-violet-400"
                     : phase === "RESPONDING"

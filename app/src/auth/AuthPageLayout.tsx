@@ -29,7 +29,7 @@ export function AuthPageLayout({ children }: { children: ReactNode }) {
       {/* Tarjeta glassmorphism */}
       <div className="relative w-full max-w-md z-10">
         <div className="clinical-glass-card rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-indigo-500 to-emerald-500" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-wine-600 via-violet-900 to-[#58595b]" />
           {children}
         </div>
       </div>

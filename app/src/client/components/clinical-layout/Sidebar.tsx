@@ -46,7 +46,7 @@ export function SidebarContent({
               <img src={logo} alt="DoctorIA" className="size-7 rounded-md shadow-sm shrink-0" />
               <div className="flex flex-col leading-tight min-w-0">
                 <span className="text-slate-900 dark:text-white font-bold tracking-tight text-sm truncate">DoctorIA</span>
-                <span className="mono-label text-cyan-600 dark:text-cyan-400 text-[9px] uppercase tracking-widest truncate">
+                <span className="mono-label text-wine-600 dark:text-wine-400 text-[9px] uppercase tracking-widest truncate">
                   Clinical AI
                 </span>
               </div>
@@ -92,7 +92,7 @@ export function SidebarContent({
                           ? "gap-3 px-3 py-2.5"
                           : "justify-center p-2.5",
                         active
-                          ? "border-primary/40 bg-primary/15 text-primary shadow-[0_0_15px_rgba(14,165,233,0.2)] font-semibold backdrop-blur-md dark:border-cyan-400/40 dark:bg-cyan-500/20 dark:text-cyan-300 dark:shadow-[0_0_20px_rgba(0,218,243,0.25)]"
+                          ? "border-primary/40 bg-primary/15 text-primary shadow-[0_0_15px_rgba(224,72,121,0.2)] font-semibold backdrop-blur-md dark:border-wine-400/40 dark:bg-wine-500/20 dark:text-wine-300 dark:shadow-[0_0_20px_rgba(224,72,121,0.25)]"
                           : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white",
                       )}
                     >
@@ -103,7 +103,7 @@ export function SidebarContent({
                       {active && (
                         <span
                           className={cn(
-                            "rounded-full bg-primary shadow-[0_0_10px_rgba(14,165,233,0.8)] dark:bg-cyan-400 dark:shadow-[0_0_10px_rgba(0,218,243,0.8)]",
+                            "rounded-full bg-primary shadow-[0_0_10px_rgba(224,72,121,0.8)] dark:bg-wine-400 dark:shadow-[0_0_10px_rgba(224,72,121,0.8)]",
                             isExpanded || isMobile ? "ml-auto size-2" : "absolute right-1.5 top-1.5 size-1.5",
                           )}
                         />
@@ -126,7 +126,7 @@ export function SidebarContent({
               isExpanded || isMobile ? "gap-3" : "justify-center",
             )}
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/15 text-xs font-bold uppercase text-primary dark:border-cyan-400/30 dark:bg-cyan-500/20 dark:text-cyan-300 shadow-sm">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/15 text-xs font-bold uppercase text-primary dark:border-wine-400/30 dark:bg-wine-500/20 dark:text-wine-300 shadow-sm">
               {(user.username ?? "?").slice(0, 2)}
             </div>
             {(isExpanded || isMobile) && (

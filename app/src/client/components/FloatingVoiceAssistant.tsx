@@ -370,7 +370,7 @@ export function FloatingVoiceAssistant() {
           className="pointer-events-none absolute -inset-14 rounded-full blur-3xl transition-opacity duration-700 motion-reduce:transition-none opacity-70"
           style={{
             background:
-              "radial-gradient(circle, rgba(56, 189, 248, 0.16) 0%, rgba(99, 102, 241, 0.08) 45%, transparent 70%)",
+              "radial-gradient(circle, rgba(224, 72, 121, 0.16) 0%, rgba(126, 13, 66, 0.08) 45%, transparent 70%)",
           }}
         />
         {/* Anillo conic */}
@@ -381,8 +381,8 @@ export function FloatingVoiceAssistant() {
           }`}
           style={{
             background: listening
-              ? "conic-gradient(from 0deg, #22d3ee, #0ea5e9, #38bdf8, #22d3ee, #22d3ee)"
-              : "conic-gradient(from 0deg, #22d3ee, #3b82f6, #8b5cf6, #22c55e, #22d3ee)",
+              ? "conic-gradient(from 0deg, #f0a3bb, #e04879, #c22d5c, #f0a3bb, #f0a3bb)"
+              : "conic-gradient(from 0deg, #e04879, #8e183e, #7e0d42, #c22d5c, #e04879)",
             animationDuration: listening ? "3.2s" : "18s",
             animationIterationCount: "infinite",
             filter: "blur(0.5px)",
@@ -399,8 +399,8 @@ export function FloatingVoiceAssistant() {
           className="pointer-events-none absolute inset-[5px] rounded-full bg-[#05070c] transition-all duration-500"
           style={{
             boxShadow: listening
-              ? "inset 0 0 20px rgba(0,0,0,0.85), inset 0 0 8px rgba(34,211,238,0.4)"
-              : "inset 0 0 20px rgba(0,0,0,0.85), inset 0 0 8px rgba(56,189,248,0.15)",
+              ? "inset 0 0 20px rgba(0,0,0,0.85), inset 0 0 8px rgba(224,72,121,0.4)"
+              : "inset 0 0 20px rgba(0,0,0,0.85), inset 0 0 8px rgba(224,72,121,0.15)",
           }}
         />
         {/* Icono */}
@@ -411,7 +411,7 @@ export function FloatingVoiceAssistant() {
               fill="currentColor"
             />
           ) : (
-            <Mic className="size-5 text-cyan-400 transition-colors group-hover:text-cyan-300" />
+            <Mic className="size-5 text-wine-400 transition-colors group-hover:text-wine-300" />
           )}
         </span>
       </Button>

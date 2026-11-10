@@ -1697,7 +1697,7 @@ function AdminScheduleForm({
                           : "Disponible"
                     }
                     className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${selected
-                        ? "border-primary bg-primary text-primary-foreground shadow-[0_0_10px_rgba(0,218,243,0.3)] font-bold"
+                        ? "border-primary bg-primary text-primary-foreground shadow-[0_0_10px_rgba(224,72,121,0.3)] font-bold"
                         : busySlot
                           ? "cursor-not-allowed border-destructive/40 bg-destructive/10 text-destructive/70 line-through"
                           : past
@@ -2929,7 +2929,7 @@ function ClinicalAdminPageContent() {
               Supervisión de equipos médicos, pacientes sintéticos protegidos, asignación de accesos clínicos y auditoría institucional con trazabilidad inmutable.
             </p>
           </div>
-          <div className="relative h-28 w-44 shrink-0 overflow-hidden rounded-xl border border-primary/30 shadow-[0_0_20px_rgba(0,218,243,0.2)]">
+          <div className="relative h-28 w-44 shrink-0 overflow-hidden rounded-xl border border-primary/30 shadow-[0_0_20px_rgba(224,72,121,0.2)]">
             <img
               src="/doctoria_research_team.jpg"
               alt="Equipo Médico DoctorIA"

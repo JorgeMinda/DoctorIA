@@ -190,7 +190,7 @@ function NavBarMobileMenu({
               <div className="py-6">
                 {isUserLoading ? null : !user ? (
                   <WaspRouterLink to={routes.LoginRoute.to}>
-                    <div className="flex items-center justify-end gap-2 text-cyan-300 transition-colors duration-300 ease-in-out">
+                    <div className="flex items-center justify-end gap-2 text-wine-300 transition-colors duration-300 ease-in-out">
                       Log in <LogIn size="1.1rem" className="ml-1" />
                     </div>
                   </WaspRouterLink>

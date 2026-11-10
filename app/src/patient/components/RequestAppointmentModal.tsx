@@ -409,7 +409,7 @@ export function RequestAppointmentModal({
                           }
                           className={`flex flex-col items-center justify-center rounded-lg border py-2 px-1 text-xs font-mono transition-all ${
                             isSelected
-                              ? "border-primary bg-primary text-primary-foreground font-bold shadow-[0_0_15px_rgba(0,218,243,0.4)] scale-105 ring-2 ring-primary"
+                              ? "border-primary bg-primary text-primary-foreground font-bold shadow-[0_0_15px_rgba(224,72,121,0.4)] scale-105 ring-2 ring-primary"
                               : isBusy
                               ? "border-rose-500/40 bg-rose-500/10 text-rose-400 line-through cursor-not-allowed opacity-80 select-none"
                               : isPast

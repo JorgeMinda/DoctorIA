@@ -58,14 +58,14 @@ function MetricTile({
 }) {
   const colorStyles = {
     sky: active
-      ? "border-sky-400/70 bg-sky-500/20 text-sky-300 shadow-[0_0_18px_rgba(56,189,248,0.25)] ring-1 ring-sky-400/50"
-      : "border-outline-variant/60 bg-surface/50 hover:border-sky-400/50 hover:bg-sky-500/10",
+      ? "border-wine-400/70 bg-wine-500/20 text-wine-300 shadow-[0_0_18px_rgba(224,72,121,0.25)] ring-1 ring-wine-400/50"
+      : "border-outline-variant/60 bg-surface/50 hover:border-wine-400/50 hover:bg-wine-500/10",
     amber: active
       ? "border-amber-400/70 bg-amber-500/20 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.25)] ring-1 ring-amber-400/50"
       : "border-outline-variant/60 bg-surface/50 hover:border-amber-400/50 hover:bg-amber-500/10",
     blue: active
-      ? "border-cyan-400/70 bg-cyan-500/20 text-cyan-300 shadow-[0_0_18px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/50"
-      : "border-outline-variant/60 bg-surface/50 hover:border-cyan-400/50 hover:bg-cyan-500/10",
+      ? "border-wine-400/70 bg-wine-500/20 text-wine-300 shadow-[0_0_18px_rgba(224,72,121,0.25)] ring-1 ring-wine-400/50"
+      : "border-outline-variant/60 bg-surface/50 hover:border-wine-400/50 hover:bg-wine-500/10",
     emerald: active
       ? "border-emerald-400/70 bg-emerald-500/20 text-emerald-300 shadow-[0_0_18px_rgba(52,211,153,0.25)] ring-1 ring-emerald-400/50"
       : "border-outline-variant/60 bg-surface/50 hover:border-emerald-400/50 hover:bg-emerald-500/10",
@@ -225,7 +225,7 @@ export function ClinicalAgendaPage() {
             </p>
           </div>
           <Button
-            className="gap-1.5 shadow-[0_0_15px_rgba(0,218,243,0.25)]"
+            className="gap-1.5 shadow-[0_0_15px_rgba(224,72,121,0.25)]"
             onClick={() => {
               setSelectedNewCitaDate(undefined);
               setShowNewCita(true);
