@@ -17,6 +17,11 @@ import {
   wantsCreateNote,
   wantsPatientSummary,
 } from "../voice/floatingVoice";
+import {
+  buildDraftPath,
+  describeDraft,
+  parseAppointmentDraft,
+} from "../voice/appointmentDraft";
 
 type PanelState = { status: string; transcript: string } | null;
 
@@ -137,6 +142,24 @@ export function FloatingVoiceAssistant() {
       if (!text) {
         setPanel(null);
         setSummary(null);
+        return;
+      }
+
+      // Pre-reserva de cita (T070): si la voz trae datos, abre la card de
+      // pre-reserva prefilled en la agenda; nada se guarda sin "Aceptar".
+      const draft = parseAppointmentDraft(text);
+      if (draft) {
+        setSummary(null);
+        setPanel({
+          status: "Pre-reserva",
+          transcript: `${describeDraft(draft)}. Verifica los datos antes de confirmar.`,
+        });
+        speak(
+          "Pre-reserva de cita detectada. Verifica los datos antes de confirmar.",
+          TTS_OPTIONS,
+        );
+        navigate(buildDraftPath(draft));
+        scheduleHide();
         return;
       }
 

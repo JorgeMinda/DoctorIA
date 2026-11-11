@@ -30,6 +30,10 @@ import {
   parseVoiceCommand,
   type VoiceAssistantResponse,
 } from "../services/voiceAssistant";
+import {
+  buildDraftPath,
+  parseAppointmentDraft,
+} from "../../client/voice/appointmentDraft";
 import { ttsService } from "../services/tts.service";
 
 // Consulta de ejemplo (modo demo / placeholder). Los datos de la respuesta son SINTÉTICOS.
@@ -257,6 +261,20 @@ function ClinicalVoicePageContent() {
           setPhase("RESPONDING");
         }, 700),
       );
+      return;
+    }
+
+    // Pre-reserva de cita por voz/texto (T070): si el comando trae datos de
+    // cita, enruta a la agenda con el borrador en vez de buscar un resumen.
+    const draft = parseAppointmentDraft(text);
+    if (draft) {
+      setTranscript(text);
+      toast({
+        title: "Pre-reserva por voz",
+        description: "Revisa los datos en la agenda antes de confirmar.",
+      });
+      navigate(buildDraftPath(draft));
+      setPhase("IDLE");
       return;
     }
 

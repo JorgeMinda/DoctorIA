@@ -33,7 +33,7 @@ MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El 
 - **Framework**: Wasp 0.25.0 (template Open SaaS) — app monolítica, TypeScript 6.0.3, Node ≥24.14.1 (local WSL: Node v24.19.0 vía nvm)
 - **Frontend**: React 19.2.x, TailwindCSS 4.x, Radix UI, lucide-react
 - **Backend**: Express (Wasp), Prisma 5.19.1 + PostgreSQL
-- **Pruebas**: Vitest 4.1.x (unit/integration, 282 tests / 22 archivos), Playwright 1.55.1 (E2E)
+- **Pruebas**: Vitest 4.1.x (unit/integration, 302 tests / 23 archivos), Playwright 1.55.1 (E2E)
 - **Despliegue**: Render (blueprint `render.yaml`) — client estático Vite + server Node + Postgres 18 free tier
 - **Email**: Resend (remitente provisional `onboarding@resend.dev`; solo entrega a la cuenta Resend registrada)
 
@@ -165,6 +165,13 @@ Pacientes sintéticos: PAC-001 … PAC-006 (historia clínica + alergias). 12 ac
 - **Problema reportado**: botón "Comenzar" → `https://doctoria.linkear.net/clinical/voice` "ya no existe" tras ciclo login→logout→login. Reproducido con Playwright en producción (cuentas admin y médico): el localStorage (`wasp:sessionId`) NO era la causa — el ciclo funciona bien; la causa real es el `RoleGuard allowedRoles=["medico"]` de `ClinicalVoicePage.tsx` que rebotea a `/clinical/patients` a los no-médicos. `/clinical/voice` es ruta oculta (entrada solo por CTA/voz — `nav-items.ts`).
 - **Fix** (decisión del usuario: "home según rol"): helper puro `client/roleHome.ts` → `getRoleHomePath(role)`: sin sesión → `/login`, médico → `/clinical/voice`, admin/secretaria → `/clinical/patients`, paciente → `/patient/dashboard`. Consumido por `Hero.tsx`, `FinalCTA.tsx` (CTA "Comenzar") y el link "Panel clínico" del `Footer.tsx`. Tests +5 → **282/282** (22 archivos).
 
+### Card de pre-reserva de cita por voz/texto (10-nov) — T070
+
+- **Alcance** (decisión del usuario en su mapeo "conversacional para médico/secretaría/admin"): comando "agendar cita / nueva cita …" con datos → **card de pre-reserva** en la agenda con Paciente/Médico/Fecha/Hora (+ teléfono del paciente) y botón **"Aceptar y crear cita"**; nada se guarda sin confirmación explícita (P4/HITL).
+- **Parser puro** `client/voice/appointmentDraft.ts`: `parseAppointmentDraft` (intención agendar + extracción: paciente tras "para/cita de", médico con título "dr./dra./doctor" — segunda palabra excluye fechas/horas —, fecha relativa hoy/mañana/pasado mañana/día de semana, fecha absoluta "25 de noviembre", hora "a las 10:30" / "10 y media" / meridiano "de la tarde"), `describeDraft`, `buildDraftPath` y `matchByName` (prefill solo con coincidencia única — ambigüedad → null, nunca adivinar paciente; acepta nombre, email o `PAC-NNN`).
+- **Wiring**: orbe flotante (`FloatingVoiceAssistant`) y `/clinical/voice` (voz/texto) → `/clinical/agenda?new=1&draft=<json>`; `ClinicalAgendaPage` lee/limpia el parámetro y lo pasa a `NewAppointmentModal` — banner "Pre-reserva detectada" (cita hablada + chips Paciente/Médico/Fecha/Hora + teléfono + "nada se guarda hasta Aceptar"), prefills de paciente/médico/fecha, hora aplicada solo si el turno está libre (si no, aviso amber), botón "Aceptar y crear cita" → `manageCita` (admin/médico/secretaria ya soportados server-side). **Costo fuera de alcance**: `Cita` no tiene ese campo en el modelo (anotado en el parser).
+- Tests +20 → **302/302** (23 archivos); `tsc --noEmit` + `wasp build` OK.
+
 ---
 
 ## 6. Repositorio y flujo de trabajo
@@ -220,7 +227,7 @@ specs/001-doctoria-mvp/
 | UI badges de estado de cita | ✅ **RESUELTO** (8-nov) — componente compartido `clinical/components/CitaBadge.tsx` + `STATUS_CONFIG` como fuente única (label/short/variant): panel médico (`8f368a5`), **lista de agenda** (4 vistas, con iniciales), **calendario** (bloque de día + diálogo de detalle con iniciales), **portal del paciente** (píldora propia con labels desde `STATUS_CONFIG`; conserva los casos "Por confirmar/Confirmada" de secretaría), **detalle de paciente** (vista médico y secretaría) y **panel de admin** (T062, reemplaza `AdminCitaBadge` local). Label COMPLETED unificado a **"Completada"**. Descartado: campos `formCost/formObservation` (sin columnas nuevas en `Cita`, decisión 8-nov) |
 | Email de vinculación de paciente | PENDIENTE — **MINOR**: `getPatientLinkEmailContent` (`auth/email-and-pass/emails.ts:28`) está definido pero NUNCA se usa; el flujo `PatientLinkRequest` no envía ningún email (la notificación es solo visual en UI) |
 | Seeds: cuentas paciente sin vínculo | PENDIENTE — **MINOR**: `dbSeeds.ts:239-244` crea 6 cuentas (`PAC-008..013`) que no existen como pacientes (solo se siembran PAC-001..006) → esas cuentas quedan sin vínculo a ningún paciente (portal vacío). Corregir para que apunten a PAC-001..006 o crear esos pacientes |
-| Cobertura de tests | ✅ **RESUELTO** (8–10-nov, T063+T066+T068+T069) — **282/282 tests en 22 archivos**: unitarias de ICS del portal, `manageCitaByMedico`, vinculación (`requestPatientLink`), calendario (helpers puros extraídos a `services/calendarFormat.ts`), `aiQueue`, `requestAIStructuring`, **FSM de captura guiada** (`captureFsm.test.ts`, 24 tests), **categorías del portal paciente** (`patientCategories.test.ts`, 6) y **destino por rol de CTAs** (`roleHome.test.ts`, 5). Opcional futuro: tests de render de componentes si se incorpora testing-library |
+| Cobertura de tests | ✅ **RESUELTO** (8–10-nov, T063+T066+T068+T069+T070) — **302/302 tests en 23 archivos**: unitarias de ICS del portal, `manageCitaByMedico`, vinculación (`requestPatientLink`), calendario (helpers puros extraídos a `services/calendarFormat.ts`), `aiQueue`, `requestAIStructuring`, **FSM de captura guiada** (`captureFsm.test.ts`, 24 tests), **categorías del portal paciente** (`patientCategories.test.ts`, 6), **destino por rol de CTAs** (`roleHome.test.ts`, 5) y **pre-reserva de cita por voz** (`appointmentDraft.test.ts`, 20). Opcional futuro: tests de render de componentes si se incorpora testing-library |
 
 ---
 
@@ -242,7 +249,7 @@ specs/001-doctoria-mvp/
 - **P4 Seguridad clínica**: IA asistiva, nunca confirmatoria; registro CONFIRMED inmutable (adendas).
 - **P5 Protección de datos**: datos reales en producción con cifrado; sintéticos en dev/demo; sin PII en logs; secrets fuera de git.
 - **P3 Reutilización**: sin frameworks nuevos; usar Wasp/Prisma/Radix existentes.
-- **P7 Calidad**: toda tarea con tests verdes (Vitest 282/282, Playwright 10) y QA documentado.
+- **P7 Calidad**: toda tarea con tests verdes (Vitest 302/302, Playwright 10) y QA documentado.
 - **P10 Gobierno**: decisiones documentadas en `plan.md`/`research.md` (PD-01..03); tareas en `tasks.md` por Doer.
 - **Idioma**: UI y documentos del equipo en español; código/comentarios en inglés.
 - **No commitear** sin que el usuario lo pida explícitamente; commits/push directos desde la copia Windows en `main` (ver §6).

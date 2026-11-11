@@ -37,6 +37,7 @@ import { Badge } from "../../client/components/ui/badge";
 import { toast } from "../../client/hooks/use-toast";
 import { citaStatusLabel } from "../services/statusLabels";
 import { NewAppointmentModal } from "../components/NewAppointmentModal";
+import type { AppointmentDraft } from "../../client/voice/appointmentDraft";
 import { EditAppointmentModal } from "../components/EditAppointmentModal";
 import { ClinicalCalendarView } from "../components/ClinicalCalendarView";
 import { CitaBadge, initialsOf } from "../components/CitaBadge";
@@ -95,6 +96,7 @@ export function ClinicalAgendaPage() {
   const [editingCita, setEditingCita] = useState<any | null>(null);
   const [displayMode, setDisplayMode] = useState<"calendar" | "list">("calendar");
   const [selectedNewCitaDate, setSelectedNewCitaDate] = useState<Date | undefined>(undefined);
+  const [voiceDraft, setVoiceDraft] = useState<AppointmentDraft | null>(null);
   const [statusFilter, setStatusFilter] = useState<
     "ALL" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED"
   >(() => {
@@ -104,14 +106,23 @@ export function ClinicalAgendaPage() {
       : "ALL";
   });
 
-  // Parámetros de URL del asistente de voz flotante (?new=1, ?status=...).
-  // ?new=1 se elimina al abrir el modal: si quedara en la URL, repetir el
+  // Parámetros de URL del asistente de voz flotante (?new=1, ?draft=..., ?status=...).
+  // Se eliminan al abrir el modal: si quedaran en la URL, repetir el
   // comando de voz navegaría a la misma URL y el modal no volvería a abrirse.
   useEffect(() => {
-    if (searchParams.get("new") === "1") {
+    const draftParam = searchParams.get("draft");
+    if (searchParams.get("new") === "1" || draftParam) {
       setShowNewCita(true);
+      if (draftParam) {
+        try {
+          setVoiceDraft(JSON.parse(draftParam));
+        } catch {
+          setVoiceDraft(null);
+        }
+      }
       const next = new URLSearchParams(searchParams);
       next.delete("new");
+      next.delete("draft");
       setSearchParams(next, { replace: true });
     }
     const s = searchParams.get("status");
@@ -712,8 +723,12 @@ export function ClinicalAgendaPage() {
         {showNewCita && (
           <NewAppointmentModal
             open={Boolean(showNewCita)}
-            onOpenChange={setShowNewCita}
+            onOpenChange={(v) => {
+              setShowNewCita(v);
+              if (!v) setVoiceDraft(null);
+            }}
             defaultDate={selectedNewCitaDate}
+            voiceDraft={voiceDraft}
             onDone={() => refetch()}
           />
         )}
@@ -1035,8 +1050,12 @@ export function ClinicalAgendaPage() {
       {showNewCita && (
         <NewAppointmentModal
           open={Boolean(showNewCita)}
-          onOpenChange={setShowNewCita}
+          onOpenChange={(v) => {
+            setShowNewCita(v);
+            if (!v) setVoiceDraft(null);
+          }}
           defaultDate={selectedNewCitaDate}
+          voiceDraft={voiceDraft}
           onDone={() => refetch()}
         />
       )}

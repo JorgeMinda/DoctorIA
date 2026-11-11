@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAction, useQuery } from "wasp/client/operations";
 import {
   getDoctorsAgenda,
@@ -26,19 +26,25 @@ import {
   DialogClose,
 } from "../../client/components/ui/dialog";
 import { Badge } from "../../client/components/ui/badge";
-import { AlertCircle, CalendarCheck, CheckCircle2, Clock, Plus, UserCheck } from "lucide-react";
+import { AlertCircle, CalendarCheck, CheckCircle2, Clock, Mic, Plus, UserCheck } from "lucide-react";
+import {
+  matchByName,
+  type AppointmentDraft,
+} from "../../client/voice/appointmentDraft";
 
 export function NewAppointmentModal({
   open,
   onOpenChange,
   defaultPatientId,
   defaultDate,
+  voiceDraft,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultPatientId?: string;
   defaultDate?: Date;
+  voiceDraft?: AppointmentDraft | null;
   onDone?: () => void;
 }) {
   const [medicoId, setMedicoId] = useState("");
@@ -59,6 +65,8 @@ export function NewAppointmentModal({
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [voiceTimeWarning, setVoiceTimeWarning] = useState<string | null>(null);
+  const appliedDraftRef = useRef<AppointmentDraft | null>(null);
   const [createdSummary, setCreatedSummary] = useState<{
     patientName: string;
     syntheticId: string;
@@ -119,6 +127,7 @@ export function NewAppointmentModal({
     setReason("");
     setBusy(false);
     setCreatedSummary(null);
+    setVoiceTimeWarning(null);
   };
 
   useEffect(() => {
@@ -127,9 +136,46 @@ export function NewAppointmentModal({
     }
   }, [open, defaultPatientId]);
 
+  // Pre-reserva por voz: aplica el borrador UNA sola vez por draft (tras
+  // cargar pacientes/médicos). "Agendar otra cita" no lo re-aplica.
+  useEffect(() => {
+    if (!open || !voiceDraft || appliedDraftRef.current === voiceDraft) return;
+    if (!patientsData || !medicosData) return;
+    appliedDraftRef.current = voiceDraft;
+    const patients = patientsData.patients ?? [];
+    const medicos = medicosData.medicos ?? [];
+    if (voiceDraft.patientName) {
+      const p = matchByName(patients, voiceDraft.patientName);
+      if (p) setPatientId(p.id);
+    }
+    if (voiceDraft.medicoName) {
+      const m = matchByName(medicos, voiceDraft.medicoName);
+      if (m) setMedicoId(m.id);
+    }
+    if (
+      voiceDraft.dateISO &&
+      /^\d{4}-\d{2}-\d{2}$/.test(voiceDraft.dateISO) &&
+      voiceDraft.dateISO >= todayInput
+    ) {
+      setDate(voiceDraft.dateISO);
+    }
+  }, [open, voiceDraft, patientsData, medicosData]);
+
   const allMedicos = medicosData?.medicos ?? [];
   const allPatients = patientsData?.patients ?? [];
   const freeSlots: string[] = slots?.freeSlots ?? [];
+
+  // La hora del draft solo se aplica si el turno está libre (o cuando el
+  // usuario completa médico+fecha y llegan los slots).
+  useEffect(() => {
+    if (!open || !voiceDraft?.time || !freeSlots.length) return;
+    if (freeSlots.includes(voiceDraft.time)) {
+      setTime(voiceDraft.time);
+      setVoiceTimeWarning(null);
+    } else {
+      setVoiceTimeWarning(voiceDraft.time);
+    }
+  }, [open, voiceDraft, freeSlots]);
 
   // Paciente seleccionado y sus médicos autorizados
   const selectedPatient = allPatients.find((p: any) => p.id === patientId);
@@ -254,8 +300,12 @@ export function NewAppointmentModal({
       <DialogContent className="max-h-[90vh] overflow-y-auto max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarCheck className="size-5 text-primary" />
-            Nueva cita médica
+            {voiceDraft ? (
+              <Mic className="size-5 text-primary" />
+            ) : (
+              <CalendarCheck className="size-5 text-primary" />
+            )}
+            {voiceDraft ? "Pre-reserva por voz" : "Nueva cita médica"}
           </DialogTitle>
         </DialogHeader>
 
@@ -324,6 +374,58 @@ export function NewAppointmentModal({
         ) : (
           /* Formulario de Agendamiento */
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Card de pre-reserva: qué escuchó la voz + qué falta verificar */}
+            {voiceDraft && (
+              <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/10 p-3 sm:col-span-2">
+                <p className="mono-label flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-primary">
+                  <Mic className="size-3.5" />
+                  Pre-reserva detectada
+                </p>
+                <p className="text-xs italic text-muted-foreground">
+                  «{voiceDraft.raw}»
+                </p>
+                <div className="flex flex-wrap gap-1.5 text-[11px]">
+                  {(
+                    [
+                      ["Paciente", voiceDraft.patientName],
+                      ["Médico", voiceDraft.medicoName],
+                      ["Fecha", voiceDraft.dateISO],
+                      ["Hora", voiceDraft.time],
+                    ] as Array<[string, string | undefined]>
+                  ).map(([label, value]) => (
+                    <span
+                      key={label}
+                      className={`rounded border px-1.5 py-0.5 font-mono ${
+                        value
+                          ? "border-primary/40 bg-background/60 text-foreground"
+                          : "border-outline-variant/60 text-muted-foreground"
+                      }`}
+                    >
+                      {label}: {value ?? "—"}
+                    </span>
+                  ))}
+                </div>
+                {selectedPatient?.phone && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Teléfono:{" "}
+                    <span className="font-mono text-foreground">
+                      {selectedPatient.phone}
+                    </span>
+                  </p>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  Verifique los datos: nada se guarda hasta que pulse «Aceptar y
+                  crear cita».
+                </p>
+                {voiceTimeWarning && (
+                  <p className="text-[11px] text-amber-400">
+                    La hora {voiceTimeWarning} no está disponible para este
+                    médico/fecha; elija otro turno.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Selección de Paciente */}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Paciente</Label>
@@ -548,7 +650,7 @@ export function NewAppointmentModal({
                   !time
                 }
               >
-                {busy ? "Agendando…" : "Crear cita"}
+                {busy ? "Agendando…" : voiceDraft ? "Aceptar y crear cita" : "Crear cita"}
               </Button>
             </DialogFooter>
           </div>
