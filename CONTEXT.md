@@ -94,7 +94,7 @@ Reglas clave:
 
 ## 4. Estado de despliegue (staging)
 
-- **Client**: `https://doctoria-client.onrender.com` (estático, SPA fallback `200.html`)
+- **Client**: `https://doctoria.linkear.net` (custom domain; legacy `doctoria-client.onrender.com` apunta al mismo servicio, SPA fallback `200.html`)
 - **Server API**: `https://doctoria-server.onrender.com`
 - **DB**: `doctoria-db` (Postgres 18, free — expira en 30 días)
 - **Deploy**: Render con blueprint `render.yaml` (rootDir `app`, branch `main`). El `startCommand` del server ejecuta `prisma migrate deploy` + **seeds** + start.

@@ -10,7 +10,7 @@
 ## 1. Despliegue e Infraestructura
 
 - [x] Staging accesible por HTTPS con certificado SSL válido (Render free tier, TLS automático)
-  - Client: `https://doctoria-client.onrender.com`
+  - Client: `https://doctoria.linkear.net` (custom domain; legacy `doctoria-client.onrender.com`)
   - Server API: `https://doctoria-server.onrender.com`
 - [x] Base de datos PostgreSQL 18 en Render (`doctoria-db`), migraciones aplicadas en cada deploy (`prisma migrate deploy` en `startCommand`)
 - [x] `render.yaml` blueprint con 3 servicios: `doctoria-server` (Node/Wasp), `doctoria-client` (Vite estático + `200.html` SPA fallback), `doctoria-db` (Postgres 18)

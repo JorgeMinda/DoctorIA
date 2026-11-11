@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Validación visual del rediseño "Clinical Intelligence" + identidad
- * "Ambient Voice Interface" contra el client desplegado en Render (prod).
+ * Validación visual del rediseño "Clinical Intelligence" + identidad DoctorIA
+ * contra el client desplegado en Render (prod, doctoria.linkear.net).
  */
 const MEDICO = { email: "medico1@doctoria.com", password: "Doctoria2026!" };
 
@@ -25,14 +25,16 @@ async function acceptCookies() {
   }
 }
 
-test("login muestra la identidad Ambient Voice Interface", async () => {
+test("login muestra la identidad DoctorIA (Portal Clínico Inteligente)", async () => {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
   await acceptCookies();
-  await expect(page.getByText("Ambient Voice Interface")).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: "Portal Clínico Inteligente" }),
+  ).toBeVisible({
     timeout: 15000,
   });
   await expect(page.getByText("DoctorIA", { exact: false }).first()).toBeVisible();
-  await expect(page.locator('input[name="email"]')).toBeVisible();
+  await expect(page.locator('input[type="email"]')).toBeVisible();
   await page.screenshot({
     path: "test-results/redesign-login.png",
     fullPage: true,
@@ -42,11 +44,11 @@ test("login muestra la identidad Ambient Voice Interface", async () => {
 test("login como médico aterriza en el dashboard rediseñado", async () => {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
   await acceptCookies();
-  await page.fill('input[name="email"]', MEDICO.email);
-  await page.fill('input[name="password"]', MEDICO.password);
+  await page.fill('input[type="email"]', MEDICO.email);
+  await page.fill('input[type="password"]', MEDICO.password);
   await Promise.all([
     page.waitForURL("**/clinical/patients", { timeout: 25000 }),
-    page.click('button:has-text("Log in")'),
+    page.click('button:has-text("Iniciar sesión")'),
   ]);
   await expect(page.getByText("Panel clínico")).toBeVisible();
   await expect(

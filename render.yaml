@@ -26,7 +26,7 @@ services:
       - key: WASP_SERVER_URL
         value: "https://doctoria-server.onrender.com"
       - key: WASP_WEB_CLIENT_URL
-        value: "https://doctoria-client.onrender.com"
+        value: "https://doctoria.linkear.net"
       # Configuración de cookies para cross-origin (subdominios diferentes en Render)
       - key: WASP_SESSION_COOKIE_SAME_SITE
         value: "none"

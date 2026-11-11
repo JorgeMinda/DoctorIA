@@ -4,7 +4,7 @@ const { chromium } = require('@playwright/test');
 const path = require('path');
 const fs = require('fs');
 
-const BASE = 'https://doctoria-client.onrender.com';
+const BASE = 'https://doctoria.linkear.net';
 const CREDS = { email: 'medico1@doctoria.com', password: 'Doctoria2026!' };
 const SCREENSHOT_DIR = path.join(__dirname, 'test-results', 'qa-clinical-flow');
 

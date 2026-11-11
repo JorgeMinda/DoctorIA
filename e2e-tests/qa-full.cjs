@@ -1,5 +1,5 @@
 const { chromium } = require('@playwright/test');
-const BASE = 'https://doctoria-client.onrender.com';
+const BASE = 'https://doctoria.linkear.net';
 
 (async () => {
   const browser = await chromium.launch();

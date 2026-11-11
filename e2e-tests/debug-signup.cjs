@@ -1,5 +1,5 @@
 const { chromium } = require('@playwright/test');
-const BASE = 'https://doctoria-client.onrender.com';
+const BASE = 'https://doctoria.linkear.net';
 const EMAIL = 'stagingtest_' + Date.now() + '@temporary.com';
 const PASS = 'StrongPass123!';
 

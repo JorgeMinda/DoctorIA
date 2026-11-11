@@ -1,4 +1,4 @@
-const BASE = 'https://doctoria-client.onrender.com';
+const BASE = 'https://doctoria.linkear.net';
 (async () => {
   const html = await (await fetch(BASE + '/')).text();
   const css = html.match(/href="([^"]*\.css)"/)?.[1] || 'none';

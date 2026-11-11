@@ -4,7 +4,7 @@ const { chromium } = require('@playwright/test');
   const browser = await chromium.launch();
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
-  const base = 'https://doctoria-client.onrender.com';
+  const base = 'https://doctoria.linkear.net';
 
   async function tryLogin(email, pass) {
     const resp = await ctx.request.post('https://doctoria-server.onrender.com/auth/email/login', {

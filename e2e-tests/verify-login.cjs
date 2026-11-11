@@ -4,7 +4,7 @@ const { chromium } = require('@playwright/test');
   const browser = await chromium.launch();
   const ctx = await browser.newContext();
   ctx.setDefaultTimeout(90000);
-  const base = 'https://doctoria-client.onrender.com';
+  const base = 'https://doctoria.linkear.net';
   const server = 'https://doctoria-server.onrender.com';
 
   // 1. Login directo contra server
