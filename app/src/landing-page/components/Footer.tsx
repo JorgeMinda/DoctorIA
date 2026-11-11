@@ -1,4 +1,6 @@
 import { Clock, Facebook, Github, Linkedin, MapPin, Twitter } from "lucide-react";
+import { useRole } from "../../client/hooks/useRole";
+import { getRoleHomePath } from "../../client/roleHome";
 
 interface NavigationItem {
   name: string;
@@ -47,6 +49,12 @@ export function Footer({
     legal: NavigationItem[];
   };
 }) {
+  const { role, isAuthenticated } = useRole();
+  const appItems = footerNavigation.app.map((item) =>
+    item.href === "/clinical/voice"
+      ? { ...item, href: getRoleHomePath(isAuthenticated ? role : null) }
+      : item
+  );
   return (
     <div className="mx-auto mt-10 max-w-7xl px-6 lg:px-8">
       <footer
@@ -94,7 +102,7 @@ export function Footer({
             </div>
           </div>
 
-          <LinkColumn title="Aplicación" items={footerNavigation.app} />
+          <LinkColumn title="Aplicación" items={appItems} />
           <LinkColumn title="Proyecto" items={footerNavigation.company} />
           <LinkColumn title="Legal" items={footerNavigation.legal} />
         </div>

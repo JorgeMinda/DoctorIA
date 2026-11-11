@@ -1,5 +1,7 @@
-import { Link as WaspRouterLink, routes } from "wasp/client/router";
+import { Link } from "react-router";
 import { Button } from "../../client/components/ui/button";
+import { useRole } from "../../client/hooks/useRole";
+import { getRoleHomePath } from "../../client/roleHome";
 import {
   AMBIENT_MESSAGE,
   AmbientBadgeIcon,
@@ -9,6 +11,7 @@ import {
 
 export function Hero() {
   const { state, activate } = useAmbientDemo();
+  const { role, isAuthenticated } = useRole();
 
   return (
     <div className="relative w-full pt-16 md:pt-20">
@@ -46,9 +49,9 @@ export function Hero() {
               className="bg-primary text-primary-foreground shadow-[0_0_24px_hsl(var(--primary)/0.35)] transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_36px_hsl(var(--primary)/0.55)]"
               asChild
             >
-              <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
+              <Link to={getRoleHomePath(isAuthenticated ? role : null)}>
                 Comenzar <span aria-hidden="true">→</span>
-              </WaspRouterLink>
+              </Link>
             </Button>
           </div>
         </div>

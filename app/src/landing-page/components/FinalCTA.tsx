@@ -1,11 +1,15 @@
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
+import { Link } from "react-router";
 import { Button } from "../../client/components/ui/button";
+import { useRole } from "../../client/hooks/useRole";
+import { getRoleHomePath } from "../../client/roleHome";
 
 /**
  * CTA final de la landing: cierra el recorrido con la acción principal.
  * Reutiliza el botón "Comenzar" del hero sin duplicar secciones.
  */
 export function FinalCTA() {
+  const { role, isAuthenticated } = useRole();
   return (
     <section className="mx-auto mt-16 max-w-7xl px-6 md:mt-24 lg:px-8">
       <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card p-8 text-center shadow-2xl shadow-black/25 md:p-14 lg:p-16">
@@ -45,9 +49,9 @@ export function FinalCTA() {
               className="bg-primary text-primary-foreground shadow-[0_0_24px_hsl(var(--primary)/0.35)] transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_36px_hsl(var(--primary)/0.55)]"
               asChild
             >
-              <WaspRouterLink to={routes.ClinicalVoiceRoute.to}>
+              <Link to={getRoleHomePath(isAuthenticated ? role : null)}>
                 Comenzar <span aria-hidden="true">→</span>
-              </WaspRouterLink>
+              </Link>
             </Button>
             <Button
               size="lg"
