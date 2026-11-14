@@ -43,7 +43,7 @@ export const patientSpec: Spec = [
   route(
     "PatientDashboardRoute",
     "/patient/dashboard",
-    page(PatientDashboard, { authRequired: true }),
+    page(PatientDashboard),
   ),
   route(
     "PatientLinkRoute",

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { useQuery } from "wasp/client/operations";
+import { login } from "wasp/client/auth";
 import {
   getPatientAppointments,
   getPatientClinicalHistory,
@@ -11,6 +12,7 @@ import {
   filterDoctorsByCategory,
 } from "../patientCategories";
 import { useRole } from "../../client/hooks/useRole";
+import { getRoleHomePath } from "../../client/roleHome";
 import { RoleGuard } from "../../client/components/RoleGuard";
 import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
 import { ClinicalCalendarView } from "../../clinical/components/ClinicalCalendarView";
@@ -129,12 +131,302 @@ function getGoogleCalendarUrl(cita: any, patientName: string) {
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${formatGDate(start)}/${formatGDate(end)}&details=${details}&location=${location}`;
 }
 
-export function PatientDashboard() {
+function PatientPublicWelcomeView() {
+  const navigate = useNavigate();
+  const [loadingRole, setLoadingRole] = useState<string | null>(null);
+
+  const handleQuickLogin = async (
+    roleKey: "paciente" | "medico" | "secretaria" | "admin",
+    email: string,
+    destination: string
+  ) => {
+    try {
+      setLoadingRole(roleKey);
+      await login({ email, password: "Doctoria2026!" });
+      toast({
+        title: "Sesión iniciada con éxito",
+        description: `Bienvenido a DoctorIA en el perfil de ${roleKey}.`,
+      });
+      navigate(destination);
+    } catch (err: any) {
+      navigate(`/login?email=${encodeURIComponent(email)}`);
+    } finally {
+      setLoadingRole(null);
+    }
+  };
+
   return (
-    <RoleGuard allowedRoles={["paciente"]} fallbackTo="/patient/link">
-      <PatientDashboardContent />
-    </RoleGuard>
+    <div className="mx-auto max-w-5xl space-y-8 p-4 sm:p-6 lg:p-8 animate-in fade-in">
+      {/* Encabezado Principal */}
+      <div className="text-center space-y-3 max-w-2xl mx-auto pt-4">
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary shadow-sm">
+          <Stethoscope className="size-3.5" />
+          <span>DoctorIA · Portal de Salud & Consultorios</span>
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+          Portal Clínico & de Pacientes
+        </h1>
+        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+          Selecciona tu rol para acceder al sistema. Puedes ingresar directamente con un perfil de demostración o con tus credenciales.
+        </p>
+      </div>
+
+      {/* Grid de Selección de Roles */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+        {/* Rol Paciente */}
+        <Card className="border-primary/40 bg-surface/80 hover:border-primary hover:shadow-lg transition-all flex flex-col justify-between">
+          <CardHeader className="p-6 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="size-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/30 shrink-0">
+                <UserRound className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold text-foreground">
+                  Portal del Paciente
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Historial médico, recetas, citas y directorio de especialistas
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 pt-0 space-y-3">
+            <Button
+              className="w-full gap-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-10 shadow-sm"
+              disabled={Boolean(loadingRole)}
+              onClick={() =>
+                handleQuickLogin(
+                  "paciente",
+                  "paciente1@doctoria.com",
+                  "/patient/dashboard"
+                )
+              }
+            >
+              {loadingRole === "paciente" ? (
+                "Ingresando..."
+              ) : (
+                <>
+                  <Sparkles className="size-4" />
+                  Ingresar como Paciente (Demo)
+                </>
+              )}
+            </Button>
+            <div className="flex items-center justify-between text-xs pt-1 px-1">
+              <Link
+                to="/login"
+                className="text-primary hover:underline font-medium"
+              >
+                Iniciar con mi cuenta
+              </Link>
+              <Link
+                to="/signup"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Crear cuenta nueva
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rol Médico */}
+        <Card className="border-outline-variant bg-surface/80 hover:border-primary/60 hover:shadow-lg transition-all flex flex-col justify-between">
+          <CardHeader className="p-6 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="size-11 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shrink-0">
+                <Stethoscope className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold text-foreground">
+                  Profesional Médico
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Consulta externa, notas SOAP guiadas con IA y epicrisis
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 pt-0 space-y-3">
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/15 font-semibold h-10"
+              disabled={Boolean(loadingRole)}
+              onClick={() =>
+                handleQuickLogin(
+                  "medico",
+                  "medico1@doctoria.com",
+                  "/clinical/patients"
+                )
+              }
+            >
+              {loadingRole === "medico" ? (
+                "Ingresando..."
+              ) : (
+                <>
+                  <CheckCircle2 className="size-4" />
+                  Ingresar como Médico (Demo)
+                </>
+              )}
+            </Button>
+            <div className="flex items-center justify-center text-xs pt-1">
+              <Link
+                to="/login"
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                Acceso con credenciales médicas
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rol Secretaria */}
+        <Card className="border-outline-variant bg-surface/80 hover:border-primary/60 hover:shadow-lg transition-all flex flex-col justify-between">
+          <CardHeader className="p-6 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="size-11 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/30 shrink-0">
+                <CalendarClock className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold text-foreground">
+                  Secretaría / Recepción
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Agenda médica, asignación de turnos y pre-reservas
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 pt-0 space-y-3">
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-xs border-amber-500/40 text-amber-300 hover:bg-amber-500/15 font-semibold h-10"
+              disabled={Boolean(loadingRole)}
+              onClick={() =>
+                handleQuickLogin(
+                  "secretaria",
+                  "secretaria@doctoria.com",
+                  "/clinical/agenda"
+                )
+              }
+            >
+              {loadingRole === "secretaria" ? (
+                "Ingresando..."
+              ) : (
+                <>
+                  <CalendarDays className="size-4" />
+                  Ingresar como Secretaria (Demo)
+                </>
+              )}
+            </Button>
+            <div className="flex items-center justify-center text-xs pt-1">
+              <Link
+                to="/login"
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                Acceso a recepción clínica
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rol Administrador */}
+        <Card className="border-outline-variant bg-surface/80 hover:border-primary/60 hover:shadow-lg transition-all flex flex-col justify-between">
+          <CardHeader className="p-6 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="size-11 rounded-xl bg-wine-500/10 text-wine-300 flex items-center justify-center border border-wine-500/30 shrink-0">
+                <ShieldCheck className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold text-foreground">
+                  Administración del Sistema
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Auditoría completa, trazabilidad y gestión institucional
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 pt-0 space-y-3">
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-xs border-wine-500/40 text-wine-300 hover:bg-wine-500/15 font-semibold h-10"
+              disabled={Boolean(loadingRole)}
+              onClick={() =>
+                handleQuickLogin(
+                  "admin",
+                  "admin@doctoria.com",
+                  "/clinical/admin"
+                )
+              }
+            >
+              {loadingRole === "admin" ? (
+                "Ingresando..."
+              ) : (
+                <>
+                  <ShieldCheck className="size-4" />
+                  Ingresar como Administrador (Demo)
+                </>
+              )}
+            </Button>
+            <div className="flex items-center justify-center text-xs pt-1">
+              <Link
+                to="/login"
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                Panel de control y auditoría
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <AppFooterBar className="mt-8" />
+    </div>
   );
+}
+
+export function PatientDashboard() {
+  const navigate = useNavigate();
+  const { user, isLoading, isAuthenticated, role } = useRole();
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-4xl p-12 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+        <span className="size-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        Cargando portal...
+      </div>
+    );
+  }
+
+  // Si no hay sesión iniciada, se muestra directamente el selector de roles para entrar sin bloqueo
+  if (!isAuthenticated || !user) {
+    return <PatientPublicWelcomeView />;
+  }
+
+  // Si está autenticado pero con otro rol (ej: médico, secretaria o admin), avisar con banner de acceso
+  if (role && role !== "paciente") {
+    return (
+      <div className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6 lg:p-8">
+        <div className="rounded-xl border border-primary/40 bg-primary/10 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3 text-xs">
+            <span className="size-2 rounded-full bg-primary animate-pulse shrink-0" />
+            <p className="text-foreground">
+              Estás conectado con el perfil de <strong className="capitalize text-primary">{role}</strong>. Puedes visualizar el portal de paciente o regresar a tu área de trabajo.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => navigate(getRoleHomePath(role))}
+            className="text-xs shrink-0"
+          >
+            Ir a mi panel ({role})
+          </Button>
+        </div>
+        <PatientDashboardContent />
+      </div>
+    );
+  }
+
+  return <PatientDashboardContent />;
 }
 
 type PatientTab = "resumen" | "especialistas" | "citas" | "historial" | "epicrisis";
