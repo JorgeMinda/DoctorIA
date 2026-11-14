@@ -1,8 +1,25 @@
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "wasp/client/auth";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
+import { useRole } from "../hooks/useRole";
+import { getRoleHomePath } from "../roleHome";
 
 export function NotFoundPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { data: user } = useAuth();
+  const { role, isAuthenticated } = useRole();
+
+  useEffect(() => {
+    // Si el usuario escribió /dashboard o /Dashboard (en cualquier combinación de mayúsculas),
+    // redirigir inteligentemente a su panel según su rol o al login si no tiene sesión iniciada.
+    const normalized = location.pathname.toLowerCase().replace(/\/+$/, "");
+    if (normalized === "/dashboard") {
+      const destination = isAuthenticated ? getRoleHomePath(role) : "/login";
+      navigate(destination, { replace: true });
+    }
+  }, [location.pathname, isAuthenticated, role, navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">
