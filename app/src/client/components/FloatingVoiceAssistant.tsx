@@ -18,10 +18,12 @@ import {
   wantsPatientSummary,
 } from "../voice/floatingVoice";
 import {
+  type AppointmentDraft,
   buildDraftPath,
   describeDraft,
   parseAppointmentDraft,
 } from "../voice/appointmentDraft";
+import { isAffirmative, isNegative } from "../voice/captureFsm";
 
 type PanelState = { status: string; transcript: string } | null;
 
@@ -36,14 +38,22 @@ export function FloatingVoiceAssistant() {
   const [listening, setListening] = useState(false);
   const [panel, setPanel] = useState<PanelState>(null);
   const [summary, setSummary] = useState<VoiceAssistantResponse | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<AppointmentDraft | null>(null);
   const recRef = useRef<any>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isMedico = Boolean(user?.isMedico) && !user?.isAdmin;
+  const isClinicalStaff = Boolean(
+    user?.isMedico || (user as any)?.isSecretaria || user?.isAdmin
+  );
+  const isPatient = Boolean((user as any)?.isPaciente);
 
+  // El asistente flotante conversacional es EXCLUSIVO para profesionales clínicos/administrativos
+  // en la sección /clinical. Los pacientes tienen interfaz limpia sin copiloto de voz.
   const visible =
-    location.pathname.startsWith("/clinical") ||
-    location.pathname.startsWith("/patient");
+    isClinicalStaff &&
+    !isPatient &&
+    location.pathname.startsWith("/clinical");
 
   useEffect(() => {
     const SR =
@@ -142,24 +152,41 @@ export function FloatingVoiceAssistant() {
       if (!text) {
         setPanel(null);
         setSummary(null);
+        setPendingDraft(null);
         return;
       }
 
-      // Pre-reserva de cita (T070): si la voz trae datos, abre la card de
-      // pre-reserva prefilled en la agenda; nada se guarda sin "Aceptar".
+      // Si hay una Card de Pre-reserva activa esperando confirmación:
+      if (pendingDraft) {
+        if (isAffirmative(text)) {
+          speak("Confirmando pre-reserva. Abriendo agenda.", TTS_OPTIONS);
+          navigate(buildDraftPath(pendingDraft));
+          setPendingDraft(null);
+          setPanel(null);
+          return;
+        }
+        if (isNegative(text)) {
+          speak("Pre-reserva cancelada.", TTS_OPTIONS);
+          setPendingDraft(null);
+          setPanel(null);
+          return;
+        }
+      }
+
+      // Pre-reserva de cita (T070): si la voz trae datos, despliega la Card de Pre-reserva
+      // en el panel conversacional esperando aprobación explícita ("Aceptar" o clic en botón).
       const draft = parseAppointmentDraft(text);
       if (draft) {
         setSummary(null);
+        setPendingDraft(draft);
         setPanel({
-          status: "Pre-reserva",
-          transcript: `${describeDraft(draft)}. Verifica los datos antes de confirmar.`,
+          status: "Card de Pre-reserva",
+          transcript: `${describeDraft(draft)}. ¿Confirmas o deseas corregir?`,
         });
         speak(
-          "Pre-reserva de cita detectada. Verifica los datos antes de confirmar.",
+          "Pre-reserva detectada. ¿Deseas confirmar los datos o corregir?",
           TTS_OPTIONS,
         );
-        navigate(buildDraftPath(draft));
-        scheduleHide();
         return;
       }
 
@@ -214,7 +241,7 @@ export function FloatingVoiceAssistant() {
       speak(text, TTS_OPTIONS);
       scheduleHide();
     },
-    [navigate, scheduleHide, isMedico, runDeepCommand],
+    [navigate, scheduleHide, isMedico, runDeepCommand, pendingDraft],
   );
 
   const toggleListening = useCallback(() => {
@@ -306,7 +333,7 @@ export function FloatingVoiceAssistant() {
           role="status"
           aria-live="polite"
           className={`${
-            summary ? "w-80" : "w-64"
+            summary || pendingDraft ? "w-80" : "w-64"
           } rounded-xl border border-outline-variant bg-background/95 p-3 shadow-lg backdrop-blur`}
         >
           <div className="mb-1 flex items-center justify-between gap-2">
@@ -326,6 +353,7 @@ export function FloatingVoiceAssistant() {
               onClick={() => {
                 setPanel(null);
                 setSummary(null);
+                setPendingDraft(null);
               }}
             >
               <X className="size-3.5" />
@@ -336,6 +364,65 @@ export function FloatingVoiceAssistant() {
               <span className="text-muted-foreground">Habla ahora...</span>
             )}
           </p>
+
+          {/* Card de Pre-reserva con Aprobación Interactiva */}
+          {pendingDraft && (
+            <div className="mt-2.5 space-y-2 border-t border-outline-variant/60 pt-2.5">
+              <div className="rounded-lg bg-primary/10 border border-primary/30 p-2.5 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between font-semibold text-primary">
+                  <span>📋 Pre-reserva</span>
+                  <span className="text-[10px] bg-primary/20 px-1.5 py-0.5 rounded font-mono">Requiere Aprobación</span>
+                </div>
+                <div className="space-y-1 text-xs text-foreground">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Paciente:</span>
+                    <span className="font-semibold">{pendingDraft.patientName || "Sin asignar"}</span>
+                  </div>
+                  {pendingDraft.medicoName && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Médico:</span>
+                      <span>{pendingDraft.medicoName}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Fecha:</span>
+                    <span className="font-mono">{pendingDraft.dateISO || "Sin fecha"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Hora:</span>
+                    <span className="font-mono">{pendingDraft.time || "Sin hora"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  size="sm"
+                  className="h-7 flex-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm"
+                  onClick={() => {
+                    speak("Aceptado. Abriendo agenda.", TTS_OPTIONS);
+                    navigate(buildDraftPath(pendingDraft));
+                    setPendingDraft(null);
+                    setPanel(null);
+                  }}
+                >
+                  ✓ Aceptar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 flex-1 text-xs border-outline-variant text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    speak("Pre-reserva cancelada.", TTS_OPTIONS);
+                    setPendingDraft(null);
+                    setPanel(null);
+                  }}
+                >
+                  ✕ Corregir
+                </Button>
+              </div>
+            </div>
+          )}
           {summary && (
             <div className="mt-2 space-y-2 border-t border-outline-variant/60 pt-2">
               <ul className="space-y-1">

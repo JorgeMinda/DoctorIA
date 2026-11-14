@@ -45,6 +45,7 @@ interface RequestAppointmentModalProps {
   onDone?: () => void;
   patientName?: string;
   patientId?: string;
+  defaultMedicoId?: string;
 }
 
 const ALL_DAY_SLOTS = [
@@ -58,8 +59,9 @@ export function RequestAppointmentModal({
   open,
   onOpenChange,
   onDone,
+  defaultMedicoId,
 }: RequestAppointmentModalProps) {
-  const [medicoId, setMedicoId] = useState("");
+  const [medicoId, setMedicoId] = useState(defaultMedicoId ?? "");
   const [category, setCategory] = useState("all");
   const [date, setDate] = useState("");
   const [debouncedDate, setDebouncedDate] = useState("");
@@ -100,7 +102,7 @@ export function RequestAppointmentModal({
   const requestAppointmentFn = useAction(requestPatientAppointment);
 
   const resetForm = () => {
-    setMedicoId("");
+    setMedicoId(defaultMedicoId ?? "");
     setCategory("all");
     setDate("");
     setTime("");
@@ -113,7 +115,7 @@ export function RequestAppointmentModal({
     if (open) {
       resetForm();
     }
-  }, [open]);
+  }, [open, defaultMedicoId]);
 
   const doctors: any[] = Array.isArray(doctorsData) ? doctorsData : [];
   const filteredDoctors = filterDoctorsByCategory(doctors, category);

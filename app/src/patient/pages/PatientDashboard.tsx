@@ -1,7 +1,15 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { useQuery } from "wasp/client/operations";
-import { getPatientAppointments, getPatientClinicalHistory } from "wasp/client/operations";
+import {
+  getPatientAppointments,
+  getPatientClinicalHistory,
+  getActiveDoctorsForPatient,
+} from "wasp/client/operations";
+import {
+  PATIENT_ATTENTION_CATEGORIES,
+  filterDoctorsByCategory,
+} from "../patientCategories";
 import { useRole } from "../../client/hooks/useRole";
 import { RoleGuard } from "../../client/components/RoleGuard";
 import { generateIcsFile, downloadIcsFile } from "../../shared/utils/icsGenerator";
@@ -41,6 +49,7 @@ import {
   CheckCircle2,
   PhoneCall,
   Edit3,
+  MapPin,
 } from "lucide-react";
 
 export function PatientCitaBadge({
@@ -128,7 +137,7 @@ export function PatientDashboard() {
   );
 }
 
-type PatientTab = "resumen" | "citas" | "historial" | "epicrisis";
+type PatientTab = "resumen" | "especialistas" | "citas" | "historial" | "epicrisis";
 
 function PatientDashboardContent() {
   const navigate = useNavigate();
@@ -137,6 +146,8 @@ function PatientDashboardContent() {
   const [citasViewMode, setCitasViewMode] = useState<"list" | "calendar">("list");
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showRequestAppointmentModal, setShowRequestAppointmentModal] = useState(false);
+  const [selectedDoctorForModal, setSelectedDoctorForModal] = useState<string | undefined>(undefined);
+  const [doctorCategoryFilter, setDoctorCategoryFilter] = useState("all");
   const [isFirstTimeOnboarding, setIsFirstTimeOnboarding] = useState(false);
 
   const {
@@ -151,12 +162,20 @@ function PatientDashboardContent() {
     refetch: refetchHistory,
   } = useQuery(getPatientClinicalHistory, {}, { enabled: Boolean(user) });
 
+  const { data: doctorsData, isLoading: loadingDoctors } = useQuery(
+    getActiveDoctorsForPatient,
+    {},
+    { enabled: Boolean(user) },
+  );
+
   const dataAppts = apptData as any;
   const dataHistory = historyData as any;
   const patient = dataAppts?.patient;
   const citas = dataAppts?.citas || [];
   const notes = dataHistory?.notes || [];
   const epicrises = dataHistory?.epicrises || [];
+  const activeDoctors: any[] = Array.isArray(doctorsData) ? doctorsData : [];
+  const filteredDoctors = filterDoctorsByCategory(activeDoctors, doctorCategoryFilter);
 
   // Detección automática de primer ingreso o datos pendientes al vincular cuenta (Hook en el nivel superior)
   useEffect(() => {
@@ -370,6 +389,19 @@ function PatientDashboardContent() {
         >
           <Activity className="size-4" />
           Resumen de Salud
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("especialistas")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-all ${
+            activeTab === "especialistas"
+              ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Stethoscope className="size-4" />
+          Especialistas de Turno ({activeDoctors.length})
         </button>
 
         <button
@@ -619,6 +651,151 @@ function PatientDashboardContent() {
               </CardContent>
             </Card>
           </div>
+        </div>
+      )}
+
+      {/* CONTENIDO DE PESTAÑA: ESPECIALISTAS Y MÉDICOS DE TURNO */}
+      {activeTab === "especialistas" && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-outline-variant/60 pb-4">
+            <div>
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Stethoscope className="size-5 text-primary" />
+                Directorio de Especialistas y Médicos de Turno
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Consulta los profesionales disponibles según tu necesidad de atención y agenda directamente.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                setSelectedDoctorForModal(undefined);
+                setShowRequestAppointmentModal(true);
+              }}
+              className="gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
+            >
+              <CalendarPlus className="size-3.5" />
+              Solicitar Cita General
+            </Button>
+          </div>
+
+          {/* Filtro por Necesidades de Atención */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
+              Necesidad de Atención Médica:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {PATIENT_ATTENTION_CATEGORIES.map((cat) => {
+                const isSelected = doctorCategoryFilter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setDoctorCategoryFilter(cat.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground font-semibold shadow-sm ring-2 ring-primary/40"
+                        : "bg-surface border border-outline-variant text-muted-foreground hover:text-foreground hover:bg-surface-container"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Grid de Cards de Médicos */}
+          {loadingDoctors ? (
+            <div className="p-12 text-center text-xs text-muted-foreground">
+              Cargando directorio de profesionales médicos...
+            </div>
+          ) : filteredDoctors.length === 0 ? (
+            <Card className="border-outline-variant bg-surface/50">
+              <CardContent className="p-8 text-center space-y-3">
+                <Stethoscope className="size-8 text-muted-foreground/60 mx-auto" />
+                <p className="text-sm font-semibold text-foreground">
+                  No hay profesionales disponibles en esta categoría
+                </p>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                  Puedes cambiar el filtro a &quot;Todos&quot; para ver el equipo médico completo de DoctorIA o solicitar una cita general.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDoctorCategoryFilter("all")}
+                  className="text-xs"
+                >
+                  Ver todos los profesionales
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredDoctors.map((doc: any) => {
+                const docName = doc.fullName || doc.email || "Profesional Médico";
+                const initials = docName
+                  .split(" ")
+                  .map((p: string) => p[0])
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase() || "DR";
+
+                return (
+                  <Card
+                    key={doc.id}
+                    className="border-outline-variant/80 bg-surface/70 hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <CardHeader className="p-5 pb-3">
+                      <div className="flex items-start gap-3.5">
+                        <div className="size-11 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/40 flex items-center justify-center font-bold text-sm text-primary shrink-0 shadow-inner">
+                          {initials}
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                          <CardTitle className="text-sm font-bold text-foreground leading-tight truncate">
+                            Dr(a). {docName}
+                          </CardTitle>
+                          <Badge
+                            variant="outline"
+                            className="text-[11px] font-medium border-primary/40 text-primary bg-primary/5 px-2 py-0"
+                          >
+                            {doc.specialty || "Medicina General"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="p-5 pt-0 space-y-3">
+                      <div className="space-y-1.5 border-t border-outline-variant/40 pt-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Clock className="size-3.5 text-primary shrink-0" />
+                          <span>Turnos: Lun - Vie (08:00 - 18:00)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="size-3.5 text-primary shrink-0" />
+                          <span className="truncate">Consultorios DoctorIA · Presencial / Virtual</span>
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDoctorForModal(doc.id);
+                          setShowRequestAppointmentModal(true);
+                        }}
+                        className="w-full gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 mt-2 shadow-sm font-semibold"
+                      >
+                        <CalendarPlus className="size-3.5" />
+                        Agendar Cita
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -963,10 +1140,15 @@ function PatientDashboardContent() {
 
       <RequestAppointmentModal
         open={showRequestAppointmentModal}
-        onOpenChange={setShowRequestAppointmentModal}
+        onOpenChange={(open) => {
+          setShowRequestAppointmentModal(open);
+          if (!open) setSelectedDoctorForModal(undefined);
+        }}
+        defaultMedicoId={selectedDoctorForModal}
         patientName={displayName}
         patientId={patient?.id}
         onDone={() => {
+          setSelectedDoctorForModal(undefined);
           refetchAppts();
           setActiveTab("citas");
         }}
