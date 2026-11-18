@@ -17,7 +17,10 @@ import { cn } from "./utils";
 export function App() {
   const location = useLocation();
   const isMarketingPage = useMemo(() => {
-    return location.pathname === routes.LandingPageRoute.to;
+    return (
+      location.pathname === routes.LandingPageRoute.to ||
+      location.pathname === "/producto"
+    );
   }, [location]);
 
   const navigationItems = isMarketingPage

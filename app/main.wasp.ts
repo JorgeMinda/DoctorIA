@@ -4,6 +4,8 @@ import { App } from "./src/client/App" with { type: "ref" };
 import { NotFoundPage } from "./src/client/components/NotFoundPage" with { type: "ref" };
 import { serverEnvValidationSchema } from "./src/env" with { type: "ref" };
 import { LandingPage } from "./src/landing-page/LandingPage" with { type: "ref" };
+import { RootPortalPage } from "./src/patient/pages/RootPortalPage" with { type: "ref" };
+import { PendingRoleActivationPage } from "./src/patient/pages/PendingRoleActivationPage" with { type: "ref" };
 import { seedSyntheticClinicalData } from "./src/server/scripts/dbSeeds" with { type: "ref" };
 import { serverMiddlewareFn } from "./src/server/serverMiddleware" with { type: "ref" };
 
@@ -34,7 +36,9 @@ export default app({
   },
   emailSender,
   spec: [
-    route("LandingPageRoute", "/", page(LandingPage), { prerender: true }),
+    route("LandingPageRoute", "/", page(RootPortalPage)),
+    route("ProductPageRoute", "/producto", page(LandingPage), { prerender: true }),
+    route("PendingActivationRoute", "/pending-activation", page(PendingRoleActivationPage, { authRequired: true })),
     route("NotFoundRoute", "*", page(NotFoundPage)),
     authSpec,
     userSpec,
