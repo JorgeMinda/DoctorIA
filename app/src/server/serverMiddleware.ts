@@ -1,4 +1,11 @@
 import type { MiddlewareConfigFn } from "wasp/server/middleware";
+import {
+  publicDirectoryRateLimiterMiddleware,
+  startPeriodicCleanup,
+} from "./publicDirectoryRateLimiter";
+
+// Iniciar temporizador de purga periódica liberable (.unref) para el almacén en memoria
+startPeriodicCleanup();
 
 export const serverMiddlewareFn: MiddlewareConfigFn = (middlewareConfig) => {
   middlewareConfig.set("cors", (req, res, next) => {
@@ -41,6 +48,17 @@ export const serverMiddlewareFn: MiddlewareConfigFn = (middlewareConfig) => {
 
     next();
   });
+
+  /**
+   * LÍMITE DE TASA (Rate Limiter) para la consulta pública de especialistas:
+   * - Se inserta DESPUÉS de 'cors' en la cadena de middleware para que cualquier respuesta HTTP 429
+   *   conserve las cabeceras Access-Control-Allow-* y el navegador cliente pueda interpretarla.
+   * - Aplica solo a POST a /operations/get-public-specialists-directory (60 req / 60 s).
+   * - No cuenta peticiones OPTIONS (preflight).
+   * - NOTA DE ESCALABILIDAD: El límite es por instancia en memoria. Si Render escala a múltiples
+   *   instancias, cada réplica mantendrá su propia ventana deslizante de 60s/60req.
+   */
+  middlewareConfig.set("rateLimiter", publicDirectoryRateLimiterMiddleware);
 
   return middlewareConfig;
 };
