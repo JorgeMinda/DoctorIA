@@ -21,5 +21,7 @@ export const serverEnvValidationSchema = defineEnvValidationSchema(
     // ICD-11 (CIE-11) — API oficial de la OMS.
     ICD11_CLIENT_ID: z.string().optional(),
     ICD11_CLIENT_SECRET: z.string().optional(),
+    // Lista de correos permitidos para el directorio público de especialistas (separados por coma)
+    PUBLIC_DIRECTORY_EMAILS: z.string().optional(),
   }),
 );

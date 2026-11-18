@@ -8,6 +8,7 @@ import {
   getPatientClinicalHistory,
   getMyLinkRequestStatus,
   getActiveDoctorsForPatient,
+  getPublicSpecialistsDirectory,
 } from "./queries" with { type: "ref" };
 import {
   updateMyPatientProfile,
@@ -28,6 +29,9 @@ export const patientSpec: Spec = [
     ],
   }),
   query(getActiveDoctorsForPatient, {
+    entities: ["User"],
+  }),
+  query(getPublicSpecialistsDirectory, {
     entities: ["User"],
   }),
   query(getPatientAppointments, {

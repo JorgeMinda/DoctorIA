@@ -1,5 +1,116 @@
 import { HttpError } from "wasp/server";
 import { ensurePaciente, ensureRole } from "../clinical/services/guards";
+import {
+  DEFAULT_CLINICAL_FACILITY,
+  PUBLIC_DIRECTORY_CACHE_TTL_MS,
+  PUBLIC_DIRECTORY_LIMIT,
+} from "./constants";
+
+export interface PublicSpecialistDto {
+  fullName: string;
+  specialty: string;
+  location: string;
+  generalHours: string;
+}
+
+export function parseAllowedDirectoryEmails(rawEnv?: string | null): string[] {
+  if (!rawEnv || typeof rawEnv !== "string") return [];
+  return rawEnv
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+interface DirectoryCacheEntry {
+  data: PublicSpecialistDto[];
+  expiresAt: number;
+  rawEnvSnapshot?: string;
+}
+
+let directoryCache: DirectoryCacheEntry | null = null;
+
+export function clearDirectoryCache(): void {
+  directoryCache = null;
+}
+
+/**
+ * Consulta pública del Directorio de Especialistas.
+ * 
+ * Invariantes de Seguridad y Privacidad:
+ * 1. NO requiere sesión (anónimo seguro).
+ * 2. Basado EXCLUSIVAMENTE en lista blanca (allowlist) definida en process.env.PUBLIC_DIRECTORY_EMAILS.
+ *    Si está vacía o ausente, devuelve [] de forma segura.
+ * 3. Selección explícita con select: solo fullName y specialty del esquema real.
+ * 4. Excluye rigurosamente filas con fullName o specialty nulos o vacíos.
+ * 5. NUNCA devuelve id, email, password, teléfono, flags internos ni PII.
+ * 6. Cache en memoria TTL de 60s para evitar abuso sobre la base de datos.
+ */
+export const getPublicSpecialistsDirectory: any = async (
+  _rawArgs: any,
+  context: any,
+) => {
+  const rawEnv = process.env.PUBLIC_DIRECTORY_EMAILS;
+  const now = Date.now();
+
+  if (
+    directoryCache &&
+    directoryCache.expiresAt > now &&
+    directoryCache.rawEnvSnapshot === rawEnv
+  ) {
+    return directoryCache.data;
+  }
+
+  const allowedEmails = parseAllowedDirectoryEmails(rawEnv);
+  if (allowedEmails.length === 0) {
+    directoryCache = {
+      data: [],
+      expiresAt: now + PUBLIC_DIRECTORY_CACHE_TTL_MS,
+      rawEnvSnapshot: rawEnv,
+    };
+    return [];
+  }
+
+  const doctors = await context.entities.User.findMany({
+    where: {
+      isMedico: true,
+      isAdmin: false,
+      isSecretaria: false,
+      isPaciente: false,
+      isActive: true,
+      fullName: { not: null },
+      specialty: { not: null },
+      OR: allowedEmails.map((email) => ({
+        email: { equals: email, mode: "insensitive" },
+      })),
+    },
+    select: {
+      fullName: true,
+      specialty: true,
+    },
+    orderBy: [
+      { fullName: "asc" },
+      { id: "asc" },
+    ],
+    take: PUBLIC_DIRECTORY_LIMIT,
+  });
+
+  const mapped: PublicSpecialistDto[] = (doctors || [])
+    .filter((d: any) => Boolean(d.fullName?.trim()) && Boolean(d.specialty?.trim()))
+    .map((doc: any) => ({
+      fullName: doc.fullName.trim(),
+      specialty: doc.specialty.trim(),
+      location: DEFAULT_CLINICAL_FACILITY.location,
+      generalHours: DEFAULT_CLINICAL_FACILITY.generalHours,
+    }));
+
+  directoryCache = {
+    data: mapped,
+    expiresAt: now + PUBLIC_DIRECTORY_CACHE_TTL_MS,
+    rawEnvSnapshot: rawEnv,
+  };
+
+  return mapped;
+};
 
 export const getActiveDoctorsForPatient: any = async (
   _rawArgs: any,
