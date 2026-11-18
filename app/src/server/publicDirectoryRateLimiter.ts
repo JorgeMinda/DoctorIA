@@ -2,12 +2,12 @@ import type { Request, Response, NextFunction } from "express";
 
 /**
  * Constantes de configuración de la política de límite de tasa (Rate Limiting).
- * Política: Ventana deslizante de 60s, máximo 60 peticiones por IP para POST a /operations/get-public-specialists-directory.
+ * Política: Ventana deslizante de 60s, máximo 60 peticiones por IP/subred para POST a /operations/get-public-specialists-directory.
  * Tope de memoria: 10.000 IPs con estrategia de purga de entradas vencidas y expulsión LRU.
  */
 export const RATE_LIMIT_WINDOW_MS = 60_000; // 60 segundos
-export const RATE_LIMIT_MAX_REQUESTS = 60; // 60 peticiones por IP
-export const RATE_LIMIT_MAX_STORE_SIZE = 10_000; // Máximo 10.000 IPs en memoria
+export const RATE_LIMIT_MAX_REQUESTS = 60; // 60 peticiones
+export const RATE_LIMIT_MAX_STORE_SIZE = 10_000; // Máximo 10.000 entradas en memoria
 export const RATE_LIMIT_TARGET_PATH = "/operations/get-public-specialists-directory";
 
 export interface RateLimitEntry {
@@ -16,7 +16,47 @@ export interface RateLimitEntry {
 }
 
 /**
- * Almacén en memoria de IPs y sus marcas de tiempo.
+ * Normaliza una dirección IP para mitigar evasiones:
+ * - Para IPv6: agrupa por prefijo /64 (primeros 64 bits) de acuerdo con RFC 6146.
+ *   Esto previene que un cliente con un bloque /64 evada el límite rotando direcciones efímeras.
+ * - Para IPv4 mapeadas en IPv6 (::ffff:x.x.x.x): extrae la dirección IPv4 pura.
+ * - Para IPv4 estándar: normaliza espacios y retorna la IP exacta.
+ */
+export function normalizeIp(ip: string): string {
+  if (!ip) return "127.0.0.1";
+  const trimmed = ip.trim();
+
+  // Limpiar IPv4 mapeada en IPv6
+  if (trimmed.startsWith("::ffff:")) {
+    return trimmed.slice(7);
+  }
+
+  // IPv6: contiene dos puntos
+  if (trimmed.includes(":")) {
+    const cleanIp = trimmed.replace(/^\[|\]$/g, "");
+    const parts = cleanIp.split("::");
+    let hextets: string[] = [];
+
+    if (parts.length === 2) {
+      const left = parts[0] ? parts[0].split(":") : [];
+      const right = parts[1] ? parts[1].split(":") : [];
+      const missing = 8 - (left.length + right.length);
+      const middle = Array(Math.max(0, missing)).fill("0");
+      hextets = [...left, ...middle, ...right];
+    } else {
+      hextets = cleanIp.split(":");
+    }
+
+    // Tomar los primeros 4 hextetos (64 bits) y normalizar
+    const prefixHextets = hextets.slice(0, 4).map((h) => h.toLowerCase() || "0");
+    return `${prefixHextets.join(":")}::/64`;
+  }
+
+  return trimmed;
+}
+
+/**
+ * Almacén en memoria de claves normalizadas y sus marcas de tiempo.
  * NOTA DE ARQUITECTURA:
  * El límite es por instancia de proceso (in-memory store) y no es compartido si Render escala
  * horizontalmente a múltiples réplicas. Para un entorno distribuido se requeriría un almacén
@@ -30,10 +70,10 @@ let periodicCleanupTimer: NodeJS.Timeout | null = null;
  * Purga del almacén todas las entradas cuyos timestamps hayan expirado fuera de la ventana.
  */
 export function purgeExpired(now: number = Date.now()): void {
-  for (const [ip, entry] of store.entries()) {
+  for (const [key, entry] of store.entries()) {
     const validTimestamps = entry.timestamps.filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
     if (validTimestamps.length === 0) {
-      store.delete(ip);
+      store.delete(key);
     } else {
       entry.timestamps = validTimestamps;
     }
@@ -46,12 +86,15 @@ export function purgeExpired(now: number = Date.now()): void {
  * Gracias a que el Map de ECMAScript preserva el orden de inserción y actualizamos cada entrada
  * reinsertándola (delete -> set) en cada acceso, la clave retornada por `store.keys().next().value`
  * es garantizadamente la menos recientemente utilizada (LRU) en tiempo O(1).
+ * Retorna la clave expulsada para fines de verificación y auditoría.
  */
-export function evictLRU(): void {
+export function evictLRU(): string | undefined {
   const oldestKey = store.keys().next().value;
   if (oldestKey !== undefined) {
     store.delete(oldestKey);
+    return oldestKey;
   }
+  return undefined;
 }
 
 /**
@@ -59,6 +102,13 @@ export function evictLRU(): void {
  */
 export function getStoreSize(): number {
   return store.size;
+}
+
+/**
+ * Obtiene las claves actualmente registradas en el almacén (para pruebas e inspección).
+ */
+export function getStoreKeys(): string[] {
+  return Array.from(store.keys());
 }
 
 /**
@@ -76,7 +126,6 @@ export function startPeriodicCleanup(intervalMs: number = 60_000): void {
     periodicCleanupTimer = setInterval(() => {
       purgeExpired(Date.now());
     }, intervalMs);
-    // .unref() asegura que el temporizador no impida que Node.js finalice el proceso limpiamente
     if (typeof periodicCleanupTimer.unref === "function") {
       periodicCleanupTimer.unref();
     }
@@ -94,38 +143,30 @@ export function stopPeriodicCleanup(): void {
 }
 
 /**
- * Resuelve la dirección IP del cliente sin confiar ciegamente en cabeceras falsificables.
- * - En Render, existe exactamente 1 salto de reverse proxy administrado (Cloudflare/Render Edge).
- * - Se configura 'trust proxy' = 1 en Express para que req.ip evalúe el salto de proxy legítimo.
- * - Si un cliente inyecta cabeceras X-Forwarded-For previas, Express (y el fallback estricto)
- *   toma la última IP agregada por el proxy perimetral de Render, ignorando las IPs falsificadas.
- * - REGLA DE SEGURIDAD Y PRIVACIDAD: Jamás se registran direcciones IP en logs.
+ * Resuelve la clave de red del cliente con protección anti-falsificación:
+ * 1. Confía en la resolución nativa de Express (req.ip) cuando trust proxy está configurado (1 salto en Render).
+ * 2. Si req.ip no está resuelto, toma estrictamente la última entrada de X-Forwarded-For
+ *    (la estampada por el reverse proxy perimetral de Render), descartando cualquier prefijo falsificado.
+ * 3. Normaliza IPv6 al prefijo /64 para evitar evasión mediante rotación de direcciones efímeras.
+ * 4. REGLA DE PRIVACIDAD: Jamás se registran direcciones IP en logs ni en auditoría.
  */
 export function resolveClientIp(req: Request): string {
-  // Asegurar trust proxy = 1 si la instancia de Express está disponible
-  if (req.app && typeof req.app.get === "function" && typeof req.app.set === "function") {
-    if (!req.app.get("trust proxy")) {
-      req.app.set("trust proxy", 1);
-    }
-  }
-
-  // Si req.ip fue resuelto por Express con proxy de confianza
+  // 1. IP resuelta por Express con trust proxy configurado
   if (req.ip && req.ip !== "::1" && req.ip !== "127.0.0.1") {
-    return req.ip;
+    return normalizeIp(req.ip);
   }
 
-  // Fallback con lógica estricta de 1 salto (Render edge proxy):
-  // X-Forwarded-For contiene: <cliente-falsificado-o-previo>, <ip-real-agregada-por-render>
-  // La IP confiable del cliente es la última entrada antes de nuestro servidor.
+  // 2. Fallback defensivo: tomar la última entrada de X-Forwarded-For (salto de Render)
   const rawForwarded = req.headers?.["x-forwarded-for"];
   if (typeof rawForwarded === "string" && rawForwarded.trim()) {
     const parts = rawForwarded.split(",").map((p) => p.trim()).filter(Boolean);
     if (parts.length > 0) {
-      return parts[parts.length - 1];
+      return normalizeIp(parts[parts.length - 1]);
     }
   }
 
-  return req.ip || req.socket?.remoteAddress || "127.0.0.1";
+  const rawFallback = req.ip || req.socket?.remoteAddress || "127.0.0.1";
+  return normalizeIp(rawFallback);
 }
 
 /**
@@ -155,12 +196,12 @@ export function publicDirectoryRateLimiterMiddleware(
   }
 
   const now = Date.now();
-  const clientIp = resolveClientIp(req);
+  const normalizedClientKey = resolveClientIp(req);
 
-  let entry = store.get(clientIp);
+  let entry = store.get(normalizedClientKey);
 
   if (!entry) {
-    // Si alcanzamos el tope de memoria de 10.000 IPs:
+    // Si alcanzamos el tope de memoria de 10.000 entradas:
     if (store.size >= RATE_LIMIT_MAX_STORE_SIZE) {
       purgeExpired(now);
       if (store.size >= RATE_LIMIT_MAX_STORE_SIZE) {
@@ -191,8 +232,8 @@ export function publicDirectoryRateLimiterMiddleware(
   entry.lastSeen = now;
 
   // Actualizar en el Map (reinsertar al final para mantener LRU en O(1))
-  store.delete(clientIp);
-  store.set(clientIp, entry);
+  store.delete(normalizedClientKey);
+  store.set(normalizedClientKey, entry);
 
   next();
 }
