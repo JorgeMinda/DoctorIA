@@ -55,14 +55,18 @@ describe("Portal Público del Paciente (F2)", () => {
       // Verificación de a11y y estado ocupado
       expect(html).toContain('aria-busy="true"');
       expect(html).toContain("Portal Oficial del Paciente");
-      expect(html).toContain("Atención médica de calidad con");
+      expect(html).toContain("Directorio de especialistas");
+      // Contenido veraz: sólo describe lo existente (citas, indicaciones confirmadas)
+      expect(html).toContain("Consulta externa programada");
+      expect(html).not.toMatch(/\bfirmadas\b/i);
+      expect(html).not.toContain("laboratorio");
     });
 
     it("renderiza estado de error neutro con botón de reintento si la consulta falla", () => {
       mockUseQuery.mockReturnValue({
         data: undefined,
         isLoading: false,
-        error: new Error("Network timeout or 500 error"),
+        error: new Error("Database connection refused: 500 internal"),
         refetch: vi.fn(),
       });
 
@@ -73,12 +77,12 @@ describe("Portal Público del Paciente (F2)", () => {
       );
 
       // Nunca debe exponer el texto del error técnico
-      expect(html).not.toContain("Network timeout or 500 error");
+      expect(html).not.toContain("Database connection refused");
       expect(html).toContain("No pudimos cargar la lista de especialistas en este momento");
       expect(html).toContain("Reintentar");
     });
 
-    it("renderiza el estado vacío seguro cuando no hay especialistas registrados", () => {
+    it("renderiza el Estado Vacío (a): no hay especialistas publicados", () => {
       mockUseQuery.mockReturnValue({
         data: [],
         isLoading: false,
@@ -92,10 +96,14 @@ describe("Portal Público del Paciente (F2)", () => {
         </MemoryRouter>
       );
 
+      // Estado vacío institucional seguro
       expect(html).toContain("Consulta Externa Disponible");
-      expect(html).toContain("Horarios y especialidades disponibles para consulta externa");
-      expect(html).toContain("Agendar en esta Especialidad");
+      expect(html).toContain("No hay especialistas publicados en este momento");
+      expect(html).toContain("Agendar Cita Médica");
       expect(html).toContain("Acceso Profesionales");
+      // Contador seguro (nunca dice 'listados' cuando es 0)
+      expect(html).toContain("0 disponibles");
+      expect(html).not.toContain("0 listados");
     });
 
     it("renderiza las cards completas con especialistas cuando hay datos", () => {
@@ -133,11 +141,41 @@ describe("Portal Público del Paciente (F2)", () => {
       expect(html).toContain("Cardiología");
       expect(html).toContain("Sede Principal · Consulta Externa");
       expect(html).toContain("Lunes a Viernes · 08:00 a 18:00");
-      expect(html).toContain("2 disponibles");
+      expect(html).toContain("2 especialistas disponibles");
 
-      // Verificación de ausencia estricta de campos privados
-      expect(html).not.toContain("@doctoria");
+      // Verificación de ausencia estricta de credenciales demo, hashes o PII
+      expect(html).not.toContain("@doctoria.com");
+      expect(html).not.toContain("doctoria2026");
+      expect(html).not.toContain("password");
       expect(html).not.toContain("uuid");
+    });
+
+    it("incluye el aviso permanente de emergencias ECU 911 y botones con tamaño táctil adecuado", () => {
+      mockUseQuery.mockReturnValue({
+        data: [],
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+
+      const html = renderToString(
+        <MemoryRouter>
+          <PublicPatientPortal />
+        </MemoryRouter>
+      );
+
+      // Aviso permanente de emergencias
+      expect(html).toContain("Aviso de Emergencias Médicas");
+      expect(html).toContain("ECU 911");
+      expect(html).toContain("tel:911");
+
+      // Enlaces a login y registro usando Wasp router
+      expect(html).toContain('href="/login"');
+      expect(html).toContain('href="/signup"');
+
+      // Pie de página con privacidad y acceso profesionales
+      expect(html).toContain('href="#privacidad"');
+      expect(html).toContain("Aviso de Privacidad");
     });
   });
 });

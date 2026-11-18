@@ -36,6 +36,8 @@ services:
         sync: false
       - key: ADMIN_EMAILS
         sync: false
+      - key: PUBLIC_DIRECTORY_EMAILS
+        sync: false
       - key: NODE_VERSION
         value: "22"
 

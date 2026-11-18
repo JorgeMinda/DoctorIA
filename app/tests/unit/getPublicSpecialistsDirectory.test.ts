@@ -5,7 +5,7 @@ import {
   clearDirectoryCache,
   type PublicSpecialistDto,
 } from "../../src/patient/queries";
-import { DEFAULT_CLINICAL_FACILITY } from "../../src/patient/constants";
+import { DEFAULT_CLINICAL_FACILITY, PUBLIC_DIRECTORY_LIMIT } from "../../src/patient/constants";
 
 describe("Directorio Público de Especialistas (F1)", () => {
   const originalEnv = process.env.PUBLIC_DIRECTORY_EMAILS;
@@ -81,6 +81,30 @@ describe("Directorio Público de Especialistas (F1)", () => {
       const result: PublicSpecialistDto[] = await getPublicSpecialistsDirectory({}, context);
 
       expect(findManyMock).toHaveBeenCalledTimes(1);
+      expect(findManyMock).toHaveBeenCalledWith({
+        where: {
+          isMedico: true,
+          isAdmin: false,
+          isSecretaria: false,
+          isPaciente: false,
+          isActive: true,
+          fullName: { not: null },
+          specialty: { not: null },
+          OR: [
+            { email: { equals: "dra.mendez@hospital.org", mode: "insensitive" } },
+            { email: { equals: "dr.vega@hospital.org", mode: "insensitive" } },
+          ],
+        },
+        select: {
+          fullName: true,
+          specialty: true,
+        },
+        orderBy: [
+          { fullName: "asc" },
+          { id: "asc" },
+        ],
+        take: PUBLIC_DIRECTORY_LIMIT,
+      });
       expect(result).toHaveLength(2);
 
       // Verificación estricta de forma de DTO (White-box schema verification)
