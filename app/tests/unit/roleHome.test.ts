@@ -21,4 +21,12 @@ describe("getRoleHomePath", () => {
   it("paciente → portal del paciente", () => {
     expect(getRoleHomePath("paciente")).toBe("/patient/dashboard");
   });
+
+  it("autenticado sin rol clínico activo (Decisión 4) → /pending-activation", () => {
+    expect(getRoleHomePath(null, true)).toBe("/pending-activation");
+  });
+
+  it("explícitamente no autenticado → /login", () => {
+    expect(getRoleHomePath(null, false)).toBe("/login");
+  });
 });

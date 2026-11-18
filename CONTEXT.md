@@ -33,7 +33,7 @@ MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El 
 - **Framework**: Wasp 0.25.0 (template Open SaaS) — app monolítica, TypeScript 6.0.3, Node ≥24.14.1 (local WSL: Node v24.19.0 vía nvm)
 - **Frontend**: React 19.2.x, TailwindCSS 4.x, Radix UI, lucide-react
 - **Backend**: Express (Wasp), Prisma 5.19.1 + PostgreSQL
-- **Pruebas**: Vitest 4.1.x (unit/integration, 302 tests / 23 archivos), Playwright 1.55.1 (E2E)
+- **Pruebas**: Vitest 4.1.x (unit/integration, 337 tests / 28 archivos), Playwright 1.55.1 (E2E)
 - **Despliegue**: Render (blueprint `render.yaml`) — client estático Vite + server Node + Postgres 18 free tier
 - **Email**: Resend (remitente provisional `onboarding@resend.dev`; solo entrega a la cuenta Resend registrada)
 
@@ -227,7 +227,7 @@ specs/001-doctoria-mvp/
 | UI badges de estado de cita | ✅ **RESUELTO** (8-nov) — componente compartido `clinical/components/CitaBadge.tsx` + `STATUS_CONFIG` como fuente única (label/short/variant): panel médico (`8f368a5`), **lista de agenda** (4 vistas, con iniciales), **calendario** (bloque de día + diálogo de detalle con iniciales), **portal del paciente** (píldora propia con labels desde `STATUS_CONFIG`; conserva los casos "Por confirmar/Confirmada" de secretaría), **detalle de paciente** (vista médico y secretaría) y **panel de admin** (T062, reemplaza `AdminCitaBadge` local). Label COMPLETED unificado a **"Completada"**. Descartado: campos `formCost/formObservation` (sin columnas nuevas en `Cita`, decisión 8-nov) |
 | Email de vinculación de paciente | PENDIENTE — **MINOR**: `getPatientLinkEmailContent` (`auth/email-and-pass/emails.ts:28`) está definido pero NUNCA se usa; el flujo `PatientLinkRequest` no envía ningún email (la notificación es solo visual en UI) |
 | Seeds: cuentas paciente sin vínculo | PENDIENTE — **MINOR**: `dbSeeds.ts:239-244` crea 6 cuentas (`PAC-008..013`) que no existen como pacientes (solo se siembran PAC-001..006) → esas cuentas quedan sin vínculo a ningún paciente (portal vacío). Corregir para que apunten a PAC-001..006 o crear esos pacientes |
-| Cobertura de tests | ✅ **RESUELTO** (8–10-nov, T063+T066+T068+T069+T070) — **302/302 tests en 23 archivos**: unitarias de ICS del portal, `manageCitaByMedico`, vinculación (`requestPatientLink`), calendario (helpers puros extraídos a `services/calendarFormat.ts`), `aiQueue`, `requestAIStructuring`, **FSM de captura guiada** (`captureFsm.test.ts`, 24 tests), **categorías del portal paciente** (`patientCategories.test.ts`, 6), **destino por rol de CTAs** (`roleHome.test.ts`, 5) y **pre-reserva de cita por voz** (`appointmentDraft.test.ts`, 20). Opcional futuro: tests de render de componentes si se incorpora testing-library |
+| Cobertura de tests | ✅ **RESUELTO** (8–17-nov, T063–T073) — **337/337 tests en 28 archivos**: + F1 (`getPublicSpecialistsDirectory.test.ts`, 6), F2 (`appointmentIntent.test.ts`, 7 + `PublicPatientPortal.test.tsx`, 6) y F3 (`sessionTokenAdapter.test.ts`, 8 + `RootPortalPage.test.tsx`, 6 + `roleHome.test.ts`, 7) en rama `feat/landing-dashboard-publico`. 100% PASS. |
 
 ---
 

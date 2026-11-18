@@ -16,6 +16,7 @@ import { UserMenuItems } from "../../../user/UserMenuItems";
 import logo from "../../static/logo.jpeg";
 import { cn } from "../../utils";
 import { DarkModeSwitcher } from "../DarkModeSwitcher";
+import { hasStoredSessionToken } from "../../auth/sessionTokenAdapter";
 
 export interface NavigationItem {
   name: string;
@@ -104,14 +105,18 @@ export function NavBar({
 }
 
 function NavBarDesktopUserDropdown({ isScrolled }: { isScrolled: boolean }) {
+  const hasToken = hasStoredSessionToken();
   const { data: user, isLoading: isUserLoading } = useAuth();
+
+  const isAnonymous = !hasToken || (!isUserLoading && !user);
+  const showLoading = hasToken && isUserLoading;
 
   return (
     <div className="hidden items-center justify-end gap-3 lg:flex lg:flex-1">
       <ul className="flex items-center justify-center gap-2 sm:gap-4">
         <DarkModeSwitcher />
       </ul>
-      {isUserLoading ? null : !user ? (
+      {showLoading ? null : isAnonymous ? (
         <WaspRouterLink
           to={routes.LoginRoute.to}
           className={cn(
@@ -134,11 +139,11 @@ function NavBarDesktopUserDropdown({ isScrolled }: { isScrolled: boolean }) {
             />
           </div>
         </WaspRouterLink>
-      ) : (
+      ) : user ? (
         <div className="ml-3">
           <UserDropdown user={user} />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -150,8 +155,12 @@ function NavBarMobileMenu({
   isScrolled: boolean;
   navigationItems: NavigationItem[];
 }) {
+  const hasToken = hasStoredSessionToken();
   const { data: user, isLoading: isUserLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const isAnonymous = !hasToken || (!isUserLoading && !user);
+  const showLoading = hasToken && isUserLoading;
 
   return (
     <div className="flex lg:hidden">
@@ -188,20 +197,20 @@ function NavBarMobileMenu({
                 {renderNavigationItems(navigationItems, setMobileMenuOpen)}
               </ul>
               <div className="py-6">
-                {isUserLoading ? null : !user ? (
+                {showLoading ? null : isAnonymous ? (
                   <WaspRouterLink to={routes.LoginRoute.to}>
                     <div className="flex items-center justify-end gap-2 text-wine-300 transition-colors duration-300 ease-in-out">
                       Log in <LogIn size="1.1rem" className="ml-1" />
                     </div>
                   </WaspRouterLink>
-                ) : (
+                ) : user ? (
                   <ul className="space-y-2">
                     <UserMenuItems
                       user={user}
                       onItemClick={() => setMobileMenuOpen(false)}
                     />
                   </ul>
-                )}
+                ) : null}
               </div>
               <div className="py-6">
                 <DarkModeSwitcher />
