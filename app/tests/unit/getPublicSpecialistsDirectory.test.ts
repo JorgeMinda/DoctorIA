@@ -8,8 +8,6 @@ import {
 import { DEFAULT_CLINICAL_FACILITY, PUBLIC_DIRECTORY_LIMIT } from "../../src/patient/constants";
 
 describe("Directorio Público de Especialistas (F1)", () => {
-  const originalEnv = process.env.PUBLIC_DIRECTORY_EMAILS;
-
   beforeEach(() => {
     clearDirectoryCache();
     delete process.env.PUBLIC_DIRECTORY_EMAILS;
@@ -24,8 +22,8 @@ describe("Directorio Público de Especialistas (F1)", () => {
       expect(parseAllowedDirectoryEmails("   ")).toEqual([]);
     });
 
-    it("parsea, recorta espacios y normaliza a minúsculas correctamente", () => {
-      const input = " Dr.Perez@Hospital.Org ,  DRA.GOMEZ@CLINICA.EC,  dr.vega@test.com  ";
+    it("parsea, recorta espacios, normaliza a minúsculas y deduplica correos correctamente", () => {
+      const input = " Dr.Perez@Hospital.Org ,  DRA.GOMEZ@CLINICA.EC,  dr.perez@hospital.org  ,  dr.vega@test.com  ";
       expect(parseAllowedDirectoryEmails(input)).toEqual([
         "dr.perez@hospital.org",
         "dra.gomez@clinica.ec",
@@ -90,20 +88,17 @@ describe("Directorio Público de Especialistas (F1)", () => {
           isActive: true,
           fullName: { not: null },
           specialty: { not: null },
-          OR: [
-            { email: { equals: "dra.mendez@hospital.org", mode: "insensitive" } },
-            { email: { equals: "dr.vega@hospital.org", mode: "insensitive" } },
-          ],
         },
         select: {
+          id: true,
           fullName: true,
           specialty: true,
+          email: true,
         },
         orderBy: [
           { fullName: "asc" },
           { id: "asc" },
         ],
-        take: PUBLIC_DIRECTORY_LIMIT,
       });
       expect(result).toHaveLength(2);
 
@@ -118,7 +113,7 @@ describe("Directorio Público de Especialistas (F1)", () => {
         expect((item as any).password).toBeUndefined();
         expect((item as any).isAdmin).toBeUndefined();
         expect((item as any).isMedico).toBeUndefined();
-        expect((item as any).publicIndex).toBeUndefined(); // Se eliminó según requerimiento
+        expect((item as any).publicIndex).toBeUndefined();
 
         expect(item.location).toBe(DEFAULT_CLINICAL_FACILITY.location);
         expect(item.generalHours).toBe(DEFAULT_CLINICAL_FACILITY.generalHours);
@@ -128,6 +123,42 @@ describe("Directorio Público de Especialistas (F1)", () => {
       expect(result[0].specialty).toBe("Medicina Interna");
     });
 
+    it("prueba negativa: 'dr_vega@...' en la allowlist NO hace match con 'drxvega@...'", async () => {
+      // Allowlist contiene explícitamente un correo con guion bajo
+      process.env.PUBLIC_DIRECTORY_EMAILS = "dr_vega@hospital.org";
+
+      const mockDbUsers = [
+        // Médico legítimo coincidente
+        {
+          id: "doc-real",
+          fullName: "Dr. Carlos Vega",
+          specialty: "Cardiología",
+          email: "dr_vega@hospital.org",
+        },
+        // Médico atacante o espurio que coincidiría si fuera un ILIKE sin escapar
+        {
+          id: "doc-spurious",
+          fullName: "Dr. Trampa Sin Guion",
+          specialty: "Cardiología Trampa",
+          email: "drxvega@hospital.org",
+        },
+      ];
+
+      const findManyMock = vi.fn().mockResolvedValue(mockDbUsers);
+      const context = {
+        entities: {
+          User: { findMany: findManyMock },
+        },
+      };
+
+      const result = await getPublicSpecialistsDirectory({}, context);
+
+      // Solo debe haber retornado al Dr. Carlos Vega; drxvega debe ser descartado
+      expect(result).toHaveLength(1);
+      expect(result[0].fullName).toBe("Dr. Carlos Vega");
+      expect(result.some((r: any) => r.fullName === "Dr. Trampa Sin Guion")).toBe(false);
+    });
+
     it("excluye filas con fullName o specialty nulos, vacíos o solo espacios", async () => {
       process.env.PUBLIC_DIRECTORY_EMAILS = "valido@hospital.org, sin_nombre@hospital.org, sin_esp@hospital.org";
 
@@ -135,14 +166,17 @@ describe("Directorio Público de Especialistas (F1)", () => {
         {
           fullName: "Dr. Válido",
           specialty: "Pediatría",
+          email: "valido@hospital.org",
         },
         {
           fullName: null,
           specialty: "Neurología",
+          email: "sin_nombre@hospital.org",
         },
         {
           fullName: "Dr. Sin Especialidad",
           specialty: "   ",
+          email: "sin_esp@hospital.org",
         },
       ];
 
@@ -167,6 +201,7 @@ describe("Directorio Público de Especialistas (F1)", () => {
         {
           fullName: "Dra. Laura Méndez",
           specialty: "Medicina Interna",
+          email: "dra.mendez@hospital.org",
         },
       ];
 
@@ -177,174 +212,18 @@ describe("Directorio Público de Especialistas (F1)", () => {
         },
       };
 
-      // Primera llamada: consulta BD
       const res1 = await getPublicSpecialistsDirectory({}, context);
       expect(res1).toHaveLength(1);
       expect(findManyMock).toHaveBeenCalledTimes(1);
 
-      // Segunda llamada inmediata: debe responder desde caché
       const res2 = await getPublicSpecialistsDirectory({}, context);
       expect(res2).toEqual(res1);
-      expect(findManyMock).toHaveBeenCalledTimes(1); // No incrementa
+      expect(findManyMock).toHaveBeenCalledTimes(1);
 
-      // Si se limpia el caché, vuelve a consultar la BD
       clearDirectoryCache();
       const res3 = await getPublicSpecialistsDirectory({}, context);
       expect(res3).toEqual(res1);
       expect(findManyMock).toHaveBeenCalledTimes(2);
-    });
-
-    it("filtra con precisión estricta: correo con guion bajo, mayúsculas distintas y exclusión de admin/paciente/inactivo", async () => {
-      // Allowlist con mayúsculas y guiones bajos
-      process.env.PUBLIC_DIRECTORY_EMAILS = "DR_VEGA@HOSPITAL.ORG, dra_mendez@clinica.ec";
-
-      const findManyMock = vi.fn().mockImplementation(async ({ where }) => {
-        // Simulación fiel de la evaluación del WHERE de PostgreSQL
-        const mockDatabaseRecords = [
-          // 1. Médico permitido con guión bajo y correo coincidente
-          {
-            id: "doc-1",
-            fullName: "Dr. Carlos Vega",
-            specialty: "Cardiología",
-            email: "dr_vega@hospital.org",
-            isMedico: true,
-            isAdmin: false,
-            isSecretaria: false,
-            isPaciente: false,
-            isActive: true,
-          },
-          // 2. Médico permitido con mayúsculas en BD
-          {
-            id: "doc-2",
-            fullName: "Dra. Laura Méndez",
-            specialty: "Medicina Interna",
-            email: "DRA_MENDEZ@CLINICA.EC",
-            isMedico: true,
-            isAdmin: false,
-            isSecretaria: false,
-            isPaciente: false,
-            isActive: true,
-          },
-          // 3. Médico no permitido (correo fuera de allowlist)
-          {
-            id: "doc-3",
-            fullName: "Dr. No Permitido",
-            specialty: "Pediatría",
-            email: "ajeno@hospital.org",
-            isMedico: true,
-            isAdmin: false,
-            isSecretaria: false,
-            isPaciente: false,
-            isActive: true,
-          },
-          // 4. Admin con correo permitido (debe ser excluido por isAdmin: false)
-          {
-            id: "admin-1",
-            fullName: "Admin con Correo",
-            specialty: "Administración",
-            email: "dr_vega@hospital.org",
-            isMedico: false,
-            isAdmin: true,
-            isSecretaria: false,
-            isPaciente: false,
-            isActive: true,
-          },
-          // 5. Paciente con correo permitido (debe ser excluido por isPaciente: false)
-          {
-            id: "paciente-1",
-            fullName: "Paciente con Correo",
-            specialty: "Ninguna",
-            email: "dra_mendez@clinica.ec",
-            isMedico: false,
-            isAdmin: false,
-            isSecretaria: false,
-            isPaciente: true,
-            isActive: true,
-          },
-          // 6. Médico inactivo (debe ser excluido por isActive: true)
-          {
-            id: "doc-inactivo",
-            fullName: "Dr. Retirado",
-            specialty: "Traumatología",
-            email: "dr_vega@hospital.org",
-            isMedico: true,
-            isAdmin: false,
-            isSecretaria: false,
-            isPaciente: false,
-            isActive: false,
-          },
-          // 7. Médico con fullName nulo
-          {
-            id: "doc-noname",
-            fullName: null,
-            specialty: "Dermatología",
-            email: "dr_vega@hospital.org",
-            isMedico: true,
-            isAdmin: false,
-            isSecretaria: false,
-            isPaciente: false,
-            isActive: true,
-          },
-        ];
-
-        // Filtrar según el where exacto generado por la query
-        return mockDatabaseRecords.filter((record) => {
-          if (where.isMedico !== record.isMedico) return false;
-          if (where.isAdmin !== record.isAdmin) return false;
-          if (where.isSecretaria !== record.isSecretaria) return false;
-          if (where.isPaciente !== record.isPaciente) return false;
-          if (where.isActive !== record.isActive) return false;
-          if (where.fullName?.not !== undefined && record.fullName === null) return false;
-          if (where.specialty?.not !== undefined && record.specialty === null) return false;
-
-          const emailMatches = where.OR?.some((orClause: any) => {
-            const expected = orClause.email.equals.toLowerCase();
-            return record.email.toLowerCase() === expected;
-          });
-          return emailMatches;
-        });
-      });
-
-      const context = {
-        entities: {
-          User: { findMany: findManyMock },
-        },
-      };
-
-      const result = await getPublicSpecialistsDirectory({}, context);
-
-      // Verificación de argumentos exactos pasados a findMany
-      expect(findManyMock).toHaveBeenCalledWith({
-        where: {
-          isMedico: true,
-          isAdmin: false,
-          isSecretaria: false,
-          isPaciente: false,
-          isActive: true,
-          fullName: { not: null },
-          specialty: { not: null },
-          OR: [
-            { email: { equals: "dr_vega@hospital.org", mode: "insensitive" } },
-            { email: { equals: "dra_mendez@clinica.ec", mode: "insensitive" } },
-          ],
-        },
-        select: {
-          fullName: true,
-          specialty: true,
-        },
-        orderBy: [
-          { fullName: "asc" },
-          { id: "asc" },
-        ],
-        take: PUBLIC_DIRECTORY_LIMIT,
-      });
-
-      // Solo los dos médicos activos y válidos deben ser retornados
-      expect(result).toHaveLength(2);
-      expect(result.map((r: any) => r.fullName)).toEqual([
-        "Dr. Carlos Vega",
-        "Dra. Laura Méndez",
-      ]);
     });
   });
 });

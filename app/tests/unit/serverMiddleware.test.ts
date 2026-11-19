@@ -8,7 +8,9 @@ import {
   getStoreSize,
   getStoreKeys,
   stopPeriodicCleanup,
-  normalizeIp,
+  canonicalizeAndGroupIp,
+  normalizePath,
+  purgeExpired,
   evictLRU,
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX_REQUESTS,
@@ -178,34 +180,78 @@ describe("serverMiddleware — Límite de tasa, CORS y Anti-Falsificación", () 
       expect(ipB.getStatusCode()).toBe(200);
     });
 
-    it("agrupa direcciones IPv6 por prefijo /64 evitando evasión por rotación", () => {
-      const ip1 = "2001:db8:1234:5678:0000:0000:0000:0001";
-      const ip2 = "2001:db8:1234:5678:ffff:ffff:ffff:ffff";
+    it("bypass de ruta: normaliza mayúsculas, barras repetidas, barra final y query string", () => {
+      // 1. Barras repetidas y barra final
+      const reqSlashes = createMockReqRes({
+        path: "//operations//get-public-specialists-directory/",
+        originalUrl: "//operations//get-public-specialists-directory/",
+      });
+      publicDirectoryRateLimiterMiddleware(reqSlashes.req, reqSlashes.res, reqSlashes.next);
+      expect(getStoreSize()).toBe(1);
 
-      expect(normalizeIp(ip1)).toBe("2001:db8:1234:5678::/64");
-      expect(normalizeIp(ip2)).toBe("2001:db8:1234:5678::/64");
+      // 2. Mayúsculas
+      const reqUpper = createMockReqRes({
+        path: "/OPERATIONS/GET-PUBLIC-SPECIALISTS-DIRECTORY",
+        originalUrl: "/OPERATIONS/GET-PUBLIC-SPECIALISTS-DIRECTORY",
+      });
+      publicDirectoryRateLimiterMiddleware(reqUpper.req, reqUpper.res, reqUpper.next);
+      expect(reqUpper.next).toHaveBeenCalledTimes(1);
 
-      // Consumir 30 peticiones con ip1
+      // 3. Query string
+      const reqQuery = createMockReqRes({
+        path: "/operations/get-public-specialists-directory",
+        originalUrl: "/operations/get-public-specialists-directory?category=all&limit=20",
+      });
+      publicDirectoryRateLimiterMiddleware(reqQuery.req, reqQuery.res, reqQuery.next);
+      expect(reqQuery.next).toHaveBeenCalledTimes(1);
+
+      expect(normalizePath("//operations//get-public-specialists-directory/")).toBe(
+        "/operations/get-public-specialists-directory"
+      );
+    });
+
+    it("IPv6: canonicaliza ceros iniciales y notación comprimida antes de agrupar por /64", () => {
+      const compressed = "2001:db8::1";
+      const expandedWithZeros = "2001:0db8:0000:0000:0000:0000:0000:0001";
+
+      const canonical1 = canonicalizeAndGroupIp(compressed);
+      const canonical2 = canonicalizeAndGroupIp(expandedWithZeros);
+
+      // Ambos deben canonicalizar a la misma subred /64
+      expect(canonical1).toBe("2001:db8:0:0::/64");
+      expect(canonical2).toBe("2001:db8:0:0::/64");
+
+      // Consumir 60 peticiones alternando ambas representaciones
       for (let i = 1; i <= 30; i++) {
-        const { req, res, next } = createMockReqRes({ ip: ip1 });
+        const { req, res, next } = createMockReqRes({ ip: compressed });
+        publicDirectoryRateLimiterMiddleware(req, res, next);
+        expect(next).toHaveBeenCalledTimes(1);
+      }
+      for (let i = 1; i <= 30; i++) {
+        const { req, res, next } = createMockReqRes({ ip: expandedWithZeros });
         publicDirectoryRateLimiterMiddleware(req, res, next);
         expect(next).toHaveBeenCalledTimes(1);
       }
 
-      // Consumir 30 peticiones con ip2 (total 60 para el prefijo /64)
-      for (let i = 1; i <= 30; i++) {
-        const { req, res, next } = createMockReqRes({ ip: ip2 });
-        publicDirectoryRateLimiterMiddleware(req, res, next);
-        expect(next).toHaveBeenCalledTimes(1);
-      }
-
-      // La petición 61 debe ser bloqueada para cualquier dirección en el mismo prefijo /64
-      const ip3 = "2001:db8:1234:5678:aaaa:bbbb:cccc:dddd";
-      const blocked = createMockReqRes({ ip: ip3 });
+      // La petición 61 debe ser bloqueada
+      const blocked = createMockReqRes({ ip: "2001:db8:0:0:ffff:ffff:ffff:ffff" });
       publicDirectoryRateLimiterMiddleware(blocked.req, blocked.res, blocked.next);
-
       expect(blocked.getStatusCode()).toBe(429);
       expect(blocked.next).not.toHaveBeenCalled();
+    });
+
+    it("throttle de purga: purgeExpired no se ejecuta más de una vez por segundo", () => {
+      // Primera ejecución en t = 0
+      const executedFirst = purgeExpired(1000);
+      expect(executedFirst).toBe(true);
+
+      // Segunda llamada inmediata a los 100 ms (t = 1100)
+      const executedThrottled = purgeExpired(1100);
+      expect(executedThrottled).toBe(false); // Omitido por throttle
+
+      // Tercera llamada a los 1100 ms (t = 2101)
+      const executedAfterOneSecond = purgeExpired(2101);
+      expect(executedAfterOneSecond).toBe(true); // Permitido tras transcurrir > 1s
     });
 
     it("comprueba exactamente qué entrada se expulsa en la política LRU al alcanzar el tope", () => {
@@ -248,21 +294,17 @@ describe("serverMiddleware — Límite de tasa, CORS y Anti-Falsificación", () 
       const realAttackerIp = "198.51.100.99";
 
       try {
-        // Enviar 60 peticiones donde el atacante inventa una IP falsa distinta en cada una,
-        // pero el proxy de Render coloca la IP real al final de X-Forwarded-For
         for (let i = 1; i <= RATE_LIMIT_MAX_REQUESTS; i++) {
           const fakeIp = `203.0.113.${i}`;
           const res = await fetch(baseUrl, {
             method: "POST",
             headers: {
-              // El atacante envió fakeIp; Render añadió realAttackerIp al final
               "X-Forwarded-For": `${fakeIp}, ${realAttackerIp}`,
             },
           });
           expect(res.status).toBe(200);
         }
 
-        // Petición 61: El atacante vuelve a inventar otra IP, pero el proxy coloca su IP real
         const blockedRes = await fetch(baseUrl, {
           method: "POST",
           headers: {
@@ -270,7 +312,6 @@ describe("serverMiddleware — Límite de tasa, CORS y Anti-Falsificación", () 
           },
         });
 
-        // Debe devolver HTTP 429 porque Express con trust proxy = 1 identificó a realAttackerIp
         expect(blockedRes.status).toBe(429);
         const body = await blockedRes.json();
         expect(body).toEqual({
@@ -304,7 +345,6 @@ describe("serverMiddleware — Límite de tasa, CORS y Anti-Falsificación", () 
       const validOrigin = "https://doctoria.linkear.net";
 
       try {
-        // Llenar la cuota
         for (let i = 1; i <= RATE_LIMIT_MAX_REQUESTS; i++) {
           await fetch(baseUrl, {
             method: "POST",
@@ -312,14 +352,12 @@ describe("serverMiddleware — Límite de tasa, CORS y Anti-Falsificación", () 
           });
         }
 
-        // Petición 61 bloqueada por límite de tasa
         const res429 = await fetch(baseUrl, {
           method: "POST",
           headers: { Origin: validOrigin },
         });
 
         expect(res429.status).toBe(429);
-        // Debe llevar Access-Control-Allow-Origin para que el navegador no bloquee el 429
         expect(res429.headers.get("access-control-allow-origin")).toBe(validOrigin);
         expect(res429.headers.get("vary")).toBe("Origin");
         expect(res429.headers.get("retry-after")).toBeTruthy();
@@ -331,7 +369,6 @@ describe("serverMiddleware — Límite de tasa, CORS y Anti-Falsificación", () 
 
   describe("CORS Estricto y Orden de Middleware (Requisito 3d y 4)", () => {
     it("la prueba de orden parte del mapa de middleware por defecto de Wasp", () => {
-      // Simular defaultGlobalMiddlewareConfig de Wasp 0.25
       const waspDefaultMap = new Map<string, express.RequestHandler>([
         ["helmet", ((_req, _res, next) => next()) as express.RequestHandler],
         ["cors", ((_req, _res, next) => next()) as express.RequestHandler],
@@ -348,21 +385,19 @@ describe("serverMiddleware — Límite de tasa, CORS y Anti-Falsificación", () 
       const rateLimiterIdx = keys.indexOf("rateLimiter");
       const trustProxyIdx = keys.indexOf("trustProxySetup");
 
-      expect(trustProxyIdx).toBe(0); // Configura trust proxy al inicio
+      expect(trustProxyIdx).toBe(0);
       expect(corsIdx).toBeGreaterThanOrEqual(1);
-      expect(rateLimiterIdx).toBeGreaterThan(corsIdx); // rateLimiter siempre después de cors
+      expect(rateLimiterIdx).toBeGreaterThan(corsIdx);
     });
 
     it("rechaza orígenes maliciosos como https://localhost.atacante.com y https://x.onrender.com", () => {
       const allowedOrigins = getAllowedOrigins();
 
-      // Orígenes prohibidos que antes pasaban por endsWith o includes
       expect(allowedOrigins).not.toContain("https://localhost.atacante.com");
       expect(allowedOrigins).not.toContain("https://x.onrender.com");
       expect(allowedOrigins).not.toContain("https://malicious.linkear.net");
       expect(allowedOrigins).not.toContain("http://127.0.0.1.attacker.io");
 
-      // Comprobar con la función de middleware
       const maliciousReq = createMockReqRes({
         headers: { origin: "https://localhost.atacante.com" },
       });
@@ -372,9 +407,7 @@ describe("serverMiddleware — Límite de tasa, CORS y Anti-Falsificación", () 
 
       corsMiddleware(maliciousReq.req, maliciousReq.res, maliciousReq.next);
 
-      // No debe emitir Access-Control-Allow-Origin
       expect(maliciousReq.getHeaders()["access-control-allow-origin"]).toBeUndefined();
-      // Siempre debe emitir Vary: Origin
       expect(maliciousReq.getHeaders()["vary"]).toBe("Origin");
     });
   });

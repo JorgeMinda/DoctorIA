@@ -15,10 +15,14 @@ export interface PublicSpecialistDto {
 
 export function parseAllowedDirectoryEmails(rawEnv?: string | null): string[] {
   if (!rawEnv || typeof rawEnv !== "string") return [];
-  return rawEnv
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+  return Array.from(
+    new Set(
+      rawEnv
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
 }
 
 interface DirectoryCacheEntry {
@@ -70,6 +74,11 @@ export const getPublicSpecialistsDirectory: any = async (
     return [];
   }
 
+  const allowedSet = new Set(allowedEmails);
+
+  // Consulta limpia en base de datos: filtra únicamente por roles institucionales y actividad.
+  // No utiliza pattern-matching (ILIKE) en SQL para evitar la vulnerabilidad de comodines ('_' y '%').
+  // Se recupera email únicamente a nivel de servidor Node.js para contrastar contra la lista blanca en memoria.
   const doctors = await context.entities.User.findMany({
     where: {
       isMedico: true,
@@ -79,29 +88,35 @@ export const getPublicSpecialistsDirectory: any = async (
       isActive: true,
       fullName: { not: null },
       specialty: { not: null },
-      OR: allowedEmails.map((email) => ({
-        email: { equals: email, mode: "insensitive" },
-      })),
     },
     select: {
+      id: true,
       fullName: true,
       specialty: true,
+      email: true,
     },
     orderBy: [
       { fullName: "asc" },
       { id: "asc" },
     ],
-    take: PUBLIC_DIRECTORY_LIMIT,
   });
 
-  const mapped: PublicSpecialistDto[] = (doctors || [])
-    .filter((d: any) => Boolean(d.fullName?.trim()) && Boolean(d.specialty?.trim()))
-    .map((doc: any) => ({
-      fullName: doc.fullName.trim(),
-      specialty: doc.specialty.trim(),
-      location: DEFAULT_CLINICAL_FACILITY.location,
-      generalHours: DEFAULT_CLINICAL_FACILITY.generalHours,
-    }));
+  const matchedDoctors = (doctors || [])
+    .filter((doc: any) => {
+      const cleanEmail = (doc.email || "").trim().toLowerCase();
+      const hasValidName = Boolean(doc.fullName?.trim());
+      const hasValidSpec = Boolean(doc.specialty?.trim());
+      return hasValidName && hasValidSpec && allowedSet.has(cleanEmail);
+    })
+    .slice(0, PUBLIC_DIRECTORY_LIMIT);
+
+  // Mapeo riguroso: jamás se expone el email, id ni PII al cliente
+  const mapped: PublicSpecialistDto[] = matchedDoctors.map((doc: any) => ({
+    fullName: doc.fullName.trim(),
+    specialty: doc.specialty.trim(),
+    location: DEFAULT_CLINICAL_FACILITY.location,
+    generalHours: DEFAULT_CLINICAL_FACILITY.generalHours,
+  }));
 
   directoryCache = {
     data: mapped,
