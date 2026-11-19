@@ -123,6 +123,18 @@ const SYNTHETIC_PATIENTS = [
 ];
 
 export async function seedSyntheticClinicalData(prismaClient: PrismaClient) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.ALLOW_PRODUCTION_SEED !== "true" &&
+    process.env.RUN_SYNTHETIC_SEED !== "true"
+  ) {
+    console.warn(
+      "[seed] Ejecución de seed sintético omitida en producción para proteger datos clínicos (Constitution P5). " +
+      "Para forzar la ejecución en staging/demo, define ALLOW_PRODUCTION_SEED=true o RUN_SYNTHETIC_SEED=true.",
+    );
+    return;
+  }
+
   // 1. Admin
   const admin = await prismaClient.user.upsert({
     where: { email: DEMO_ADMIN_EMAIL },
