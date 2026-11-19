@@ -29,6 +29,7 @@ type Entities = {
   PatientLinkRequest: {
     findFirst: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -38,6 +39,7 @@ function makeEntities(): Entities {
     PatientLinkRequest: {
       findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: "req-1" }),
+      count: vi.fn().mockResolvedValue(0),
     },
   };
 }
@@ -66,6 +68,19 @@ describe("requestPatientLink (vinculación de cuenta paciente)", () => {
         ctx({ ...paciente, isActive: false }, makeEntities()),
       ),
     ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it("más de 5 solicitudes en la última hora → 429", async () => {
+    const entities = makeEntities();
+    entities.PatientLinkRequest.count.mockResolvedValue(5);
+
+    await expect(
+      requestPatientLink(validArgs, ctx(paciente, entities)),
+    ).rejects.toMatchObject({
+      statusCode: 429,
+      message: expect.stringContaining("Demasiados intentos"),
+    });
+    expect(entities.PatientLinkRequest.create).not.toHaveBeenCalled();
   });
 
   it("documento con formato inválido → 400 y no crea solicitud", async () => {

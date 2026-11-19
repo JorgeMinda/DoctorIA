@@ -105,13 +105,13 @@ describe("manageCitaByMedico — CREATE", () => {
     expect(createAuditEntry).not.toHaveBeenCalled();
   });
 
-  it("rechaza con 403 si el médico no tiene acceso al paciente (R-10)", async () => {
+  it("rechaza con 404 si el médico no tiene acceso al paciente (R-10 unificado)", async () => {
     (prisma.medicoPatientAccess.findUnique as any).mockResolvedValueOnce(null);
     const Cita = makeCitaEntity();
 
     await expect(
       manageCitaByMedico(createArgs, ctx(medico, Cita)),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    ).rejects.toMatchObject({ statusCode: 404, message: "Recurso no encontrado" });
     expect(Cita.create).not.toHaveBeenCalled();
   });
 

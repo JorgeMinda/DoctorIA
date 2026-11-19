@@ -1,6 +1,6 @@
 # CONTEXT: DoctorIA MVP — Estado actual del proyecto (para IA colaboradora)
 
-**Última actualización**: 2026-11-10 · **Rama de trabajo**: `main` directo (desde la sesión nov-2026; antes `001-doctoria-mvp` → `main`)
+**Última actualización**: 2026-11-19 · **Rama de trabajo**: `main`
 **Autor de este contexto**: agente principal del equipo DoctorIA
 
 > **Reglas de comportamiento para agentes** (dominio, arquitectura, off-limits, comandos): ver [AGENTS.md](AGENTS.md) en la raíz. Este `CONTEXT.md` documenta el **estado mutable** del proyecto (cambia cada sesión); `AGENTS.md` documenta lo **casi-estático**.
@@ -33,8 +33,8 @@ MVP de un **SaaS de asistencia de IA para historias clínicas** en español. El 
 - **Framework**: Wasp 0.25.0 (template Open SaaS) — app monolítica, TypeScript 6.0.3, Node ≥24.14.1 (local WSL: Node v24.19.0 vía nvm)
 - **Frontend**: React 19.2.x, TailwindCSS 4.x, Radix UI, lucide-react
 - **Backend**: Express (Wasp), Prisma 5.19.1 + PostgreSQL
-- **Pruebas**: Vitest 4.1.x (unit/integration, 337 tests / 28 archivos), Playwright 1.55.1 (E2E)
-- **Despliegue**: Render (blueprint `render.yaml`) — client estático Vite + server Node + Postgres 18 free tier
+- **Pruebas**: Vitest 4.1.x (unit/integration, 359 tests / 30 archivos), Playwright 1.55.1 (E2E)
+- **Despliegue**: Render (blueprint `render.yaml`) — client estático Vite + server Node + Postgres 18 free tier (startCommand estricto con `npm run db-migrate-prod`, sin `db push`, seeds sintéticos condicionales a `RUN_SYNTHETIC_SEED="true"`)
 - **Email**: Resend (remitente provisional `onboarding@resend.dev`; solo entrega a la cuenta Resend registrada)
 
 ### Estructura del código (`app/`)
@@ -97,7 +97,7 @@ Reglas clave:
 - **Client**: `https://doctoria.linkear.net` (custom domain; legacy `doctoria-client.onrender.com` apunta al mismo servicio, SPA fallback `200.html`)
 - **Server API**: `https://doctoria-server.onrender.com`
 - **DB**: `doctoria-db` (Postgres 18, free — expira en 30 días)
-- **Deploy**: Render con blueprint `render.yaml` (rootDir `app`, branch `main`). El `startCommand` del server ejecuta `prisma migrate deploy` + **seeds** + start.
+- **Deploy**: Render con blueprint `render.yaml` (rootDir `app`, branch `main`). El `startCommand` del server ejecuta `npm run db-migrate-prod` estricto (falla si hay error de migración), sin `prisma db push` que corrompa índices SQL, con ejecución de seeds protegida (`RUN_SYNTHETIC_SEED="true"` requerido) y arranque en `NODE_ENV=production`.
 - **Free tier caveats**: el server duerme tras ~15 min (primer request tarda 30–50 s); deploy del client a veces requiere Manual Deploy (verificado 13-ago).
 
 ### Cuentas de acceso (sembradas en staging)
@@ -227,7 +227,10 @@ specs/001-doctoria-mvp/
 | UI badges de estado de cita | ✅ **RESUELTO** (8-nov) — componente compartido `clinical/components/CitaBadge.tsx` + `STATUS_CONFIG` como fuente única (label/short/variant): panel médico (`8f368a5`), **lista de agenda** (4 vistas, con iniciales), **calendario** (bloque de día + diálogo de detalle con iniciales), **portal del paciente** (píldora propia con labels desde `STATUS_CONFIG`; conserva los casos "Por confirmar/Confirmada" de secretaría), **detalle de paciente** (vista médico y secretaría) y **panel de admin** (T062, reemplaza `AdminCitaBadge` local). Label COMPLETED unificado a **"Completada"**. Descartado: campos `formCost/formObservation` (sin columnas nuevas en `Cita`, decisión 8-nov) |
 | Email de vinculación de paciente | PENDIENTE — **MINOR**: `getPatientLinkEmailContent` (`auth/email-and-pass/emails.ts:28`) está definido pero NUNCA se usa; el flujo `PatientLinkRequest` no envía ningún email (la notificación es solo visual en UI) |
 | Seeds: cuentas paciente sin vínculo | PENDIENTE — **MINOR**: `dbSeeds.ts:239-244` crea 6 cuentas (`PAC-008..013`) que no existen como pacientes (solo se siembran PAC-001..006) → esas cuentas quedan sin vínculo a ningún paciente (portal vacío). Corregir para que apunten a PAC-001..006 o crear esos pacientes |
-| Cobertura de tests | ✅ **RESUELTO** (8–17-nov, T063–T073) — **337/337 tests en 28 archivos**: + F1 (`getPublicSpecialistsDirectory.test.ts`, 6), F2 (`appointmentIntent.test.ts`, 7 + `PublicPatientPortal.test.tsx`, 6) y F3 (`sessionTokenAdapter.test.ts`, 8 + `RootPortalPage.test.tsx`, 6 + `roleHome.test.ts`, 7) en rama `feat/landing-dashboard-publico`. 100% PASS. |
+| Saneamiento de despliegue y seeds (Fase 0.5 y 0.3) | ✅ **RESUELTO** (19-nov) — Eliminado `prisma db push --accept-data-loss` de `render.yaml` (protege índices SQL); `npm run db-migrate-prod` estricto sin `|| true`; seeds sintéticas condicionadas a `RUN_SYNTHETIC_SEED="true"` y bloqueadas en producción salvo opt-in explícito (P5). Tests en `dbSeeds.test.ts` (4). |
+| Seguridad HTTP y Rate Limit (Fase 0.1 y F1) | ✅ **RESUELTO** (19-nov) — `publicDirectoryRateLimiter` en memoria LRU $O(1)$ (60 req/min), Express `req.ip` (`trust proxy = 1` único en arranque) con priorización de `CF-Connecting-IP`, canonicalización IPv6 por prefijo `/64`, normalización de bypass de rutas y CORS estricto con lista cerrada y `Vary: Origin`. Tests en `serverMiddleware.test.ts` (13). |
+| Onboarding de paciente y 404 unificado (Fase 0.2) | ✅ **RESUELTO** (19-nov) — Opción (a) rematada: `/pending-activation` con badge institucional y botón hacia `/patient/link`, textos de "Solicitar Acceso Paciente" en portada, rate limiting de 5 req/hora en `requestPatientLink` para prevenir fuerza bruta sobre cédulas, y `assertMedicoPatientAccess` con 404 unificado ("Recurso no encontrado") para evitar enumeración de expedientes. |
+| Cobertura de tests | ✅ **RESUELTO** (19-nov) — **359/359 tests en 30 archivos** (100% PASS verde, 0 errores en `tsc --noEmit`). |
 
 ---
 

@@ -168,7 +168,7 @@ export function PublicPatientPortal() {
             >
               <WaspRouterLink to={routes.SignupRoute.to}>
                 <UserPlus className="size-4" />
-                Registrarme
+                Solicitar Acceso Paciente
               </WaspRouterLink>
             </Button>
 

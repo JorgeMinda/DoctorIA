@@ -2760,6 +2760,18 @@ export const requestPatientLink: any = async (rawArgs: any, context: any) => {
   if (!user) throw new HttpError(401, "Debe iniciar sesión para solicitar la vinculación");
   if (user.isActive === false) throw new HttpError(403, "Cuenta inactiva");
 
+  // 0. Rate limiting por usuario: máximo 5 solicitudes por hora para prevenir enumeración/fuerza bruta
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const recentRequestsCount = await context.entities.PatientLinkRequest.count({
+    where: {
+      userId: user.id,
+      createdAt: { gte: oneHourAgo },
+    },
+  });
+  if (recentRequestsCount >= 5) {
+    throw new HttpError(429, "Demasiados intentos de vinculación. Por favor intenta más tarde.");
+  }
+
   const args = ensureArgsSchemaOrThrowHttpError(
     requestPatientLinkInputSchema,
     rawArgs,
